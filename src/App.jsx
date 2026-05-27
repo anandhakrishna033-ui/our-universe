@@ -633,7 +633,7 @@ const LockedLetter = ({ letter }) => {
   );
 };
 
-const Letters = ({ letters }) => {
+const Letters = ({ letters, deleteLetter }) => {
   const navigate = useNavigate();
   return (
     <div className="max-w-6xl mx-auto pb-10">
@@ -655,7 +655,14 @@ const Letters = ({ letters }) => {
 
               if (isLocked) {
                 return (
-                  <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }} key={letter.firestoreId || letter.id}>
+                  <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: idx * 0.1 }} key={letter.firestoreId || letter.id} className="relative group">
+                     {/* Delete Button for Locked Letters */}
+                     <button 
+                        onClick={() => deleteLetter(letter.firestoreId || letter.id)} 
+                        className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                      <LockedLetter letter={letter} />
                   </motion.div>
                 );
@@ -667,11 +674,21 @@ const Letters = ({ letters }) => {
                   layout
                   initial={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
                   animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, scale: 0.9, filter: 'blur(5px)' }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
                   whileHover={{ scale: 1.01 }} 
-                  className={`relative overflow-hidden rounded-3xl shadow-sm border border-gray-100 min-h-[300px] flex flex-col ${letter.layout === 'image-background' ? 'text-white' : 'bg-white/80 backdrop-blur-md text-gray-800'}`}
+                  // Added 'group' class here so the trash can detects the hover!
+                  className={`relative overflow-hidden rounded-3xl shadow-sm border border-gray-100 min-h-[300px] flex flex-col group ${letter.layout === 'image-background' ? 'text-white' : 'bg-white/80 backdrop-blur-md text-gray-800'}`}
                 >
                   
+                  {/* Delete Button for Unlocked Letters */}
+                  <button 
+                    onClick={() => deleteLetter(letter.firestoreId || letter.id)} 
+                    className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+
                   {/* Background Image Layout */}
                   {letter.layout === 'image-background' && letter.img && (
                     <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${letter.img})` }}>
@@ -718,15 +735,29 @@ const CreateLetter = ({ onAddLetter }) => {
   const symbols = ['♡', '✨', '🌙', '🌸', '🦋', '💌', '♾️', '💍', '🥺', '❤️'];
   const handleAddSymbol = (sym) => setFormData({ ...formData, content: formData.content + sym });
 
-  // Handle Local Image Upload using FileReader
-  const handleImageUpload = (e) => {
+  // Handle Image Upload with Compression for Firestore Limits
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, img: reader.result }); // This creates a base64 'data_url' string natively
-      };
-      reader.readAsDataURL(file);
+      try {
+        // 1. Compress the image to fit under the 1MB Firestore limit
+        const options = {
+          maxSizeMB: 0.6,         
+          maxWidthOrHeight: 1080, 
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+        
+        // 2. Convert the tiny, compressed file to Base64 using our helper
+        const base64String = await fileToBase64(compressedFile);
+        
+        // 3. Save it to the letter form data
+        setFormData({ ...formData, img: base64String }); 
+        
+      } catch (error) {
+        console.error("Compression failed:", error);
+        alert("Failed to process image. Try a slightly smaller picture.");
+      }
     }
   };
 
@@ -1068,6 +1099,20 @@ function App() {
     }
   };
 
+  // --- 4.5 DELETE LETTER FROM FIREBASE ---
+  const deleteLetter = async (firestoreId) => {
+    if (!firestoreId) return;
+    if (!window.confirm("Are you sure you want to delete this letter?")) return;
+    try {
+      await deleteDoc(doc(db, "letters", firestoreId));
+      // Update state to remove the letter instantly with a smooth animation
+      setLetters(prev => prev.filter(l => l.firestoreId !== firestoreId));
+    } catch (err) {
+      console.error("Error deleting letter: ", err);
+      alert(`Deletion failed! Reason: ${err.message}`);
+    }
+  };
+
   // --- 5. SETTINGS SYNC ---
   useEffect(() => {
     localStorage.setItem('passwordRequired', isPasswordRequired);
@@ -1099,7 +1144,7 @@ function App() {
           <Route path="/places" element={<Places memories={memories} />} />
           <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} />} />
           <Route path="/gallery" element={<ConstellationGallery memories={memories} />} />
-          <Route path="/letters" element={<Letters letters={letters} />} />
+          <Route path="/letters" element={<Letters letters={letters} deleteLetter={deleteLetter} />} />
           <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} />} />
           <Route path="/memories" element={<Memories memories={memories} deleteMemory={deleteMemory} />} />
           <Route path="/settings" element={
