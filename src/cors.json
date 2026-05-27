@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://our-universe-self.vercel.app"],
+    "method": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "Access-Control-Allow-Origin"],
+    "maxAgeSeconds": 3600
+  }
+]
