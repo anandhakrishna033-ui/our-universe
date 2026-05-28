@@ -7,4 +7,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  // THIS IS THE MAGIC LINE:
+  envPrefix: 'REACT_APP_', 
 })
