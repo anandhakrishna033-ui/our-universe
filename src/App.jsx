@@ -6,21 +6,17 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import DashboardLayout from './components/layout/DashboardLayout';
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 // --- FIREBASE IMPORTS ---
 import { db, storage } from './firebase'; 
 import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
-// Keeping storage imports so we don't break any external dependencies or reduce your line count,
-// even though we are bypassing them for the base64 free tier method!
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 
 // ==========================================
 // UTILITY: PRIVATE BASE64 CONVERTER
 // ==========================================
-// This helper magically turns your images and voice notes into text strings.
-// This allows us to save them directly to the free Firestore database, 
-// bypassing the paid Storage buckets entirely and keeping your memories 100% private.
 const fileToBase64 = (fileOrBlob) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onloadend = () => resolve(reader.result);
@@ -28,13 +24,24 @@ const fileToBase64 = (fileOrBlob) => new Promise((resolve, reject) => {
   reader.readAsDataURL(fileOrBlob);
 });
 
-// Create a custom glowing heart icon for your map pins
+// Custom glowing heart icon for your map pins
 const heartIcon = new L.DivIcon({
   html: `<div style="font-size: 28px; color: #E11D48; filter: drop-shadow(0px 0px 8px rgba(225,29,72,0.8));">❤️</div>`,
   className: 'custom-heart-icon',
   iconSize: [28, 28],
   iconAnchor: [14, 28],
   popupAnchor: [0, -28],
+});
+
+// The Custom Pulsing Heart Marker for the new LovelyMap
+const lovelyHeartMarker = new L.DivIcon({
+  className: 'bg-transparent',
+  html: `<div class="relative flex h-8 w-8 items-center justify-center">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-6 w-6 bg-[#8B1235] items-center justify-center text-white text-xs shadow-lg">❤️</span>
+        </div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
 });
 
 // ==========================================
@@ -95,7 +102,6 @@ const SecretGateway = ({ expectedWord, onUnlock }) => {
 
   return (
     <div className="min-h-screen bg-[#f0dce1] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Updated Design Context to 30% for better visual spread on large screens */}
       <div className="absolute top-[-30%] left-[-30%] w-[500px] h-[500px] bg-pink-200/50 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
       <div className="absolute bottom-[-30%] right-[-30%] w-[600px] h-[600px] bg-rose-200/40 rounded-full mix-blend-multiply filter blur-[150px] animate-pulse" style={{ animationDuration: '7s' }}></div>
 
@@ -120,16 +126,51 @@ const SecretGateway = ({ expectedWord, onUnlock }) => {
 };
 
 // ==========================================
-// 3. MAIN PAGES (Dashboard)
+// 3. MAIN PAGES (Dashboard & Quotes)
 // ==========================================
-const Home = ({ memories, deleteMemory }) => {
+const RotatingQuotes = ({ quotes }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (!quotes || quotes.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % quotes.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [quotes]);
+
+  if (!quotes || quotes.length === 0) return null;
+
+  return (
+    <div className="h-24 flex items-center justify-center overflow-hidden mb-6">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, y: 15, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -15, filter: "blur(4px)" }}
+          transition={{ duration: 0.8, ease: "easeInOut" }}
+          className="text-2xl md:text-3xl font-serif italic text-gray-800 text-center"
+          style={{ fontFamily: "'Playfair Display', serif" }}
+        >
+          "{quotes[currentIndex]?.text}"
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const Home = ({ memories, quotes, deleteMemory }) => {
   const recentMemories = memories.slice(0, 4); 
   const navigate = useNavigate();
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.15 } } };
-  const itemVariants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 60 } } };
-
+  
   return (
     <div className="max-w-6xl mx-auto pb-10">
+      
+      {/* Whispers of the Universe */}
+      <RotatingQuotes quotes={quotes} />
+
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/40 backdrop-blur-md rounded-3xl md:rounded-[2rem] p-6 md:p-10 mb-6 md:mb-8 relative overflow-hidden shadow-sm border border-white/50">
         <div className="relative z-10 max-w-xl">
           <p className="text-rose-500 font-medium mb-1 md:mb-2 text-sm md:text-base flex items-center gap-2"><Sparkles size={16} /> Welcome back to our universe</p>
@@ -186,7 +227,6 @@ const Home = ({ memories, deleteMemory }) => {
                     <Trash2 size={16} />
                   </button>
                   <div className="w-full aspect-square bg-gray-100 mb-3 overflow-hidden rounded-sm relative">
-                    {/* Animated Image Reveal */}
                     {m.img ? (
                       <motion.img 
                         initial={{ opacity: 0 }} 
@@ -231,26 +271,18 @@ const CreateMemory = ({ onAddMemory }) => {
     const file = e.target.files[0];
   
     if (file) { 
-      // 1. Immediately show the original preview so the UI feels instantly fast
       setImgPreview(URL.createObjectURL(file));
-
-      // 2. Set up your compression rules to ensure it fits in Firestore's 1MB limit
       const options = {
-        maxSizeMB: 0.6,         // Reduced to 0.6MB to safely fit in Firestore's private base64 limit
-        maxWidthOrHeight: 1080, // Reduced from 1920 to keep size highly optimized
-        useWebWorker: true,     // Uses background processing so your app doesn't freeze
+        maxSizeMB: 0.6,         
+        maxWidthOrHeight: 1080, 
+        useWebWorker: true,     
       };
 
       try {
-        // 3. Compress the file!
         const compressedFile = await imageCompression(file, options);
-      
-        // 4. Save the tiny, compressed file to state
         setImgFile(compressedFile);
-      
       } catch (error) {
         console.error("Compression failed:", error);
-        // Fallback: If compression randomly fails, just use the original file and hope it fits
         setImgFile(file); 
       }
     }
@@ -350,74 +382,73 @@ const CreateMemory = ({ onAddMemory }) => {
 };
 
 // ==========================================
-// 5. CONSTELLATION GALLERY 🌌
+// 5. GALAXY GALLERY 🌌 (Interactive Zoom/Pan)
 // ==========================================
-const ConstellationGallery = ({ memories }) => {
-  const images = memories.filter(m => m.img);
-  const [selectedStar, setSelectedStar] = useState(null);
+const GalaxyGallery = ({ galleryPhotos, onAddPhoto }) => {
+  const [isUploading, setIsUploading] = useState(false);
 
-  const getStarPosition = (id) => {
-    let seed = 1;
-    if (typeof id === 'string') {
-      for(let i = 0; i < id.length; i++) seed += id.charCodeAt(i);
-    } else {
-      seed = id * 1.2345;
+  const handleGalaxyUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploading(true);
+    
+    try {
+      // Use the safe 0.3MB limit
+      const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
+      const compressedFile = await imageCompression(file, options);
+      const base64String = await fileToBase64(compressedFile);
+      
+      const heading = prompt("Give this memory a short heading:");
+      
+      // PRO TIP: Generate random X and Y coordinates (between 10% and 90% so they don't hit the edge)
+      const randomX = Math.floor(Math.random() * 80) + 10;
+      const randomY = Math.floor(Math.random() * 80) + 10;
+
+      await onAddPhoto({ 
+        imgUrl: base64String, 
+        heading: heading || "A fleeting moment", 
+        x: randomX, 
+        y: randomY,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      alert("Upload failed. Try a smaller image.");
     }
-    const top = 10 + (seed % 80); 
-    const left = 5 + ((seed * 7) % 90); 
-    return { top: `${top}%`, left: `${left}%` };
+    setIsUploading(false);
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-10 relative">
-      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Our Constellations ✨</h1>
-      
-      <div className="w-full h-[600px] bg-[#0B0C10] rounded-[2rem] relative overflow-hidden shadow-2xl border-4 border-gray-800">
-        
-        {/* Subtle background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[100px] pointer-events-none"></div>
+    <div className="max-w-6xl mx-auto pb-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Our Constellations ✨</h1>
+        <label className="bg-[#8B1235] text-white px-5 py-2.5 rounded-full cursor-pointer hover:bg-[#6A0D28] transition shadow-md">
+          {isUploading ? "Uploading..." : "Add a Star"}
+          <input type="file" accept="image/*" className="hidden" onChange={handleGalaxyUpload} />
+        </label>
+      </div>
 
-        {images.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-            <p>The sky is empty. Add memories with photos to create stars.</p>
-          </div>
-        ) : (
-          images.map((m) => {
-            const pos = getStarPosition(m.firestoreId || m.id || Date.now());
-
-            return (
-              <React.Fragment key={m.firestoreId || m.id}>
-                <motion.button 
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  whileHover={{ scale: 1.5 }}
-                  onClick={() => setSelectedStar(m)}
-                  className="absolute z-10 w-3 h-3 bg-white rounded-full shadow-[0_0_15px_4px_rgba(255,255,255,0.8)] cursor-pointer hover:bg-pink-300 transition-colors"
-                  style={{ top: pos.top, left: pos.left }}
-                />
-                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
-                   <line x1={pos.left} y1={pos.top} x2="50%" y2="50%" stroke="white" strokeWidth="0.5" strokeDasharray="4 4" />
-                </svg>
-              </React.Fragment>
-            );
-          })
-        )}
-
-        <AnimatePresence>
-          {selectedStar && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white/10 backdrop-blur-xl p-4 rounded-3xl border border-white/20 z-50 text-center"
-            >
-              <button onClick={() => setSelectedStar(null)} className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors">✕</button>
-              <img src={selectedStar.img} alt={selectedStar.title} className="w-full h-48 object-cover rounded-2xl mb-4 shadow-lg" />
-              <h3 className="text-xl font-bold text-white font-serif">{selectedStar.title}</h3>
-              <p className="text-gray-300 text-sm mt-1">{selectedStar.date}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="w-full h-[75vh] bg-[#0a0a1a] overflow-hidden rounded-3xl relative cursor-grab shadow-2xl border-4 border-gray-800">
+        <TransformWrapper initialScale={1} minScale={0.5} maxScale={4} centerOnInit={true}>
+          <TransformComponent>
+            {/* The massive universe canvas */}
+            <div className="w-[2000px] h-[2000px] relative bg-black" 
+                 style={{ backgroundImage: 'radial-gradient(circle at center, #1a1a2e 0%, #000000 100%)' }}>
+              
+              {galleryPhotos.map((photo) => (
+                <div key={photo.id} style={{ top: `${photo.y}%`, left: `${photo.x}%` }} className="absolute transform -translate-x-1/2 -translate-y-1/2 group z-10">
+                  {/* The Glowing Star */}
+                  <div className="w-3 h-3 bg-white rounded-full shadow-[0_0_15px_#fff] group-hover:scale-150 group-hover:shadow-[0_0_25px_#ff99cc] transition-all duration-300"></div>
+                  
+                  {/* The Hidden Photo Reveal */}
+                  <motion.div className="opacity-0 group-hover:opacity-100 absolute top-6 left-1/2 -translate-x-1/2 w-48 bg-white/90 backdrop-blur-sm p-2 rounded-xl shadow-2xl pointer-events-none transition-opacity duration-300 z-50">
+                    <img src={photo.imgUrl} className="w-full h-auto rounded-lg object-cover" alt={photo.heading} />
+                    <p className="text-center font-serif mt-2 text-sm text-gray-800 font-medium">{photo.heading}</p>
+                  </motion.div>
+                </div>
+              ))}
+            </div>
+          </TransformComponent>
+        </TransformWrapper>
       </div>
     </div>
   );
@@ -441,7 +472,7 @@ const Memories = ({ memories, deleteMemory }) => {
             {memories.map((m, idx) => (
               <motion.div 
                 key={m.firestoreId || m.id} 
-                layout // Smooth reflow when memories are deleted or added
+                layout
                 initial={{ opacity: 0, scale: 0.9, y: 30 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: -30, filter: 'blur(5px)' }}
@@ -486,7 +517,7 @@ const Memories = ({ memories, deleteMemory }) => {
 };
 
 // ==========================================
-// 7. TIMELINE & PLACES
+// 7. TIMELINE & LOVELY MAP PLACES
 // ==========================================
 const Timeline = ({ memories }) => (
   <div className="max-w-3xl mx-auto pb-10">
@@ -506,7 +537,7 @@ const Timeline = ({ memories }) => (
   </div>
 );
 
-const Places = ({ memories }) => {
+const LovelyMap = ({ memories }) => {
   const [markers, setMarkers] = useState([]);
   
   useEffect(() => {
@@ -539,30 +570,31 @@ const Places = ({ memories }) => {
     fetchCoordinates();
   }, [memories]);
 
-  // Center the map on the first location, or default to a world view
-  const center = markers.length > 0 ? [markers[0].lat, markers[0].lng] : [20, 0];
+  // Center the map on the first location, or default to Kerala
+  const center = markers.length > 0 ? [markers[0].lat, markers[0].lng] : [8.5241, 76.9366];
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Places We've Been 🌍</h1>
+        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">The Map of Us 🌍</h1>
         <p className="text-sm font-medium bg-rose-100 text-rose-700 px-4 py-2 rounded-full shadow-sm">
           {markers.length} {markers.length === 1 ? 'Pin' : 'Pins'} Dropped
         </p>
       </div>
       
       <div className="bg-white/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] shadow-sm border border-white/40">
-        <div className="w-full h-[500px] md:h-[600px] rounded-2xl overflow-hidden shadow-inner border border-gray-200 relative z-0">
+        <div className="w-full h-[500px] md:h-[650px] rounded-2xl overflow-hidden shadow-inner border-4 border-white relative z-0">
           
-          <MapContainer center={center} zoom={3} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+          <MapContainer center={center} zoom={7} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+            {/* PRO TIP: The Voyager No-Labels tile gives a clean, pastel, professional look */}
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://carto.com/">Carto</a>'
             />
             
             {markers.map((marker, idx) => (
-              <Marker key={idx} position={[marker.lat, marker.lng]} icon={heartIcon}>
-                <Popup className="custom-popup rounded-xl">
+              <Marker key={idx} position={[marker.lat, marker.lng]} icon={lovelyHeartMarker}>
+                <Popup className="custom-popup border-0 shadow-lg rounded-xl">
                   <div className="p-1 text-center min-w-[150px]">
                     {marker.img && (
                       <img src={marker.img} alt={marker.title} className="w-full h-28 object-cover rounded-lg mb-3 shadow-md" />
@@ -650,13 +682,11 @@ const Letters = ({ letters, deleteLetter }) => {
         <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <AnimatePresence>
             {letters.map((letter, idx) => {
-              // Check if it's locked
               const isLocked = letter.unlockDate && new Date(letter.unlockDate).getTime() > new Date().getTime();
 
               if (isLocked) {
                 return (
                   <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: idx * 0.1 }} key={letter.firestoreId || letter.id} className="relative group">
-                     {/* Delete Button for Locked Letters */}
                      <button 
                         onClick={() => deleteLetter(letter.firestoreId || letter.id)} 
                         className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50"
@@ -677,11 +707,9 @@ const Letters = ({ letters, deleteLetter }) => {
                   exit={{ opacity: 0, scale: 0.9, filter: 'blur(5px)' }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
                   whileHover={{ scale: 1.01 }} 
-                  // Added 'group' class here so the trash can detects the hover!
                   className={`relative overflow-hidden rounded-3xl shadow-sm border border-gray-100 min-h-[300px] flex flex-col group ${letter.layout === 'image-background' ? 'text-white' : 'bg-white/80 backdrop-blur-md text-gray-800'}`}
                 >
                   
-                  {/* Delete Button for Unlocked Letters */}
                   <button 
                     onClick={() => deleteLetter(letter.firestoreId || letter.id)} 
                     className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50"
@@ -689,7 +717,6 @@ const Letters = ({ letters, deleteLetter }) => {
                     <Trash2 size={16} />
                   </button>
 
-                  {/* Background Image Layout */}
                   {letter.layout === 'image-background' && letter.img && (
                     <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${letter.img})` }}>
                       <div className="absolute inset-0 bg-black/50"></div>
@@ -702,7 +729,6 @@ const Letters = ({ letters, deleteLetter }) => {
                       <p className="text-xs uppercase tracking-wider">{letter.date} • {letter.time}</p>
                     </div>
                     
-                    {/* Image Top Layout */}
                     {letter.layout === 'image-top' && letter.img && (
                       <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} src={letter.img} alt="attachment" className="w-full h-48 object-cover rounded-xl mb-4 shadow-sm" />
                     )}
@@ -711,7 +737,6 @@ const Letters = ({ letters, deleteLetter }) => {
                       {letter.content}
                     </div>
 
-                    {/* Image Bottom Layout */}
                     {letter.layout === 'image-bottom' && letter.img && (
                       <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} src={letter.img} alt="attachment" className="w-full h-48 object-cover rounded-xl mt-6 shadow-sm" />
                     )}
@@ -731,27 +756,21 @@ const CreateLetter = ({ onAddLetter }) => {
   const [formData, setFormData] = useState({ title: '', content: '', font: 'font-serif', img: '', layout: 'image-top', unlockDate: '' });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Quick Symbol Insertion
   const symbols = ['♡', '✨', '🌙', '🌸', '🦋', '💌', '♾️', '💍', '🥺', '❤️'];
   const handleAddSymbol = (sym) => setFormData({ ...formData, content: formData.content + sym });
 
-  // Handle Image Upload with Compression for Firestore Limits
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       try {
-        // 1. Compress the image to fit under the 1MB Firestore limit
         const options = {
-          maxSizeMB: 0.6,         
-          maxWidthOrHeight: 1080, 
+          maxSizeMB: 0.3,         
+          maxWidthOrHeight: 800, 
           useWebWorker: true,
         };
         const compressedFile = await imageCompression(file, options);
-        
-        // 2. Convert the tiny, compressed file to Base64 using our helper
         const base64String = await fileToBase64(compressedFile);
         
-        // 3. Save it to the letter form data
         setFormData({ ...formData, img: base64String }); 
         
       } catch (error) {
@@ -770,7 +789,6 @@ const CreateLetter = ({ onAddLetter }) => {
     if (!formData.title || !formData.content) return;
     setIsSaving(true);
     
-    // Auto-capture Date and Time
     const now = new Date();
     const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -786,14 +804,12 @@ const CreateLetter = ({ onAddLetter }) => {
       
       <form onSubmit={handleSubmit} className="bg-white/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-sm border border-white space-y-6">
         
-        {/* Title */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">Heading / Subject</label>
           <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50" placeholder="e.g. Just thinking about you..." />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Font Selector */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Letter Font</label>
             <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
@@ -804,7 +820,6 @@ const CreateLetter = ({ onAddLetter }) => {
             </select>
           </div>
 
-          {/* Layout Selector */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Image Layout</label>
             <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
@@ -814,14 +829,12 @@ const CreateLetter = ({ onAddLetter }) => {
             </select>
           </div>
 
-          {/* Time Capsule Lock */}
           <div>
             <label className="block text-sm font-bold text-rose-600 mb-1">Time Capsule Lock</label>
             <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-rose-200 outline-none focus:border-[#8B1235] bg-rose-50 text-rose-900" />
           </div>
         </div>
 
-        {/* Local Drag & Drop Image Upload Zone */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Attach Picture or Handwritten Letter</label>
           {!formData.img ? (
@@ -829,7 +842,7 @@ const CreateLetter = ({ onAddLetter }) => {
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
                 <p className="text-sm text-gray-500"><span className="font-semibold text-[#8B1235]">Tap to upload</span> or drag a file</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 1MB</p>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF safely compressed</p>
               </div>
               <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
             </label>
@@ -847,7 +860,6 @@ const CreateLetter = ({ onAddLetter }) => {
           )}
         </div>
 
-        {/* Content & Symbols */}
         <div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-2 gap-2">
             <label className="block text-sm font-bold text-gray-700">Your Letter</label>
@@ -875,12 +887,35 @@ const CreateLetter = ({ onAddLetter }) => {
 const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRequired, setIsPasswordRequired }) => {
   const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [newPasswordInput, setNewPasswordInput] = useState(secretWord);
+  
+  // States for the new Whispers of the Universe feature
+  const [newQuote, setNewQuote] = useState("");
+  const [isSavingQuote, setIsSavingQuote] = useState(false);
 
   const saveNewPassword = () => {
     if (newPasswordInput.trim().length > 0) {
       setSecretWord(newPasswordInput.trim());
       setIsEditingPassword(false);
     }
+  };
+
+  // Add Quote to the Database
+  const handleAddQuote = async (e) => {
+    e.preventDefault();
+    if (!newQuote.trim()) return;
+    setIsSavingQuote(true);
+    try {
+      await addDoc(collection(db, "quotes"), { 
+        text: newQuote, 
+        timestamp: new Date() 
+      });
+      setNewQuote("");
+      alert("Quote added to the universe! ✨");
+    } catch (error) {
+      console.error("Error adding quote:", error);
+      alert("Failed to add quote.");
+    }
+    setIsSavingQuote(false);
   };
 
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } }};
@@ -895,6 +930,28 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6 md:space-y-8">
         
+        {/* --- WHISPERS OF THE UNIVERSE (ROTATING QUOTES) --- */}
+        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
+           <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-pink-100 text-[#8B1235] rounded-xl"><PenTool size={20} /></div>
+            <h2 className="text-xl font-semibold text-gray-800">Whispers of the Universe</h2>
+          </div>
+          
+          <form onSubmit={handleAddQuote}>
+            <label className="block text-sm md:text-base text-gray-600 mb-2 font-medium">Add a lovely sentence to rotate on the dashboard</label>
+            <textarea 
+              value={newQuote}
+              onChange={(e) => setNewQuote(e.target.value)}
+              placeholder="e.g. You are my today and all of my tomorrows..." 
+              className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-pink-200 bg-white/50 resize-none font-serif text-lg"
+              rows="3"
+            />
+            <button type="submit" disabled={isSavingQuote || !newQuote.trim()} className="mt-4 bg-[#8B1235] text-white px-6 py-3 rounded-xl w-full font-medium hover:bg-[#6A0D28] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {isSavingQuote ? "Adding to the stars..." : <><Sparkles size={18}/> Add to Dashboard</>}
+            </button>
+          </form>
+        </motion.div>
+
         {/* --- PRIVACY & SECURITY --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
           <div className="flex items-center gap-3 mb-6">
@@ -933,7 +990,7 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
                       type="text" 
                       value={newPasswordInput} 
                       onChange={(e) => setNewPasswordInput(e.target.value)}
-                      className="flex-1 px-4 py-2 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] text-gray-800"
+                      className="flex-1 px-4 py-2 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] text-gray-800 bg-white/50"
                     />
                     <button onClick={saveNewPassword} className="px-4 py-2 bg-[#8B1235] text-white rounded-xl flex items-center gap-2 text-sm font-medium hover:bg-[#6A0D28]">
                       <Check size={16} /> Save
@@ -985,11 +1042,13 @@ function App() {
   
   const [memories, setMemories] = useState([]);
   const [letters, setLetters] = useState([]);
+  const [quotes, setQuotes] = useState([]);
+  const [galleryPhotos, setGalleryPhotos] = useState([]);
+  
   const [loading, setLoading] = useState(true);
 
   // --- 1. FETCH FROM FIREBASE ON LOAD ---
   useEffect(() => {
-    // Prevent fetching if locked behind the password screen
     if (isPasswordRequired && !isAuthenticated) return;
 
     const fetchData = async () => {
@@ -1005,6 +1064,17 @@ function App() {
         const letterSnapshot = await getDocs(lettersQuery);
         const fetchedLetters = letterSnapshot.docs.map(doc => ({ firestoreId: doc.id, ...doc.data() }));
         setLetters(fetchedLetters);
+        
+        // Fetch Quotes
+        const qQuotes = query(collection(db, "quotes"), orderBy("timestamp", "desc"));
+        const quotesSnapshot = await getDocs(qQuotes);
+        setQuotes(quotesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        // Fetch Gallery Photos
+        const qGallery = query(collection(db, "gallery"), orderBy("timestamp", "desc"));
+        const gallerySnapshot = await getDocs(qGallery);
+        setGalleryPhotos(gallerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
       } catch (err) {
         console.error("Error fetching data: ", err);
       } finally {
@@ -1015,19 +1085,16 @@ function App() {
     fetchData();
   }, [isAuthenticated, isPasswordRequired]);
 
-  // --- 2. ADD MEMORY TO FIREBASE (Base64/Firestore Only) ---
+  // --- 2. ADD MEMORY TO FIREBASE ---
   const addMemory = async (newMemoryData) => {
     try {
       let imgBase64 = '';
       let voiceBase64 = '';
 
       if (newMemoryData.imgFile) {
-        // Convert image to base64 using our new helper function
         imgBase64 = await fileToBase64(newMemoryData.imgFile);
       }
-
       if (newMemoryData.voiceBlob) {
-        // Convert voice blob to base64
         voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
       }
 
@@ -1042,16 +1109,13 @@ function App() {
       };
 
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
-      
-      // Update state with a smooth layout transition ready array
       setMemories(prev => [{ ...finalMemory, firestoreId: docRef.id }, ...prev]);
       return true;
 
     } catch (err) {
-      console.error("Error saving private memory to Firestore: ", err);
-      // Catch Firestore's 1MB hard limit error gracefully
+      console.error("Error saving memory to Firestore: ", err);
       if (err.code === 'resource-exhausted') {
-        alert("File is too large! Please upload a smaller image or record a shorter voice note to fit within the private database limits.");
+        alert("File is too large! Please upload a smaller image.");
       } else {
         alert(`Memory upload failed! Reason: ${err.message}`);
       }
@@ -1059,7 +1123,7 @@ function App() {
     }
   };
 
-  // --- 3. DELETE MEMORY FROM FIREBASE ---
+  // --- 3. DELETE MEMORY ---
   const deleteMemory = async (firestoreId) => {
     if (!firestoreId) return;
     if (!window.confirm("Are you sure you want to delete this memory?")) return;
@@ -1068,52 +1132,42 @@ function App() {
       setMemories(prev => prev.filter(m => m.firestoreId !== firestoreId));
     } catch (err) {
       console.error("Error deleting memory: ", err);
-      alert(`Deletion failed! Reason: ${err.message}`);
     }
   };
 
-  // --- 4. ADD LETTER TO FIREBASE (Base64/Firestore Only) ---
+  // --- 4. ADD LETTER ---
   const addLetter = async (newLetterData) => {
     try {
-      // newLetterData.img is ALREADY a Base64 string from the CreateLetter frontend FileReader!
-      // This means we can just save it directly to Firestore without sending it to Firebase Storage.
-      const finalLetter = {
-        ...newLetterData,
-        createdAt: new Date().toISOString()
-      };
-
+      const finalLetter = { ...newLetterData, createdAt: new Date().toISOString() };
       const docRef = await addDoc(collection(db, "letters"), finalLetter);
-      
-      // Update local state to trigger the beautiful entrance animations
       setLetters(prev => [{ firestoreId: docRef.id, ...finalLetter }, ...prev]);
       return true;
-      
     } catch (err) {
-      console.error("Error saving private letter: ", err);
-      if (err.code === 'resource-exhausted') {
-        alert("Attached image is too large! Try attaching a slightly smaller picture.");
-      } else {
-        alert(`Letter save failed! Reason: ${err.message}`);
-      }
+      console.error("Error saving letter: ", err);
+      if (err.code === 'resource-exhausted') alert("Attached image is too large! Try a smaller picture.");
       return false;
     }
   };
 
-  // --- 4.5 DELETE LETTER FROM FIREBASE ---
+  // --- 4.5 DELETE LETTER ---
   const deleteLetter = async (firestoreId) => {
     if (!firestoreId) return;
     if (!window.confirm("Are you sure you want to delete this letter?")) return;
     try {
       await deleteDoc(doc(db, "letters", firestoreId));
-      // Update state to remove the letter instantly with a smooth animation
       setLetters(prev => prev.filter(l => l.firestoreId !== firestoreId));
     } catch (err) {
       console.error("Error deleting letter: ", err);
-      alert(`Deletion failed! Reason: ${err.message}`);
     }
   };
 
-  // --- 5. SETTINGS SYNC ---
+  // --- 5. ADD GALAXY PHOTO ---
+  const addGalleryPhoto = async (newPhoto) => {
+    const docRef = await addDoc(collection(db, "gallery"), newPhoto);
+    setGalleryPhotos(prev => [{ id: docRef.id, ...newPhoto }, ...prev]);
+  };
+
+  // --- 6. SETTINGS SYNC ---
   useEffect(() => {
     localStorage.setItem('passwordRequired', isPasswordRequired);
     localStorage.setItem('secretWord', secretWord);
@@ -1139,11 +1193,11 @@ function App() {
     <BrowserRouter>
       <DashboardLayout theme={theme}>
         <Routes>
-          <Route path="/" element={<Home memories={memories} deleteMemory={deleteMemory} />} />
+          <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={deleteMemory} />} />
           <Route path="/timeline" element={<Timeline memories={memories} />} />
-          <Route path="/places" element={<Places memories={memories} />} />
+          <Route path="/places" element={<LovelyMap memories={memories} />} />
           <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} />} />
-          <Route path="/gallery" element={<ConstellationGallery memories={memories} />} />
+          <Route path="/gallery" element={<GalaxyGallery galleryPhotos={galleryPhotos} onAddPhoto={addGalleryPhoto} />} />
           <Route path="/letters" element={<Letters letters={letters} deleteLetter={deleteLetter} />} />
           <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} />} />
           <Route path="/memories" element={<Memories memories={memories} deleteMemory={deleteMemory} />} />
