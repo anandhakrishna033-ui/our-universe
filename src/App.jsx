@@ -6,11 +6,13 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import DashboardLayout from './components/layout/DashboardLayout';
-import emailjs from '@emailjs/browser'; // <-- NEW: EmailJS Import
+import emailjs from '@emailjs/browser'; 
+import Confetti from 'react-confetti';
+import { useWindowSize } from 'react-use';
 
 // --- FIREBASE IMPORTS ---
 import { db, storage } from './firebase'; 
-import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 
@@ -45,32 +47,50 @@ const lovelyHeartMarker = new L.DivIcon({
 });
 
 // ==========================================
-// 1. ADVANCED AUDIO PLAYER
+// 1. BULLETPROOF AUDIO PLAYER
 // ==========================================
 const AudioPlayer = ({ src }) => {
+  const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const audioRef = useRef(new Audio(src));
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    const updateProgress = () => setProgress((audio.currentTime / audio.duration) * 100);
-    audio.addEventListener('timeupdate', updateProgress);
-    audio.onended = () => setIsPlaying(false);
-    return () => audio.removeEventListener('timeupdate', updateProgress);
-  }, []);
 
   const togglePlay = () => {
-    if (isPlaying) audioRef.current.pause();
-    else audioRef.current.play();
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      // Force the browser to load and play the base64 string
+      audioRef.current.play().catch(error => {
+        console.error("Audio playback failed:", error);
+        alert("Your browser blocked the audio. Try making sure your phone isn't on silent mode!");
+      });
+    }
     setIsPlaying(!isPlaying);
+  };
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    const currentProgress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
+    setProgress(isNaN(currentProgress) ? 0 : currentProgress);
   };
 
   return (
     <div className="flex items-center gap-3 bg-white/50 p-3 rounded-2xl border border-white/50 shadow-sm mt-3">
-      <button onClick={togglePlay} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors">
+      {/* The Native Hidden Audio Tag */}
+      <audio 
+        ref={audioRef} 
+        src={src} 
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={() => setIsPlaying(false)}
+        className="hidden" 
+        preload="auto"
+      />
+      
+      <button type="button" onClick={togglePlay} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors shadow-sm shrink-0">
         {isPlaying ? <Pause size={18} /> : <Play size={18} />}
       </button>
+      
       <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
         <motion.div 
           className="h-full bg-[#8B1235]" 
@@ -78,7 +98,7 @@ const AudioPlayer = ({ src }) => {
           layout
         ></motion.div>
       </div>
-      <Volume2 size={16} className="text-gray-400" />
+      <Volume2 size={16} className="text-gray-400 shrink-0" />
     </div>
   );
 };
@@ -649,7 +669,6 @@ const LovelyMap = ({ memories }) => {
   );
 };
 
-
 // ==========================================
 // 8. TIME CAPSULE & LOVE LETTERS 💌
 // ==========================================
@@ -880,6 +899,173 @@ const CreateLetter = ({ onAddLetter }) => {
 };
 
 // ==========================================
+// 11. OUR BUCKET LIST 📝
+// ==========================================
+const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
+  const [newGoal, setNewGoal] = useState("");
+  const { width, height } = useWindowSize();
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!newGoal.trim()) return;
+    addGoal({ title: newGoal, completed: false });
+    setNewGoal("");
+  };
+
+  const handleToggle = (id, isCompleted) => {
+    toggleGoal(id, !isCompleted);
+    if (!isCompleted) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 4000); // Stop confetti after 4 seconds
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto pb-10">
+      {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Our Bucket List ✈️</h1>
+      
+      <form onSubmit={handleSubmit} className="mb-8 flex gap-3">
+        <input type="text" value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="e.g. Visit Japan, Bake a cake..." className="flex-1 p-4 rounded-2xl border border-gray-200 outline-none focus:border-[#8B1235] shadow-sm bg-white/80" />
+        <button type="submit" className="bg-[#8B1235] text-white px-6 py-4 rounded-2xl font-bold hover:bg-[#6A0D28] transition shadow-sm"><Plus size={24} /></button>
+      </form>
+
+      <div className="space-y-4">
+        <AnimatePresence>
+          {bucketList.map(goal => (
+            <motion.div key={goal.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} className={`flex items-center justify-between p-5 rounded-2xl border shadow-sm transition-all ${goal.completed ? 'bg-green-50 border-green-100 opacity-70' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
+              <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleToggle(goal.id, goal.completed)}>
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${goal.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                  {goal.completed && <Check size={14} className="text-white" />}
+                </div>
+                <span className={`text-lg font-medium transition-all ${goal.completed ? 'line-through text-green-700' : 'text-gray-800'}`}>{goal.title}</span>
+              </div>
+              <button onClick={() => deleteGoal(goal.id)} className="text-gray-400 hover:text-red-500 p-2"><Trash2 size={18} /></button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 12. THE JUKEBOX (OUR SONGS) 🎵
+// ==========================================
+const Jukebox = ({ songs, addSong, deleteSong }) => {
+  const [newSong, setNewSong] = useState({ title: '', artist: '', url: '' });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!newSong.title || !newSong.url) return;
+    addSong(newSong);
+    setNewSong({ title: '', artist: '', url: '' });
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto pb-10">
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">The Jukebox 🎶</h1>
+      
+      <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white/40 mb-10 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <input type="text" required placeholder="Song Title" value={newSong.title} onChange={e => setNewSong({...newSong, title: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-purple-400 bg-white/80" />
+        <input type="text" placeholder="Artist" value={newSong.artist} onChange={e => setNewSong({...newSong, artist: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-purple-400 bg-white/80" />
+        <input type="url" required placeholder="Spotify / YouTube Link" value={newSong.url} onChange={e => setNewSong({...newSong, url: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-purple-400 bg-white/80" />
+        <button type="submit" className="bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition">Add Song</button>
+      </form>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <AnimatePresence>
+          {songs.map(song => (
+            <motion.div key={song.id} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1e1e1e] p-6 rounded-3xl shadow-xl flex flex-col items-center group relative overflow-hidden border-4 border-gray-900">
+              <button onClick={() => deleteSong(song.id)} className="absolute top-3 right-3 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition z-20"><Trash2 size={16}/></button>
+              
+              {/* Vinyl Record Design */}
+              <a href={song.url} target="_blank" rel="noopener noreferrer" className="relative w-32 h-32 bg-black rounded-full border-4 border-gray-800 flex items-center justify-center shadow-2xl group-hover:animate-[spin_4s_linear_infinite] mb-4">
+                <div className="absolute inset-0 rounded-full border border-gray-700 m-2"></div>
+                <div className="absolute inset-0 rounded-full border border-gray-700 m-4"></div>
+                <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center border-2 border-black">
+                  <div className="w-2 h-2 bg-black rounded-full"></div>
+                </div>
+              </a>
+              
+              <h3 className="text-white font-bold text-center truncate w-full">{song.title}</h3>
+              <p className="text-gray-400 text-sm text-center truncate w-full">{song.artist}</p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 13. COUNTDOWN DATES ⏳
+// ==========================================
+const CountdownCard = ({ countdown, deleteCountdown }) => {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const distance = new Date(countdown.date).getTime() - new Date().getTime();
+      if (distance < 0) return clearInterval(timer);
+      setTimeLeft({
+        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+        secs: Math.floor((distance % (1000 * 60)) / 1000)
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown.date]);
+
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-rose-50 to-pink-50 p-6 md:p-8 rounded-[2rem] shadow-sm border border-white relative group">
+      <button onClick={() => deleteCountdown(countdown.id)} className="absolute top-4 right-4 text-pink-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 size={18}/></button>
+      <h3 className="text-2xl font-serif font-bold text-[#8B1235] mb-6 text-center">{countdown.title}</h3>
+      <div className="flex justify-center gap-4 text-center">
+        {Object.entries(timeLeft).map(([unit, value]) => (
+          <div key={unit} className="flex flex-col items-center">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center text-2xl md:text-3xl font-bold text-gray-800 font-mono border border-pink-100">{value}</div>
+            <span className="text-xs font-bold text-pink-400 uppercase mt-2">{unit}</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-center text-gray-400 text-xs mt-6">{new Date(countdown.date).toLocaleDateString()}</p>
+    </motion.div>
+  );
+};
+
+const Countdowns = ({ countdowns, addCountdown, deleteCountdown }) => {
+  const [newCD, setNewCD] = useState({ title: '', date: '' });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!newCD.title || !newCD.date) return;
+    addCountdown(newCD);
+    setNewCD({ title: '', date: '' });
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto pb-10">
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Countdowns ⏳</h1>
+      
+      <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white/40 mb-10 flex flex-col md:flex-row gap-4">
+        <input type="text" required placeholder="Event Name (e.g. Anniversary)" value={newCD.title} onChange={e => setNewCD({...newCD, title: e.target.value})} className="flex-1 p-3 rounded-xl border outline-none focus:border-pink-400 bg-white/80" />
+        <input type="datetime-local" required value={newCD.date} onChange={e => setNewCD({...newCD, date: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-pink-400 bg-white/80 text-gray-700" />
+        <button type="submit" className="bg-pink-500 text-white px-8 rounded-xl font-bold hover:bg-pink-600 transition">Start Timer</button>
+      </form>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <AnimatePresence>
+          {countdowns.map(cd => <CountdownCard key={cd.id} countdown={cd} deleteCountdown={deleteCountdown} />)}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
 // SILENT EMAIL NOTIFICATION HELPER
 // ==========================================
 const sendInstantNotification = (itemType, itemTitle) => {
@@ -900,10 +1086,10 @@ const sendInstantNotification = (itemType, itemTitle) => {
 
   // ⚠️ REPLACE THESE 3 STRINGS WITH YOUR ACTUAL KEYS FROM EMAILJS
   emailjs.send(
-    'YOUR_SERVICE_ID', 
-    'YOUR_TEMPLATE_ID', 
+    'service_qwk8ies', 
+    'template_7vk7y9m', 
     templateParams, 
-    'YOUR_PUBLIC_KEY'
+    'ICqdxeukLfDRZVg9K'
   ).then(() => console.log('Silent ping sent successfully!'))
    .catch((err) => console.error('Silent email failed:', err));
 };
@@ -1115,6 +1301,10 @@ function App() {
   const [quotes, setQuotes] = useState([]);
   const [galleryPhotos, setGalleryPhotos] = useState([]);
   
+  const [bucketList, setBucketList] = useState([]);
+  const [songs, setSongs] = useState([]);
+  const [countdowns, setCountdowns] = useState([]);
+  
   const [loading, setLoading] = useState(true);
 
   // --- 1. FETCH FROM FIREBASE ON LOAD ---
@@ -1138,6 +1328,18 @@ function App() {
         const qGallery = query(collection(db, "gallery"), orderBy("timestamp", "desc"));
         const gallerySnapshot = await getDocs(qGallery);
         setGalleryPhotos(gallerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        const qBucket = query(collection(db, "bucketlist"));
+        const bucketSnap = await getDocs(qBucket);
+        setBucketList(bucketSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        const qSongs = query(collection(db, "songs"));
+        const songSnap = await getDocs(qSongs);
+        setSongs(songSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        const qCD = query(collection(db, "countdowns"), orderBy("date", "asc"));
+        const cdSnap = await getDocs(qCD);
+        setCountdowns(cdSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
       } catch (err) {
         console.error("Error fetching data: ", err);
@@ -1234,6 +1436,54 @@ function App() {
     } catch (err) { console.error("Error deleting quote: ", err); }
   };
 
+  // --- BUCKET LIST ACTIONS ---
+  const addGoal = async (goal) => {
+    try {
+      const docRef = await addDoc(collection(db, "bucketlist"), goal);
+      setBucketList(prev => [...prev, { id: docRef.id, ...goal }]);
+    } catch (err) { console.error("Error adding goal: ", err); }
+  };
+  const toggleGoal = async (id, completed) => {
+    try {
+      await updateDoc(doc(db, "bucketlist", id), { completed });
+      setBucketList(prev => prev.map(g => g.id === id ? { ...g, completed } : g));
+    } catch (err) { console.error("Error updating goal: ", err); }
+  };
+  const deleteGoal = async (id) => {
+    try {
+      await deleteDoc(doc(db, "bucketlist", id));
+      setBucketList(prev => prev.filter(g => g.id !== id));
+    } catch (err) { console.error("Error deleting goal: ", err); }
+  };
+
+  // --- JUKEBOX ACTIONS ---
+  const addSong = async (song) => {
+    try {
+      const docRef = await addDoc(collection(db, "songs"), song);
+      setSongs(prev => [...prev, { id: docRef.id, ...song }]);
+    } catch (err) { console.error("Error adding song: ", err); }
+  };
+  const deleteSong = async (id) => {
+    try {
+      await deleteDoc(doc(db, "songs", id));
+      setSongs(prev => prev.filter(s => s.id !== id));
+    } catch (err) { console.error("Error deleting song: ", err); }
+  };
+
+  // --- COUNTDOWN ACTIONS ---
+  const addCountdown = async (cd) => {
+    try {
+      const docRef = await addDoc(collection(db, "countdowns"), cd);
+      setCountdowns(prev => [...prev, { id: docRef.id, ...cd }]);
+    } catch (err) { console.error("Error adding countdown: ", err); }
+  };
+  const deleteCountdown = async (id) => {
+    try {
+      await deleteDoc(doc(db, "countdowns", id));
+      setCountdowns(prev => prev.filter(c => c.id !== id));
+    } catch (err) { console.error("Error deleting countdown: ", err); }
+  };
+
   useEffect(() => {
     localStorage.setItem('passwordRequired', isPasswordRequired);
     localStorage.setItem('secretWord', secretWord);
@@ -1268,6 +1518,11 @@ function App() {
           <Route path="/letters" element={<Letters letters={letters} deleteLetter={deleteLetter} />} />
           <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} />} />
           <Route path="/memories" element={<Memories memories={memories} deleteMemory={deleteMemory} />} />
+          
+          <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={deleteGoal} />} />
+          <Route path="/jukebox" element={<Jukebox songs={songs} addSong={addSong} deleteSong={deleteSong} />} />
+          <Route path="/countdowns" element={<Countdowns countdowns={countdowns} addCountdown={addCountdown} deleteCountdown={deleteCountdown} />} /> 
+
           <Route path="/settings" element={
             <SettingsPage 
               theme={theme} setTheme={setTheme}

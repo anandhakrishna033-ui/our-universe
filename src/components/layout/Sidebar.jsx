@@ -60,6 +60,11 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <Link to="/letters" className={getLinkClass('/letters')} onClick={closeMenu}>Letters</Link>
           <Link to="/timeline" className={getLinkClass('/timeline')} onClick={closeMenu}>Timeline</Link>
           
+          {/* NEW INTERACTIVE FEATURES */}
+          <Link to="/bucket-list" className={getLinkClass('/bucket-list')} onClick={closeMenu}>Bucket List</Link>
+          <Link to="/jukebox" className={getLinkClass('/jukebox')} onClick={closeMenu}>Jukebox</Link>
+          <Link to="/countdowns" className={getLinkClass('/countdowns')} onClick={closeMenu}>Countdowns</Link>
+          
           <div className="pt-6 pb-2">
             <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
               Settings & More
