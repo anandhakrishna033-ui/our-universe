@@ -1073,25 +1073,27 @@ const sendInstantNotification = (itemType, itemTitle) => {
   const email1 = localStorage.getItem('notifyEmail1');
   const email2 = localStorage.getItem('notifyEmail2');
 
-  if (!email1 && !email2) return; // Stop if no emails are set
+  // Put them in an array and filter out any blank ones
+  const validEmails = [email1, email2].filter(Boolean);
 
-  // Combine emails. If both exist, join them with a comma.
-  const targetEmails = [email1, email2].filter(Boolean).join(', ');
+  if (validEmails.length === 0) return; // Stop if no emails are set
 
-  const templateParams = {
-    to_email: targetEmails,
-    subject: `New ${itemType} Added to Our Universe! ✨`,
-    message: `A new ${itemType} titled "${itemTitle}" was just added. Go check it out!`
-  };
+  // Loop through the valid emails and send a direct, individual ping to each one
+  validEmails.forEach((targetEmail) => {
+    const templateParams = {
+      to_email: targetEmail, // <-- Sends to just ONE person at a time
+      subject: `New ${itemType} Added to Our Universe! ✨`,
+      message: `A new ${itemType} titled "${itemTitle}" was just added. Go check it out!`
+    };
 
-  // ⚠️ REPLACE THESE 3 STRINGS WITH YOUR ACTUAL KEYS FROM EMAILJS
-  emailjs.send(
-    'service_qwk8ies', 
-    'template_7vk7y9m', 
-    templateParams, 
-    'ICqdxeukLfDRZVg9K'
-  ).then(() => console.log('Silent ping sent successfully!'))
-   .catch((err) => console.error('Silent email failed:', err));
+    emailjs.send(
+      'service_qwk8ies', 
+      'template_7vk7y9m', 
+      templateParams, 
+      'ICqdxeukLfDRZVg9K'
+    ).then(() => console.log(`Silent ping sent successfully to ${targetEmail}!`))
+     .catch((err) => console.error(`Silent email failed for ${targetEmail}:`, err));
+  });
 };
 
 // ==========================================
