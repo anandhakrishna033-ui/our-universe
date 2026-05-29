@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import DashboardLayout from './components/layout/DashboardLayout';
+import emailjs from '@emailjs/browser'; // <-- NEW: EmailJS Import
 
 // --- FIREBASE IMPORTS ---
 import { db, storage } from './firebase'; 
@@ -475,7 +476,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                     </p>
                   </div>
 
-                  {/* Delete Button (Only for standalone gallery photos. Memory photos must be deleted from the memory tab to prevent database confusion) */}
+                  {/* Delete Button */}
                   {photo.source === 'gallery' && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); deleteGalleryPhoto(photo.id); }}
@@ -878,9 +879,37 @@ const CreateLetter = ({ onAddLetter }) => {
   );
 };
 
+// ==========================================
+// SILENT EMAIL NOTIFICATION HELPER
+// ==========================================
+const sendInstantNotification = (itemType, itemTitle) => {
+  // Grab the saved emails from local storage
+  const email1 = localStorage.getItem('notifyEmail1');
+  const email2 = localStorage.getItem('notifyEmail2');
+
+  if (!email1 && !email2) return; // Stop if no emails are set
+
+  // Combine emails. If both exist, join them with a comma.
+  const targetEmails = [email1, email2].filter(Boolean).join(', ');
+
+  const templateParams = {
+    to_email: targetEmails,
+    subject: `New ${itemType} Added to Our Universe! ✨`,
+    message: `A new ${itemType} titled "${itemTitle}" was just added. Go check it out!`
+  };
+
+  // ⚠️ REPLACE THESE 3 STRINGS WITH YOUR ACTUAL KEYS FROM EMAILJS
+  emailjs.send(
+    'YOUR_SERVICE_ID', 
+    'YOUR_TEMPLATE_ID', 
+    templateParams, 
+    'YOUR_PUBLIC_KEY'
+  ).then(() => console.log('Silent ping sent successfully!'))
+   .catch((err) => console.error('Silent email failed:', err));
+};
 
 // ==========================================
-// 9. FULL ADVANCED SETTINGS PAGE (With Delete Quotes)
+// 9. FULL ADVANCED SETTINGS PAGE 
 // ==========================================
 const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRequired, setIsPasswordRequired, quotes, deleteQuote }) => {
   const [isEditingPassword, setIsEditingPassword] = useState(false);
@@ -888,6 +917,10 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
   
   const [newQuote, setNewQuote] = useState("");
   const [isSavingQuote, setIsSavingQuote] = useState(false);
+
+  // States for Email Notifications
+  const [email1, setEmail1] = useState(() => localStorage.getItem('notifyEmail1') || '');
+  const [email2, setEmail2] = useState(() => localStorage.getItem('notifyEmail2') || '');
 
   const saveNewPassword = () => {
     if (newPasswordInput.trim().length > 0) {
@@ -910,6 +943,12 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
     setIsSavingQuote(false);
   };
 
+  const handleSaveEmails = () => {
+    localStorage.setItem('notifyEmail1', email1);
+    localStorage.setItem('notifyEmail2', email2);
+    alert("Notification emails saved! You will now get pinged when memories are added. 💌");
+  };
+
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } }};
   const itemVariants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
@@ -922,6 +961,41 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6 md:space-y-8">
         
+        {/* --- EMAIL NOTIFICATIONS --- */}
+        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><Mail size={20} /></div>
+            <h2 className="text-xl font-semibold text-gray-800">Email Notifications</h2>
+          </div>
+          <p className="text-sm text-gray-500 mb-6">Get pinged instantly on your phone when a new memory or letter is added.</p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Your Email</label>
+              <input
+                type="email"
+                value={email1}
+                onChange={(e) => setEmail1(e.target.value)}
+                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Partner's Email</label>
+              <input
+                type="email"
+                value={email2}
+                onChange={(e) => setEmail2(e.target.value)}
+                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50"
+                placeholder="partner@example.com"
+              />
+            </div>
+            <button onClick={handleSaveEmails} className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors w-full md:w-auto flex items-center justify-center gap-2 shadow-sm">
+              <Check size={18} /> Save Notification Emails
+            </button>
+          </div>
+        </motion.div>
+
         {/* --- WHISPERS OF THE UNIVERSE (ROTATING QUOTES) --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
            <div className="flex items-center gap-3 mb-6">
@@ -1095,6 +1169,10 @@ function App() {
 
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
       setMemories(prev => [{ ...finalMemory, firestoreId: docRef.id }, ...prev]);
+      
+      // FIRE EMAIL NOTIFICATION INSTANTLY
+      sendInstantNotification("Memory", finalMemory.title);
+      
       return true;
     } catch (err) {
       if (err.code === 'resource-exhausted') alert("File is too large! Please upload a smaller image.");
@@ -1116,6 +1194,10 @@ function App() {
       const finalLetter = { ...newLetterData, createdAt: new Date().toISOString() };
       const docRef = await addDoc(collection(db, "letters"), finalLetter);
       setLetters(prev => [{ firestoreId: docRef.id, ...finalLetter }, ...prev]);
+      
+      // FIRE EMAIL NOTIFICATION INSTANTLY
+      sendInstantNotification("Love Letter", finalLetter.title);
+      
       return true;
     } catch (err) {
       if (err.code === 'resource-exhausted') alert("Attached image is too large! Try a smaller picture.");
