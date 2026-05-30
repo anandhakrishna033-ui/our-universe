@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -11,9 +11,10 @@ import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 
 // --- FIREBASE IMPORTS ---
-import { db, storage } from './firebase'; 
-import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { db, storage, auth } from './firebase'; 
+import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import imageCompression from 'browser-image-compression';
 
 // ==========================================
@@ -123,42 +124,147 @@ const AudioPlayer = ({ src }) => {
 };
 
 // ==========================================
-// 2. THE SECRET GATEWAY (LOGIN SCREEN)
+// 2. TRUE SECURE GATEWAY (Firebase Auth + Universe + PIN)
 // ==========================================
-const SecretGateway = ({ expectedWord, onUnlock }) => {
-  const [input, setInput] = useState('');
-  const [error, setError] = useState(false);
+const AuthGateway = ({ onUnlock }) => {
+  const [authStep, setAuthStep] = useState('LOADING'); // LOADING, AUTH, UNIVERSE_SETUP, PIN_SETUP, PIN_ENTRY
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  
+  const [user, setUser] = useState(null);
+  const [universeId, setUniverseId] = useState(null);
+  
+  const [pin, setPin] = useState('');
+  const [savedPin, setSavedPin] = useState(() => localStorage.getItem('personalPin'));
+  
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  // Monitor Firebase Auth State
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        // Check if user has a Universe assigned in the database
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (userDoc.exists()) {
+          setUniverseId(userDoc.data().universeId);
+          setAuthStep(savedPin ? 'PIN_ENTRY' : 'PIN_SETUP');
+        } else {
+          setAuthStep('UNIVERSE_SETUP');
+        }
+      } else {
+        setUser(null);
+        setUniverseId(null);
+        setAuthStep('AUTH');
+      }
+    });
+    return () => unsubscribe();
+  }, [savedPin]);
+
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    if (input.toLowerCase().trim() === expectedWord.toLowerCase()) {
-      onUnlock();
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000); 
+    setError('');
+    setIsLoading(true);
+    try {
+      if (isLoginMode) await signInWithEmailAndPassword(auth, email, password);
+      else await createUserWithEmailAndPassword(auth, email, password);
+    } catch (err) { setError(err.message.replace("Firebase: ", "")); }
+    setIsLoading(false);
+  };
+
+  const handleUniverseSetup = async (mode) => {
+    setIsLoading(true);
+    try {
+      const assignedId = mode === 'CREATE' ? `UNIVERSE-${Math.floor(Math.random() * 1000000)}` : joinCode.trim();
+      if (mode === 'JOIN' && !assignedId) throw new Error("Please enter a Universe Code.");
+      
+      // Save their universe ID to their user profile
+      await setDoc(doc(db, "users", user.uid), { email: user.email, universeId: assignedId });
+      setUniverseId(assignedId);
+      setAuthStep(savedPin ? 'PIN_ENTRY' : 'PIN_SETUP');
+    } catch (err) { setError(err.message); }
+    setIsLoading(false);
+  };
+
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    if (authStep === 'PIN_SETUP') {
+      if (pin.length < 4) return setError("PIN must be at least 4 digits.");
+      localStorage.setItem('personalPin', pin);
+      setSavedPin(pin);
+      onUnlock(user, universeId);
+    } else if (authStep === 'PIN_ENTRY') {
+      if (pin === savedPin) onUnlock(user, universeId);
+      else { setError("Incorrect PIN."); setPin(''); }
     }
   };
+
+  const handleLogout = () => { signOut(auth); setPin(''); };
+
+  if (authStep === 'LOADING') return <div className="min-h-screen bg-[#f0dce1] flex items-center justify-center font-serif text-[#8B1235] text-xl animate-pulse">Loading Gateway...</div>;
 
   return (
     <div className="min-h-screen bg-[#f0dce1] flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-[-30%] left-[-30%] w-[500px] h-[500px] bg-pink-200/50 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
-      <div className="absolute bottom-[-30%] right-[-30%] w-[600px] h-[600px] bg-rose-200/40 rounded-full mix-blend-multiply filter blur-[150px] animate-pulse" style={{ animationDuration: '7s' }}></div>
-
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8 }} className="bg-white/60 backdrop-blur-xl p-10 md:p-12 rounded-[2rem] shadow-xl border border-white/50 max-w-md w-full relative z-10 text-center">
+      
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/60 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-xl border border-white/50 max-w-md w-full relative z-10 text-center">
         <div className="w-16 h-16 bg-rose-100 text-[#8b0a2f] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-          <Heart size={32} fill="currentColor" className="animate-pulse" />
+          {authStep === 'AUTH' ? <Shield size={32} /> : authStep === 'UNIVERSE_SETUP' ? <Sparkles size={32} /> : <Lock size={32} />}
         </div>
-        <h1 className="text-3xl font-serif text-[#8B1235] mb-2">Our Universe</h1>
-        <p className="text-gray-500 mb-8 text-sm">Please enter our secret word to unlock your memories.</p>
+        
+        <h1 className="text-3xl font-serif text-[#8B1235] mb-2">
+          {authStep === 'AUTH' ? "Our Universe" : authStep === 'UNIVERSE_SETUP' ? "Initialize Universe" : "App Locked"}
+        </h1>
+        
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl mb-4 text-sm font-bold animate-bounce">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
-          <motion.div animate={error ? { x: [-10, 10, -10, 10, 0] } : {}} transition={{ duration: 0.4 }}>
-            <input type="password" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Enter secret word..." className={`w-full px-5 py-4 rounded-2xl bg-white border-2 outline-none transition-all text-center text-lg tracking-widest text-gray-800 shadow-inner ${error ? 'border-red-400 bg-red-50' : 'border-pink-100 focus:border-[#8B1235]'}`} />
-          </motion.div>
-          <button type="submit" className="w-full mt-6 bg-[#8B1235] text-white py-4 rounded-2xl font-medium text-lg hover:bg-[#6A0D28] hover:shadow-lg transition-all flex items-center justify-center gap-2">
-            Unlock <ArrowRight size={20} />
-          </button>
-        </form>
+        {/* STEP 1: FIREBASE EMAIL/PASSWORD */}
+        {authStep === 'AUTH' && (
+          <form onSubmit={handleAuthSubmit} className="space-y-4 mt-6">
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[#8B1235] text-gray-800 shadow-inner" />
+            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[#8B1235] text-gray-800 shadow-inner" />
+            <button type="submit" disabled={isLoading} className="w-full mt-2 bg-[#8B1235] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#6A0D28] shadow-md flex justify-center gap-2">
+              {isLoading ? "Authenticating..." : (isLoginMode ? "Secure Login" : "Create Account")}
+            </button>
+            <p className="text-sm text-gray-500 mt-4 cursor-pointer hover:text-[#8B1235]" onClick={() => setIsLoginMode(!isLoginMode)}>
+              {isLoginMode ? "Need an account? Sign up" : "Have an account? Log in"}
+            </p>
+          </form>
+        )}
+
+        {/* STEP 2: CREATE OR JOIN UNIVERSE */}
+        {authStep === 'UNIVERSE_SETUP' && (
+          <div className="space-y-6 mt-6">
+            <p className="text-sm text-gray-500 mb-4">You need a shared space to store memories.</p>
+            <button onClick={() => handleUniverseSetup('CREATE')} disabled={isLoading} className="w-full bg-[#8B1235] text-white py-4 rounded-2xl font-bold shadow-md hover:bg-[#6A0D28]">
+              Create New Universe
+            </button>
+            <div className="relative flex items-center py-2"><div className="flex-grow border-t border-gray-300"></div><span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-bold">OR</span><div className="flex-grow border-t border-gray-300"></div></div>
+            <div>
+              <input type="text" value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="Enter Partner's Universe Code" className="w-full px-5 py-4 rounded-xl bg-white border outline-none text-center font-bold tracking-widest text-gray-800 mb-2 shadow-inner" />
+              <button onClick={() => handleUniverseSetup('JOIN')} disabled={isLoading} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold shadow-md hover:bg-black">
+                Join Existing Universe
+              </button>
+            </div>
+            <p className="text-sm text-red-400 cursor-pointer mt-4" onClick={handleLogout}>Log out</p>
+          </div>
+        )}
+
+        {/* STEP 3 & 4: PERSONAL DEVICE PIN */}
+        {(authStep === 'PIN_SETUP' || authStep === 'PIN_ENTRY') && (
+          <form onSubmit={handlePinSubmit} className="space-y-4 mt-6">
+            <p className="text-sm text-gray-500 mb-4">{authStep === 'PIN_SETUP' ? "Create a personal 4-digit PIN for this device." : "Enter your PIN to unlock."}</p>
+            <input type="password" required maxLength="8" value={pin} onChange={e => setPin(e.target.value)} placeholder={authStep === 'PIN_ENTRY' ? "Enter PIN" : "Create PIN"} className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[#8B1235] text-center text-2xl tracking-widest text-gray-800 shadow-inner" />
+            <button type="submit" className="w-full mt-2 bg-[#8B1235] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#6A0D28] shadow-md">
+              {authStep === 'PIN_ENTRY' ? "Unlock App" : "Set PIN & Enter"}
+            </button>
+            <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
+          </form>
+        )}
       </motion.div>
     </div>
   );
@@ -310,7 +416,7 @@ const Home = ({ memories, quotes, deleteMemory }) => {
 };
 
 // ==========================================
-// 4. MEMORY CREATION (With Multiple Images)
+// 4. MEMORY CREATION
 // ==========================================
 const CreateMemory = ({ onAddMemory }) => {
   const navigate = useNavigate();
@@ -552,7 +658,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 };
 
 // ==========================================
-// 6. ALL MEMORIES PAGE (With Interactive Layout Toggle)
+// 6. ALL MEMORIES PAGE
 // ==========================================
 const Memories = ({ memories, deleteMemory }) => {
   const [layout, setLayout] = useState('grid'); // 'grid' or 'story'
@@ -608,8 +714,9 @@ const Memories = ({ memories, deleteMemory }) => {
     </div>
   );
 };
+
 // ==========================================
-// 7. TIMELINE & LOVELY MAP PLACES (PRO EDITION)
+// 7. TIMELINE & LOVELY MAP PLACES
 // ==========================================
 const Timeline = ({ memories }) => {
   const [expandedId, setExpandedId] = useState(null);
@@ -624,18 +731,15 @@ const Timeline = ({ memories }) => {
     setLikedMemories(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Sort memories chronologically (oldest to newest) for a true journey timeline
   const sortedMemories = [...memories].reverse();
 
   return (
     <div className="max-w-5xl mx-auto pb-20 px-4 md:px-8 relative">
-      
       <div className="text-center mb-16 relative z-10">
         <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-800 mb-3">Our Journey 🕰️</h1>
         <p className="text-gray-500 font-medium">Every step we've taken, beautifully unfolding.</p>
       </div>
 
-      {/* The Central Glowing Line (Hidden on mobile, centered on desktop) */}
       <div className="absolute left-8 md:left-1/2 top-32 bottom-0 w-1.5 md:-translate-x-1/2 rounded-full bg-gradient-to-b from-rose-200 via-pink-300 to-purple-200 opacity-60"></div>
 
       <div className="space-y-12 md:space-y-24 relative z-10">
@@ -654,28 +758,22 @@ const Timeline = ({ memories }) => {
               transition={{ duration: 0.6, type: "spring", bounce: 0.3 }}
               className={`flex flex-col md:flex-row items-center w-full ${isEven ? 'md:justify-start' : 'md:justify-end'} relative group`}
             >
-              
-              {/* Center Timeline Node / Dot */}
               <div className="absolute left-4 md:left-1/2 w-8 h-8 rounded-full border-4 border-[#FCF8F9] bg-[#8B1235] md:-translate-x-1/2 shadow-md z-20 group-hover:scale-125 group-hover:bg-rose-400 transition-all duration-300 flex items-center justify-center">
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               </div>
 
-              {/* The Memory Card */}
               <div className={`w-full pl-16 md:pl-0 md:w-[45%] ${isEven ? 'md:pr-12' : 'md:pl-12'}`}>
                 <motion.div 
                   layout
                   onClick={() => toggleExpand(m.firestoreId || m.id)}
                   className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white hover:shadow-xl transition-shadow cursor-pointer relative overflow-hidden"
                 >
-                  {/* Small Floating Date Badge */}
                   <div className="inline-block bg-rose-50 text-rose-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3 shadow-sm border border-rose-100">
                     {m.date}
                   </div>
 
                   <div className="flex justify-between items-start gap-4">
                     <h3 className="text-2xl font-serif font-bold text-gray-800 leading-tight mb-2">{m.title}</h3>
-                    
-                    {/* Like Button */}
                     <button 
                       onClick={(e) => toggleLike(e, m.firestoreId || m.id)} 
                       className={`p-2 rounded-full transition-colors ${isLiked ? 'bg-rose-100 text-rose-500' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
@@ -684,7 +782,6 @@ const Timeline = ({ memories }) => {
                     </button>
                   </div>
 
-                  {/* Collapsed State Thumbnail */}
                   {!isExpanded && coverImg && (
                     <div className="w-full h-24 mt-3 rounded-xl overflow-hidden relative border border-gray-100">
                       <img src={coverImg} className="w-full h-full object-cover filter brightness-95 group-hover:scale-105 transition-transform duration-700" alt={m.title} />
@@ -692,7 +789,6 @@ const Timeline = ({ memories }) => {
                     </div>
                   )}
 
-                  {/* Expanded Content Area */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div 
@@ -706,13 +802,11 @@ const Timeline = ({ memories }) => {
                             <MapPin size={14} className="text-blue-500" /> {m.location}
                           </p>
                         )}
-                        
                         {m.description && (
                           <p className="text-gray-600 leading-relaxed text-md mb-6 bg-rose-50/30 p-4 rounded-2xl italic font-serif border-l-4 border-rose-300">
                             "{m.description}"
                           </p>
                         )}
-
                         {m.images && m.images.length > 0 ? (
                           <div className={`grid gap-2 mb-4 ${m.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                             {m.images.map((imgBase64, i) => (
@@ -722,16 +816,13 @@ const Timeline = ({ memories }) => {
                         ) : m.img ? (
                           <img src={m.img} className="w-full h-48 object-cover rounded-2xl shadow-sm mb-4 border border-gray-100" />
                         ) : null}
-
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  {/* Expand/Collapse Indicator */}
                   <div className="w-full flex justify-center mt-4 text-gray-300 group-hover:text-rose-400 transition-colors">
                     {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </div>
-
                 </motion.div>
               </div>
             </motion.div>
@@ -801,6 +892,7 @@ const LovelyMap = ({ memories }) => {
     </div>
   );
 };
+
 // ==========================================
 // 8. TIME CAPSULE & LOVE LETTERS 💌
 // ==========================================
@@ -1064,15 +1156,15 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
     </div>
   );
 };
+
 // ==========================================
-// 12. THE DUAL PROMISE JARS 🫙🫙 (WITH MAGICAL AUDIO)
+// 12. THE DUAL PROMISE JARS 🫙🫙
 // ==========================================
 const PromiseJar = ({ promises, addPromise, deletePromise }) => {
   const [newPromise, setNewPromise] = useState('');
   const [targetJar, setTargetJar] = useState('jar1'); 
   const [drawnPromise, setDrawnPromise] = useState(null);
 
-  // Editable Jar Names (Saves to local storage so they don't reset)
   const [jar1Name, setJar1Name] = useState(() => localStorage.getItem('jar1Name') || "My Jar");
   const [jar2Name, setJar2Name] = useState(() => localStorage.getItem('jar2Name') || "Her Jar");
 
@@ -1081,52 +1173,39 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
     localStorage.setItem('jar2Name', jar2Name);
   }, [jar1Name, jar2Name]);
 
-  // --- THE MAGICAL SOUND ENGINE ---
   const playMagicalDropSound = () => {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       const ctx = new AudioContext();
-
-      // Creates a soft, fading chime
       const playTone = (freq, delay) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'sine'; // Smooth glass-like wave
+        osc.type = 'sine'; 
         osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-        
-        // Volume envelope: fades in fast, fades out slowly
         gain.gain.setValueAtTime(0, ctx.currentTime + delay);
         gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + delay + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 1.2);
-        
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(ctx.currentTime + delay);
         osc.stop(ctx.currentTime + delay + 1.2);
       };
-
-      // Play a quick, magical 3-note sparkle (C6, E6, G6)
       playTone(1046.50, 0);   
       playTone(1318.51, 0.1); 
       playTone(1567.98, 0.2); 
     } catch (err) {
-      console.log("Audio play blocked by browser. User must interact first.");
+      console.log("Audio blocked.");
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newPromise.trim()) return;
-    
-    // Play the sparkling sound!
     playMagicalDropSound();
-
-    // Tag the promise with the target jar before sending it to Firebase
     addPromise({ text: newPromise, target: targetJar });
     setNewPromise('');
   };
 
-  // Filter promises: If it's an old promise without a target, it defaults to jar1
   const jar1Promises = promises.filter(p => p.target === 'jar1' || !p.target);
   const jar2Promises = promises.filter(p => p.target === 'jar2');
 
@@ -1136,11 +1215,8 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
     setDrawnPromise(jarPromises[randomIdx]);
   };
 
-  // Reusable component for a single Jar
   const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
     <div className="flex flex-col items-center justify-center bg-white/40 p-6 md:p-8 rounded-3xl border border-white/50 shadow-sm relative w-full group">
-      
-      {/* Editable Name Tag */}
       <input 
         type="text" 
         value={name} 
@@ -1148,22 +1224,13 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
         className="text-xl md:text-2xl font-serif font-bold text-[#8B1235] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-pink-200 mb-6 w-full transition-colors"
         placeholder="Name this jar..."
       />
-
-      {/* The Glass Jar */}
-      <div 
-        onClick={() => onDraw(jarPromises)}
-        className={`w-40 h-56 border-4 border-gray-300 ${color} rounded-b-[2.5rem] rounded-t-xl relative cursor-pointer hover:scale-105 transition-transform shadow-inner flex flex-col justify-end overflow-hidden pb-3`}
-      >
-        {/* Jar Lid/Rim */}
+      <div onClick={() => onDraw(jarPromises)} className={`w-40 h-56 border-4 border-gray-300 ${color} rounded-b-[2.5rem] rounded-t-xl relative cursor-pointer hover:scale-105 transition-transform shadow-inner flex flex-col justify-end overflow-hidden pb-3`}>
         <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20"></div>
-        
-        {/* The Falling Notes Area */}
         <div className="flex flex-wrap-reverse justify-center content-start w-full h-[90%] px-2 gap-1 overflow-hidden relative z-10">
           <AnimatePresence>
             {jarPromises.map((p, i) => (
               <motion.div 
                 key={p.id || i}
-                // THE FALLING ANIMATION: Starts 200px above the jar and drops in!
                 initial={{ y: -200, opacity: 0, rotate: Math.random() * 60 - 30 }}
                 animate={{ y: 0, opacity: 0.85, rotate: Math.random() * 40 - 20 }}
                 transition={{ type: "spring", bounce: 0.5, duration: 0.8 }}
@@ -1172,12 +1239,8 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
             ))}
           </AnimatePresence>
         </div>
-        
-        {jarPromises.length === 0 && (
-          <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 font-medium z-10 text-sm">Empty</p>
-        )}
+        {jarPromises.length === 0 && <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 font-medium z-10 text-sm">Empty</p>}
       </div>
-
       <p className="mt-6 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-pink-500 transition-colors" onClick={() => onDraw(jarPromises)}>
         Tap jar to draw
       </p>
@@ -1187,59 +1250,27 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800 text-center md:text-left">The Promise Jars 🫙</h1>
-      
       <div className="grid md:grid-cols-2 gap-8 mb-12">
-        {/* Render Jar 1 */}
         <JarVisual name={jar1Name} setName={setJar1Name} jarPromises={jar1Promises} onDraw={drawRandomPromise} color="bg-blue-50/30" />
-        {/* Render Jar 2 */}
         <JarVisual name={jar2Name} setName={setJar2Name} jarPromises={jar2Promises} onDraw={drawRandomPromise} color="bg-rose-50/30" />
       </div>
-
-      {/* The Unified Form */}
       <div className="max-w-2xl mx-auto">
         <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-md p-6 md:p-8 rounded-[2rem] shadow-sm border border-white">
           <h3 className="text-xl font-serif font-bold text-gray-800 mb-6">Fold a New Note ✍️</h3>
-          
-          {/* Target Jar Toggle Switch */}
           <div className="flex bg-white p-1 rounded-xl shadow-inner border border-gray-100 mb-4 w-max">
-            <button 
-              type="button" 
-              onClick={() => setTargetJar('jar1')} 
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar1' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
-            >
-              For {jar1Name}
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setTargetJar('jar2')} 
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar2' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
-            >
-              For {jar2Name}
-            </button>
+            <button type="button" onClick={() => setTargetJar('jar1')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar1' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>For {jar1Name}</button>
+            <button type="button" onClick={() => setTargetJar('jar2')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar2' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>For {jar2Name}</button>
           </div>
-
-          <textarea 
-            value={newPromise}
-            onChange={(e) => setNewPromise(e.target.value)}
-            placeholder="Write a tiny promise, compliment, or memory here..."
-            className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-pink-300 bg-white/50 resize-none font-serif text-lg"
-            rows="3"
-          />
-          <button type="submit" className="w-full mt-4 bg-[#8B1235] text-white py-4 rounded-xl font-bold hover:bg-[#6A0D28] transition-all hover:shadow-lg shadow-sm flex items-center justify-center gap-2">
-            Drop Note into Jar <ChevronDown size={18} />
-          </button>
+          <textarea value={newPromise} onChange={(e) => setNewPromise(e.target.value)} placeholder="Write a tiny promise, compliment, or memory here..." className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-pink-300 bg-white/50 resize-none font-serif text-lg" rows="3" />
+          <button type="submit" className="w-full mt-4 bg-[#8B1235] text-white py-4 rounded-xl font-bold hover:bg-[#6A0D28] transition-all hover:shadow-lg shadow-sm flex items-center justify-center gap-2">Drop Note into Jar <ChevronDown size={18} /></button>
         </form>
-
-        {/* Master List to manage/delete them */}
         {promises.length > 0 && (
           <div className="mt-8 pt-8 border-t border-gray-200 space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Manage All Notes</p>
             {promises.map((p) => (
               <div key={p.id} className="flex justify-between items-center bg-white/80 p-4 rounded-xl shadow-sm border border-white">
                 <div>
-                  <p className="text-sm font-bold text-rose-500 uppercase text-[10px] mb-1">
-                    In {p.target === 'jar2' ? jar2Name : jar1Name}
-                  </p>
+                  <p className="text-sm font-bold text-rose-500 uppercase text-[10px] mb-1">In {p.target === 'jar2' ? jar2Name : jar1Name}</p>
                   <p className="text-gray-700 font-serif italic pr-4">"{p.text}"</p>
                 </div>
                 <button onClick={() => deletePromise(p.id)} className="text-gray-400 hover:text-red-500 ml-2 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16}/></button>
@@ -1248,8 +1279,6 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
           </div>
         )}
       </div>
-
-      {/* The Popup when a note is drawn */}
       <AnimatePresence>
         {drawnPromise && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
@@ -1264,16 +1293,14 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
     </div>
   );
 };
+
 // ==========================================
-// 13. FREEFORM MOOD BOARD 📌 (PRO SCRAPBOOK EDITION)
+// 13. FREEFORM MOOD BOARD 📌
 // ==========================================
 const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem }) => {
-  // Sticky Note States
   const [newText, setNewText] = useState("");
   const [noteColor, setNoteColor] = useState("bg-yellow-200");
   const [noteFont, setNoteFont] = useState("'Comic Sans MS', 'Chalkboard SE', cursive");
-
-  // Edit Mode & Drawing States
   const [editingId, setEditingId] = useState(null);
   const [showDrawPad, setShowDrawPad] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -1292,14 +1319,12 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     { label: 'Classic', css: "Georgia, serif" }
   ];
 
-  // --- Add Items ---
   const handleAddText = (e) => {
     e.preventDefault();
     if (!newText.trim()) return;
     const viewport = document.getElementById("board-viewport");
     const startX = viewport ? viewport.scrollLeft + 150 : 150;
     const startY = viewport ? viewport.scrollTop + 150 : 150;
-    
     addBoardItem({ type: 'text', content: newText, x: startX, y: startY, w: 200, h: 200, color: noteColor, font: noteFont });
     setNewText('');
   };
@@ -1311,28 +1336,23 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
       const options = { maxSizeMB: 0.4, maxWidthOrHeight: 1080, useWebWorker: true };
       const compressed = await imageCompression(file, options);
       const base64 = await fileToBase64(compressed);
-      
       const viewport = document.getElementById("board-viewport");
       const startX = viewport ? viewport.scrollLeft + 150 : 150;
       const startY = viewport ? viewport.scrollTop + 150 : 150;
-      
-      // We start in Edit Mode automatically so you can crop it immediately!
       addBoardItem({ type: 'image', content: base64, x: startX, y: startY, w: 250, h: 250 });
     } catch (err) { alert("Image upload failed."); }
   };
 
-  // --- Transparent Digital Ink Pad ---
   useEffect(() => {
     if (showDrawPad && canvasRef.current) {
       const canvas = canvasRef.current;
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
       const ctx = canvas.getContext("2d");
-      // Clear the background completely so it becomes transparent
       ctx.clearRect(0, 0, canvas.width, canvas.height); 
       ctx.lineCap = "round";
       ctx.lineWidth = 4;
-      ctx.strokeStyle = "#8B1235"; // Deep maroon ink
+      ctx.strokeStyle = "#8B1235";
     }
   }, [showDrawPad]);
 
@@ -1362,122 +1382,83 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
 
   const saveDrawing = () => {
     if (!canvasRef.current) return;
-    // image/png preserves the transparent background!
     const base64 = canvasRef.current.toDataURL("image/png");
     const viewport = document.getElementById("board-viewport");
     const startX = viewport ? viewport.scrollLeft + 150 : 150;
     const startY = viewport ? viewport.scrollTop + 150 : 150;
-    
     addBoardItem({ type: 'drawing', content: base64, x: startX, y: startY, w: 300, h: 300 });
     setShowDrawPad(false);
   };
 
   return (
     <div className="max-w-7xl mx-auto pb-10 flex flex-col h-[calc(100vh-100px)]">
-      
-      {/* TOOLBAR */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 shrink-0 relative z-40">
         <div>
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Mood Board 📌</h1>
           <p className="text-gray-500 mt-1 text-sm md:text-base">Double-click any item to Crop & Resize. Drag to move.</p>
         </div>
-        
         <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-xl p-3 rounded-2xl shadow-sm border border-white">
           <form onSubmit={handleAddText} className="flex flex-wrap items-center gap-2 border-r border-gray-200 pr-3">
             <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type note..." className="px-3 py-2 rounded-xl text-sm border outline-none focus:border-rose-300 w-28 md:w-36 bg-white/50" />
-            
-            {/* Color Pickers */}
             <div className="flex gap-1">
               {colors.map(c => (
                 <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-5 h-5 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110 shadow-md' : c.border} transition-transform`}></button>
               ))}
             </div>
-            
-            {/* Font Picker */}
             <select value={noteFont} onChange={e => setNoteFont(e.target.value)} className="px-2 py-1 text-xs border rounded-lg outline-none bg-white text-gray-600 font-medium cursor-pointer">
               {fonts.map(f => <option key={f.label} value={f.css}>{f.label}</option>)}
             </select>
-            
             <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition shadow-sm"><StickyNote size={18}/></button>
           </form>
-
           <label className="bg-rose-100 text-rose-700 px-4 py-2 rounded-xl hover:bg-rose-200 transition cursor-pointer flex items-center gap-2 font-bold text-sm shadow-sm">
             <ImageIcon size={18} /> Pic
             <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
           </label>
-
           <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-bold text-sm shadow-sm">
             <PenTool size={18} /> Ink
           </button>
         </div>
       </div>
 
-      {/* INFINITE EXPANDING BOARD */}
       <div id="board-viewport" className="flex-1 bg-white/40 backdrop-blur-sm rounded-3xl border border-white relative overflow-auto shadow-inner custom-scrollbar" onClick={() => setEditingId(null)}>
-        
-        {/* The 3000x3000 Canvas */}
         <div className="w-[3000px] h-[3000px] relative" style={{ backgroundImage: 'radial-gradient(#d1d5db 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
-          
           {boardItems.map(item => {
             const isEditing = editingId === item.id;
-
             return (
               <motion.div
-                key={item.id}
-                drag={!isEditing} // SHAKING FIX: Disables drag completely while you are trying to resize!
-                dragMomentum={false}
+                key={item.id} drag={!isEditing} dragMomentum={false}
                 onDragEnd={(e, info) => updateBoardItem(item.id, { x: item.x + info.offset.x, y: item.y + info.offset.y })}
                 initial={{ x: item.x, y: item.y }}
                 onDoubleClick={(e) => { e.stopPropagation(); setEditingId(item.id); }}
                 className={`absolute group transition-shadow ${isEditing ? 'z-50 shadow-2xl scale-105' : 'cursor-grab active:cursor-grabbing shadow-sm hover:shadow-lg z-10'}`}
                 style={{ touchAction: "none" }}
               >
-                {/* Delete Button */}
-                <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className={`absolute -top-4 -right-4 bg-white text-red-500 p-2 rounded-full shadow-lg transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} z-20`}>
-                  <Trash2 size={16}/>
-                </button>
-
-                {/* EDIT MODE OVERLAY FOR CROPPING */}
+                <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className={`absolute -top-4 -right-4 bg-white text-red-500 p-2 rounded-full shadow-lg transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} z-20`}><Trash2 size={16}/></button>
                 {isEditing && (
                   <div className="absolute -inset-3 border-2 border-blue-500 border-dashed rounded-xl pointer-events-none z-30 flex items-end justify-center pb-2">
                     <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Drag bottom right to crop</span>
                   </div>
                 )}
                 
-                {/* TEXT ITEM */}
                 {item.type === 'text' && (
-                  <div 
-                    className={`${item.color || 'bg-yellow-200'} p-5 shadow-inner border border-black/5 transform rotate-1 overflow-hidden relative`} 
-                    style={{ fontFamily: item.font || "'Comic Sans MS', cursive", width: item.w || 200, height: item.h || 200, resize: isEditing ? 'both' : 'none' }}
-                    onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}
-                  >
+                  <div className={`${item.color || 'bg-yellow-200'} p-5 shadow-inner border border-black/5 transform rotate-1 overflow-hidden relative`} style={{ fontFamily: item.font || "'Comic Sans MS', cursive", width: item.w || 200, height: item.h || 200, resize: isEditing ? 'both' : 'none' }} onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
                     <p className="text-gray-800 text-lg md:text-xl leading-relaxed whitespace-pre-wrap">{item.content}</p>
                   </div>
                 )}
 
-                {/* IMAGE ITEM (Natively Croppable via CSS Resize) */}
                 {item.type === 'image' && (
                   <div className="bg-white p-2 pb-10 shadow-sm transform -rotate-1 relative">
-                    <div 
-                      style={{ width: item.w || 250, height: item.h || 250, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }}
-                      onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}
-                    >
+                    <div style={{ width: item.w || 250, height: item.h || 250, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }} onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
                       <img src={item.content} className="w-full h-full object-cover pointer-events-none rounded-sm border border-gray-100" />
                     </div>
                   </div>
                 )}
 
-                {/* DIGITAL INK DRAWING (Transparent) */}
                 {item.type === 'drawing' && (
-                  <div 
-                    className="relative"
-                    style={{ width: item.w || 300, height: item.h || 300, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }}
-                    onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}
-                  >
+                  <div className="relative" style={{ width: item.w || 300, height: item.h || 300, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }} onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
                     <img src={item.content} className="w-full h-full object-contain pointer-events-none drop-shadow-sm" />
                   </div>
                 )}
-
               </motion.div>
             );
           })}
@@ -1485,12 +1466,10 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
         </div>
       </div>
 
-      {/* DRAWING PAD OVERLAY */}
       <AnimatePresence>
         {showDrawPad && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setShowDrawPad(false)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-              
               <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
                 <div>
                   <h3 className="font-serif font-bold text-xl text-gray-800">Digital Ink ✍️</h3>
@@ -1498,32 +1477,18 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
                 </div>
                 <button onClick={() => setShowDrawPad(false)} className="bg-gray-100 text-gray-500 p-2 rounded-full hover:bg-red-100 hover:text-red-500 transition-colors"><X size={20}/></button>
               </div>
-              
-              {/* Note: bg-transparent is forced here to ensure no white box is saved */}
               <div className="w-full h-72 border-2 border-gray-300 rounded-2xl relative shadow-inner cursor-crosshair overflow-hidden" style={{ backgroundImage: 'radial-gradient(#e5e7eb 2px, transparent 2px)', backgroundSize: '20px 20px' }}>
-                <canvas 
-                  ref={canvasRef} 
-                  className="absolute inset-0 w-full h-full touch-none bg-transparent"
-                  onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
-                  onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
-                ></canvas>
+                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full touch-none bg-transparent" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}></canvas>
               </div>
-
               <div className="flex justify-between items-center mt-6">
                 <button onClick={() => { const ctx = canvasRef.current.getContext('2d'); ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); }} className="text-gray-500 font-bold hover:text-gray-800 text-sm flex items-center gap-1"><Trash2 size={16}/> Clear</button>
                 <button onClick={saveDrawing} className="bg-[#8B1235] text-white px-6 py-3 rounded-full font-bold hover:bg-[#6A0D28] shadow-md flex items-center gap-2 transition-all hover:scale-105">Stick to Board <Check size={18}/></button>
               </div>
-
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Focus Dimmer Backdrop (Only shows when editing an item) */}
-      {editingId && (
-        <div className="absolute inset-0 bg-black/5 z-20 pointer-events-none rounded-3xl transition-opacity"></div>
-      )}
-
+      {editingId && <div className="absolute inset-0 bg-black/5 z-20 pointer-events-none rounded-3xl transition-opacity"></div>}
     </div>
   );
 };
@@ -1534,7 +1499,6 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
 const sendInstantNotification = (itemType, itemTitle) => {
   const email1 = localStorage.getItem('notifyEmail1');
   const email2 = localStorage.getItem('notifyEmail2');
-
   const validEmails = [email1, email2].filter(Boolean);
 
   if (validEmails.length === 0) return;
@@ -1559,29 +1523,19 @@ const sendInstantNotification = (itemType, itemTitle) => {
 // ==========================================
 // 9. FULL ADVANCED SETTINGS PAGE 
 // ==========================================
-const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRequired, setIsPasswordRequired, quotes, deleteQuote }) => {
-  const [isEditingPassword, setIsEditingPassword] = useState(false);
-  const [newPasswordInput, setNewPasswordInput] = useState(secretWord);
-  
+const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote }) => {
   const [newQuote, setNewQuote] = useState("");
   const [isSavingQuote, setIsSavingQuote] = useState(false);
-
   const [email1, setEmail1] = useState(() => localStorage.getItem('notifyEmail1') || '');
   const [email2, setEmail2] = useState(() => localStorage.getItem('notifyEmail2') || '');
-
-  const saveNewPassword = () => {
-    if (newPasswordInput.trim().length > 0) {
-      setSecretWord(newPasswordInput.trim());
-      setIsEditingPassword(false);
-    }
-  };
 
   const handleAddQuote = async (e) => {
     e.preventDefault();
     if (!newQuote.trim()) return;
     setIsSavingQuote(true);
     try {
-      await addDoc(collection(db, "quotes"), { text: newQuote, timestamp: new Date() });
+      // NOTE: Universe ID must be stamped on the quote!
+      await addDoc(collection(db, "quotes"), { text: newQuote, timestamp: new Date(), universeId: activeUniverse });
       setNewQuote("");
       alert("Quote added to the universe! ✨ (Refresh to see it below)");
     } catch (error) {
@@ -1596,6 +1550,11 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
     alert("Notification emails saved! You will now get pinged when memories are added. 💌");
   };
 
+  const copyUniverseCode = () => {
+    navigator.clipboard.writeText(activeUniverse);
+    alert("Universe Code copied! Send this to your partner.");
+  };
+
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } }};
   const itemVariants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
@@ -1603,11 +1562,25 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
     <div className="max-w-4xl mx-auto pb-10">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 md:mb-10">
         <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">Universe Settings ⚙️</h1>
-        <p className="opacity-70 text-sm md:text-base">Manage your privacy, appearance, and memory backups.</p>
+        <p className="opacity-70 text-sm md:text-base">Manage your space, appearance, and memory backups.</p>
       </motion.div>
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6 md:space-y-8">
         
+        {/* --- UNIVERSE CODE SHARING --- */}
+        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><Lock size={20} /></div>
+            <h2 className="text-xl font-semibold text-gray-800">Your Shared Universe</h2>
+          </div>
+          <p className="text-sm text-gray-500 mb-6">Send this code to your partner. When they create an account, they can select "Join Universe" and paste this code to sync your memories securely.</p>
+          
+          <div className="flex items-center bg-gray-50 border border-gray-200 p-4 rounded-xl gap-4">
+            <code className="text-xl font-bold tracking-widest text-[#8B1235] flex-1 text-center">{activeUniverse}</code>
+            <button onClick={copyUniverseCode} className="bg-[#8B1235] text-white p-3 rounded-lg hover:bg-[#6A0D28] transition-colors"><Copy size={20} /></button>
+          </div>
+        </motion.div>
+
         {/* --- EMAIL NOTIFICATIONS --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
           <div className="flex items-center gap-3 mb-6">
@@ -1619,23 +1592,11 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Your Email</label>
-              <input
-                type="email"
-                value={email1}
-                onChange={(e) => setEmail1(e.target.value)}
-                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50"
-                placeholder="you@example.com"
-              />
+              <input type="email" value={email1} onChange={(e) => setEmail1(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50" placeholder="you@example.com" />
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Partner's Email</label>
-              <input
-                type="email"
-                value={email2}
-                onChange={(e) => setEmail2(e.target.value)}
-                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50"
-                placeholder="partner@example.com"
-              />
+              <input type="email" value={email2} onChange={(e) => setEmail2(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50" placeholder="partner@example.com" />
             </div>
             <button onClick={handleSaveEmails} className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors w-full md:w-auto flex items-center justify-center gap-2 shadow-sm">
               <Check size={18} /> Save Notification Emails
@@ -1652,19 +1613,12 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
           
           <form onSubmit={handleAddQuote} className="mb-6">
             <label className="block text-sm md:text-base text-gray-600 mb-2 font-medium">Add a lovely sentence to rotate on the dashboard</label>
-            <textarea 
-              value={newQuote}
-              onChange={(e) => setNewQuote(e.target.value)}
-              placeholder="e.g. You are my today and all of my tomorrows..." 
-              className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-pink-200 bg-white/50 resize-none font-serif text-lg"
-              rows="3"
-            />
+            <textarea value={newQuote} onChange={(e) => setNewQuote(e.target.value)} placeholder="e.g. You are my today and all of my tomorrows..." className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-pink-200 bg-white/50 resize-none font-serif text-lg" rows="3" />
             <button type="submit" disabled={isSavingQuote || !newQuote.trim()} className="mt-4 bg-[#8B1235] text-white px-6 py-3 rounded-xl w-full font-medium hover:bg-[#6A0D28] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               {isSavingQuote ? "Adding to the stars..." : <><Sparkles size={18}/> Add to Dashboard</>}
             </button>
           </form>
 
-          {/* Active Quotes List to Delete */}
           {quotes && quotes.length > 0 && (
             <div className="mt-6 border-t border-gray-100 pt-6">
               <h3 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">Active Quotes</h3>
@@ -1680,46 +1634,6 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
               </div>
             </div>
           )}
-        </motion.div>
-
-        {/* --- PRIVACY & SECURITY --- */}
-        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-rose-100 text-rose-600 rounded-xl"><Shield size={20} /></div>
-            <h2 className="text-xl font-semibold text-gray-800">Privacy & Security</h2>
-          </div>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-800">Require Secret Word</p>
-                <p className="text-xs md:text-sm text-gray-500 mt-1">Ask for a password before entering the site.</p>
-              </div>
-              <button onClick={() => setIsPasswordRequired(!isPasswordRequired)} className={`w-12 h-6 md:w-14 md:h-7 rounded-full transition-colors relative shadow-inner ${isPasswordRequired ? 'bg-green-500' : 'bg-gray-300'}`}>
-                <motion.div layout className="w-5 h-5 md:w-6 md:h-6 bg-white rounded-full shadow-md absolute top-0.5" style={{ left: isPasswordRequired ? 'calc(100% - 26px)' : '2px' }} />
-              </button>
-            </div>
-            <div className="border-t border-gray-100 pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="font-medium text-gray-800">Change Secret Word</p>
-                  <p className="text-xs md:text-sm text-gray-500 mt-1">Update the password to enter your space.</p>
-                </div>
-                {!isEditingPassword && (
-                  <button onClick={() => setIsEditingPassword(true)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
-                    <Lock size={16} /> Edit
-                  </button>
-                )}
-              </div>
-              <AnimatePresence>
-                {isEditingPassword && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex gap-3 overflow-hidden">
-                    <input type="text" value={newPasswordInput} onChange={(e) => setNewPasswordInput(e.target.value)} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50" />
-                    <button onClick={saveNewPassword} className="px-4 py-2 bg-[#8B1235] text-white rounded-xl flex items-center gap-2 text-sm font-medium hover:bg-[#6A0D28]"><Check size={16} /> Save</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
         </motion.div>
 
         {/* --- APPEARANCE & THEMES --- */}
@@ -1753,54 +1667,45 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
 // ==========================================
 function App() {
   const [theme, setTheme] = useState('light');
-  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('unlocked') === 'true');
-  const [isPasswordRequired, setIsPasswordRequired] = useState(() => localStorage.getItem('passwordRequired') !== 'false'); 
-  const [secretWord, setSecretWord] = useState(() => localStorage.getItem('secretWord') || 'forever'); 
   
+  // SECURE AUTH STATES
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeUniverse, setActiveUniverse] = useState(null);
+  
+  // Data States
   const [memories, setMemories] = useState([]);
   const [letters, setLetters] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [galleryPhotos, setGalleryPhotos] = useState([]);
-  
   const [bucketList, setBucketList] = useState([]);
   const [promises, setPromises] = useState([]);
   const [boardItems, setBoardItems] = useState([]);
   
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // --- 1. FETCH FROM FIREBASE ON LOAD ---
+  // --- 1. FETCH FROM FIREBASE (FILTERED BY UNIVERSE ID) ---
   useEffect(() => {
-    if (isPasswordRequired && !isAuthenticated) return;
+    if (!isAuthenticated || !activeUniverse) return;
+    setLoading(true);
 
     const fetchData = async () => {
       try {
-        const memoriesQuery = query(collection(db, 'memories'), orderBy('id', 'desc'));
-        const memorySnapshot = await getDocs(memoriesQuery);
-        setMemories(memorySnapshot.docs.map(doc => ({ firestoreId: doc.id, ...doc.data() })));
+        // We use a helper to query and then sort locally (prevents Firebase indexing errors)
+        const fetchAndSort = async (colName, sortField = 'id') => {
+          const q = query(collection(db, colName), where("universeId", "==", activeUniverse));
+          const snap = await getDocs(q);
+          const data = snap.docs.map(doc => ({ firestoreId: doc.id, id: doc.id, ...doc.data() }));
+          return data.sort((a, b) => (b[sortField] > a[sortField] ? 1 : -1)); // Descending sort
+        };
 
-        const lettersQuery = query(collection(db, 'letters'), orderBy('createdAt', 'desc'));
-        const letterSnapshot = await getDocs(lettersQuery);
-        setLetters(letterSnapshot.docs.map(doc => ({ firestoreId: doc.id, ...doc.data() })));
-        
-        const qQuotes = query(collection(db, "quotes"), orderBy("timestamp", "desc"));
-        const quotesSnapshot = await getDocs(qQuotes);
-        setQuotes(quotesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-        const qGallery = query(collection(db, "gallery"), orderBy("timestamp", "desc"));
-        const gallerySnapshot = await getDocs(qGallery);
-        setGalleryPhotos(gallerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-        const qBucket = query(collection(db, "bucketlist"));
-        const bucketSnap = await getDocs(qBucket);
-        setBucketList(bucketSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-        const qPromises = query(collection(db, "promises"));
-        const promiseSnap = await getDocs(qPromises);
-        setPromises(promiseSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-        const qBoard = query(collection(db, "moodboard"));
-        const boardSnap = await getDocs(qBoard);
-        setBoardItems(boardSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setMemories(await fetchAndSort('memories'));
+        setLetters(await fetchAndSort('letters', 'createdAt'));
+        setQuotes(await fetchAndSort('quotes', 'timestamp'));
+        setGalleryPhotos(await fetchAndSort('gallery', 'timestamp'));
+        setBucketList(await fetchAndSort('bucketlist'));
+        setPromises(await fetchAndSort('promises'));
+        setBoardItems(await fetchAndSort('moodboard'));
 
       } catch (err) {
         console.error("Error fetching data: ", err);
@@ -1810,9 +1715,9 @@ function App() {
     };
     
     fetchData();
-  }, [isAuthenticated, isPasswordRequired]);
+  }, [isAuthenticated, activeUniverse]);
 
-  // --- 2. DATABASE ACTIONS ---
+  // --- 2. DATABASE ACTIONS (STAMPED WITH UNIVERSE ID) ---
   const addMemory = async (newMemoryData) => {
     try {
       const imagesBase64 = [];
@@ -1833,7 +1738,8 @@ function App() {
         description: newMemoryData.description || '',
         images: imagesBase64, 
         voiceNote: voiceBase64,
-        id: Date.now() 
+        id: Date.now(),
+        universeId: activeUniverse // STAMPED
       };
 
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
@@ -1856,7 +1762,7 @@ function App() {
 
   const addLetter = async (newLetterData) => {
     try {
-      const finalLetter = { ...newLetterData, createdAt: new Date().toISOString() };
+      const finalLetter = { ...newLetterData, createdAt: new Date().toISOString(), universeId: activeUniverse }; // STAMPED
       const docRef = await addDoc(collection(db, "letters"), finalLetter);
       setLetters(prev => [{ firestoreId: docRef.id, ...finalLetter }, ...prev]);
       sendInstantNotification("Love Letter", finalLetter.title);
@@ -1876,8 +1782,9 @@ function App() {
   };
 
   const addGalleryPhotos = async (newPhoto) => {
-    const docRef = await addDoc(collection(db, "gallery"), newPhoto);
-    setGalleryPhotos(prev => [{ id: docRef.id, ...newPhoto }, ...prev]);
+    const finalPhoto = { ...newPhoto, universeId: activeUniverse }; // STAMPED
+    const docRef = await addDoc(collection(db, "gallery"), finalPhoto);
+    setGalleryPhotos(prev => [{ id: docRef.id, ...finalPhoto }, ...prev]);
   };
 
   const deleteGalleryPhoto = async (id) => {
@@ -1898,16 +1805,19 @@ function App() {
 
   const addGoal = async (goal) => {
     try {
-      const docRef = await addDoc(collection(db, "bucketlist"), goal);
-      setBucketList(prev => [...prev, { id: docRef.id, ...goal }]);
+      const finalGoal = { ...goal, universeId: activeUniverse }; // STAMPED
+      const docRef = await addDoc(collection(db, "bucketlist"), finalGoal);
+      setBucketList(prev => [...prev, { id: docRef.id, ...finalGoal }]);
     } catch (err) { console.error(err); }
   };
+  
   const toggleGoal = async (id, completed) => {
     try {
       await updateDoc(doc(db, "bucketlist", id), { completed });
       setBucketList(prev => prev.map(g => g.id === id ? { ...g, completed } : g));
     } catch (err) { console.error(err); }
   };
+  
   const deleteGoal = async (id) => {
     try {
       await deleteDoc(doc(db, "bucketlist", id));
@@ -1918,10 +1828,12 @@ function App() {
   // --- PROMISE JAR ACTIONS ---
   const addPromise = async (promise) => {
     try {
-      const docRef = await addDoc(collection(db, "promises"), promise);
-      setPromises(prev => [...prev, { id: docRef.id, ...promise }]);
+      const finalPromise = { ...promise, universeId: activeUniverse }; // STAMPED
+      const docRef = await addDoc(collection(db, "promises"), finalPromise);
+      setPromises(prev => [...prev, { id: docRef.id, ...finalPromise }]);
     } catch (err) { console.error(err); }
   };
+  
   const deletePromise = async (id) => {
     try {
       await deleteDoc(doc(db, "promises", id));
@@ -1932,16 +1844,19 @@ function App() {
   // --- MOOD BOARD ACTIONS ---
   const addBoardItem = async (item) => {
     try {
-      const docRef = await addDoc(collection(db, "moodboard"), item);
-      setBoardItems(prev => [...prev, { id: docRef.id, ...item }]);
+      const finalItem = { ...item, universeId: activeUniverse }; // STAMPED
+      const docRef = await addDoc(collection(db, "moodboard"), finalItem);
+      setBoardItems(prev => [...prev, { id: docRef.id, ...finalItem }]);
     } catch (err) { console.error(err); }
   };
+  
   const updateBoardItem = async (id, newProps) => {
     try {
       await updateDoc(doc(db, "moodboard", id), newProps);
       setBoardItems(prev => prev.map(item => item.id === id ? { ...item, ...newProps } : item));
     } catch (err) { console.error(err); }
   };
+  
   const deleteBoardItem = async (id) => {
     try {
       await deleteDoc(doc(db, "moodboard", id));
@@ -1949,22 +1864,18 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => {
-    localStorage.setItem('passwordRequired', isPasswordRequired);
-    localStorage.setItem('secretWord', secretWord);
-  }, [isPasswordRequired, secretWord]);
-
-  const handleUnlock = () => {
+  const handleUnlock = (user, uId) => {
+    setCurrentUser(user);
+    setActiveUniverse(uId);
     setIsAuthenticated(true);
-    sessionStorage.setItem('unlocked', 'true'); 
   };
 
-  if (isPasswordRequired && !isAuthenticated) return <SecretGateway expectedWord={secretWord} onUnlock={handleUnlock} />;
+  if (!isAuthenticated) return <AuthGateway onUnlock={handleUnlock} />;
 
-  if (loading && (!isPasswordRequired || isAuthenticated)) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#FCF8F9] flex items-center justify-center">
-        <div className="animate-pulse text-[#8B1235] text-xl font-serif">Loading our universe... ✨</div>
+        <div className="animate-pulse text-[#8B1235] text-xl font-serif">Syncing Universe {activeUniverse}... ✨</div>
       </div>
     );
   }
@@ -1992,8 +1903,7 @@ function App() {
           <Route path="/settings" element={
             <SettingsPage 
               theme={theme} setTheme={setTheme}
-              secretWord={secretWord} setSecretWord={setSecretWord}
-              isPasswordRequired={isPasswordRequired} setIsPasswordRequired={setIsPasswordRequired}
+              activeUniverse={activeUniverse}
               quotes={quotes} deleteQuote={deleteQuote}
             />
           } />
