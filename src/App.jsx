@@ -303,42 +303,20 @@ const CreateMemory = ({ onAddMemory }) => {
   };
 
  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorderRef.current = new MediaRecorder(stream);
+    const audioChunks = [];
+    
+    mediaRecorderRef.current.ondataavailable = (e) => audioChunks.push(e.data);
+    
+    mediaRecorderRef.current.onstop = () => { 
+      // THIS IS THE MAGIC FIX: Tell the browser exactly what kind of file this is!
+      const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunks, { type: mimeType }); 
       
-      // 1. Ask the browser what its favorite, most native audio format is
-      let options = {};
-      if (MediaRecorder.isTypeSupported('audio/webm')) {
-        options = { mimeType: 'audio/webm' }; // Chrome / Android
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        options = { mimeType: 'audio/mp4' }; // Safari / iPhone
-      } else if (MediaRecorder.isTypeSupported('audio/aac')) {
-        options = { mimeType: 'audio/aac' }; // Older Apple Devices
-      }
-
-      mediaRecorderRef.current = new MediaRecorder(stream, options);
-      const audioChunks = [];
-      
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) audioChunks.push(e.data);
-      };
-      
-      mediaRecorderRef.current.onstop = () => { 
-        // 2. Grab the EXACT format the browser safely decided to use
-        const actualMimeType = mediaRecorderRef.current.mimeType;
-        const audioBlob = new Blob(audioChunks, { type: actualMimeType }); 
-        
-        setVoiceBlob(audioBlob);
-        setVoicePreview(URL.createObjectURL(audioBlob)); 
-      };
-      
-      mediaRecorderRef.current.start(); 
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Microphone error:", err);
-      alert("Could not access microphone. Please check your browser permissions.");
-    }
-  };
+      setVoiceBlob(audioBlob);
+      setVoicePreview(URL.createObjectURL(audioBlob)); 
+    };
     
     mediaRecorderRef.current.start(); 
     setIsRecording(true);
