@@ -1042,15 +1042,40 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
 };
 
 // ==========================================
-// 13. FREEFORM MOOD BOARD 📌
+// 13. FREEFORM MOOD BOARD 📌 (EXPANDED & INTERACTIVE)
 // ==========================================
 const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem }) => {
+  // Sticky Note States
   const [newText, setNewText] = useState("");
-  
+  const [noteColor, setNoteColor] = useState("bg-yellow-200");
+  const [noteFont, setNoteFont] = useState("'Comic Sans MS', 'Chalkboard SE', cursive");
+
+  // Finger-Writing Pad States
+  const [showDrawPad, setShowDrawPad] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const canvasRef = useRef(null);
+
+  const colors = [
+    { bg: 'bg-yellow-200', border: 'border-yellow-300' },
+    { bg: 'bg-pink-200', border: 'border-pink-300' },
+    { bg: 'bg-blue-200', border: 'border-blue-300' },
+    { bg: 'bg-green-200', border: 'border-green-300' }
+  ];
+
+  const fonts = [
+    { label: 'Handwriting', css: "'Comic Sans MS', 'Chalkboard SE', cursive" },
+    { label: 'Typewriter', css: "'Courier New', Courier, monospace" },
+    { label: 'Classic', css: "Georgia, serif" }
+  ];
+
   const handleAddText = (e) => {
     e.preventDefault();
-    if(!newText.trim()) return;
-    addBoardItem({ type: 'text', content: newText, x: 50, y: 50 });
+    if (!newText.trim()) return;
+    const viewport = document.getElementById("board-viewport");
+    const startX = viewport ? viewport.scrollLeft + 100 : 100;
+    const startY = viewport ? viewport.scrollTop + 100 : 100;
+    
+    addBoardItem({ type: 'text', content: newText, x: startX, y: startY, w: 180, h: 180, color: noteColor, font: noteFont });
     setNewText('');
   };
 
@@ -1058,64 +1083,178 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     const file = e.target.files[0];
     if (!file) return;
     try {
-      const options = { maxSizeMB: 0.3, maxWidthOrHeight: 600, useWebWorker: true };
+      const options = { maxSizeMB: 0.4, maxWidthOrHeight: 1080, useWebWorker: true };
       const compressed = await imageCompression(file, options);
       const base64 = await fileToBase64(compressed);
-      addBoardItem({ type: 'image', content: base64, x: 80, y: 80 });
+      
+      const viewport = document.getElementById("board-viewport");
+      const startX = viewport ? viewport.scrollLeft + 150 : 150;
+      const startY = viewport ? viewport.scrollTop + 150 : 150;
+      
+      addBoardItem({ type: 'image', content: base64, x: startX, y: startY, w: 250, h: 250 });
     } catch (err) { alert("Image upload failed."); }
   };
 
+  // --- Finger Writing Functions ---
+  useEffect(() => {
+    if (showDrawPad && canvasRef.current) {
+      const canvas = canvasRef.current;
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.lineCap = "round";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#8B1235"; // Deep maroon ink
+    }
+  }, [showDrawPad]);
+
+  const startDraw = (e) => {
+    if (!canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    const rect = canvasRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing || !canvasRef.current) return;
+    e.preventDefault(); // Stops the screen from scrolling while drawing
+    const ctx = canvasRef.current.getContext("2d");
+    const rect = canvasRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDraw = () => setIsDrawing(false);
+
+  const saveDrawing = () => {
+    if (!canvasRef.current) return;
+    const base64 = canvasRef.current.toDataURL("image/png");
+    const viewport = document.getElementById("board-viewport");
+    const startX = viewport ? viewport.scrollLeft + 150 : 150;
+    const startY = viewport ? viewport.scrollTop + 150 : 150;
+    
+    addBoardItem({ type: 'image', content: base64, x: startX, y: startY, w: 300, h: 300 });
+    setShowDrawPad(false);
+  };
+
   return (
-    <div className="max-w-6xl mx-auto pb-10 flex flex-col h-[calc(100vh-100px)]">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 shrink-0">
+    <div className="max-w-7xl mx-auto pb-10 flex flex-col h-[calc(100vh-100px)]">
+      {/* TOOLBAR */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Mood Board 📌</h1>
-          <p className="text-gray-500 mt-1 text-sm md:text-base">Drag items around. We save exactly where you leave them.</p>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">An infinite canvas. Scroll around, resize pictures, and leave handwritten notes.</p>
         </div>
         
-        <div className="flex gap-3 bg-white/60 backdrop-blur-md p-2 rounded-2xl shadow-sm border border-white">
-          <form onSubmit={handleAddText} className="flex gap-2">
-            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type a sticky note..." className="px-4 py-2 rounded-xl text-sm border outline-none focus:border-rose-300 w-32 md:w-48" />
+        <div className="flex flex-wrap items-center gap-3 bg-white/60 backdrop-blur-md p-3 rounded-2xl shadow-sm border border-white">
+          <form onSubmit={handleAddText} className="flex flex-wrap items-center gap-2 border-r border-gray-200 pr-3">
+            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type a sticky note..." className="px-4 py-2 rounded-xl text-sm border outline-none focus:border-rose-300 w-32 md:w-40" />
+            
+            {/* Color & Font Pickers */}
+            <div className="flex gap-1">
+              {colors.map(c => (
+                <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-6 h-6 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110' : c.border} transition-transform`}></button>
+              ))}
+            </div>
+            <select value={noteFont} onChange={e => setNoteFont(e.target.value)} className="px-2 py-1 text-xs border rounded-lg outline-none bg-white">
+              {fonts.map(f => <option key={f.label} value={f.css}>{f.label}</option>)}
+            </select>
+            
             <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition"><StickyNote size={18}/></button>
           </form>
-          <label className="bg-rose-100 text-rose-700 p-2 rounded-xl hover:bg-rose-200 transition cursor-pointer flex items-center justify-center">
-            <ImageIcon size={18} />
+
+          <label className="bg-rose-100 text-rose-700 px-4 py-2 rounded-xl hover:bg-rose-200 transition cursor-pointer flex items-center gap-2 font-medium text-sm">
+            <ImageIcon size={18} /> Add Pic
             <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
           </label>
+
+          <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-medium text-sm">
+            <PenTool size={18} /> Write
+          </button>
         </div>
       </div>
 
-      <div className="flex-1 bg-white/30 rounded-3xl border-2 border-dashed border-gray-300 relative overflow-hidden shadow-inner">
-        {boardItems.map(item => (
-          <motion.div
-            key={item.id}
-            drag
-            dragMomentum={false}
-            onDragEnd={(e, info) => {
-              // Update position locally/firebase on drop
-              updateBoardItem(item.id, { x: item.x + info.offset.x, y: item.y + info.offset.y });
-            }}
-            initial={{ x: item.x, y: item.y }}
-            className="absolute cursor-grab active:cursor-grabbing group shadow-md hover:shadow-xl transition-shadow"
-            style={{ touchAction: "none" }}
-          >
-            <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className="absolute -top-3 -right-3 bg-white text-red-500 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"><Trash2 size={14}/></button>
-            
-            {item.type === 'text' && (
-              <div className="bg-yellow-200 p-4 w-40 min-h-[100px] shadow-sm font-serif text-gray-800 text-sm leading-relaxed transform rotate-1">
-                {item.content}
-              </div>
-            )}
+      {/* INFINITE EXPANDING BOARD */}
+      <div id="board-viewport" className="flex-1 bg-gray-100/50 rounded-3xl border-4 border-white relative overflow-auto shadow-inner custom-scrollbar cursor-move">
+        <div className="w-[3000px] h-[3000px] relative" style={{ backgroundImage: 'radial-gradient(#e5e7eb 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
+          
+          {boardItems.map(item => (
+            <motion.div
+              key={item.id}
+              drag
+              dragMomentum={false}
+              onDragEnd={(e, info) => updateBoardItem(item.id, { x: item.x + info.offset.x, y: item.y + info.offset.y })}
+              initial={{ x: item.x, y: item.y }}
+              className="absolute group shadow-md hover:shadow-2xl transition-shadow cursor-grab active:cursor-grabbing flex flex-col"
+              style={{ width: item.w || 200, height: item.h || 200 }}
+            >
+              {/* Delete Button */}
+              <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className="absolute -top-3 -right-3 bg-white text-red-500 p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20"><Trash2 size={14}/></button>
+              
+              {/* TEXT ITEM */}
+              {item.type === 'text' && (
+                <div className={`${item.color || 'bg-yellow-200'} w-full h-full p-4 shadow-sm border border-black/5 transform rotate-1 overflow-hidden`} style={{ fontFamily: item.font || "'Comic Sans MS', cursive" }}>
+                  <p className="text-gray-800 text-lg md:text-xl leading-relaxed whitespace-pre-wrap">{item.content}</p>
+                </div>
+              )}
 
-            {item.type === 'image' && (
-              <div className="bg-white p-2 pb-8 w-48 shadow-sm transform -rotate-2">
-                <img src={item.content} className="w-full h-auto object-cover border border-gray-100 pointer-events-none" />
+              {/* IMAGE ITEM (With Cropping/Resizing Handle) */}
+              {item.type === 'image' && (
+                <div className="bg-white p-2 pb-8 w-full h-full shadow-sm transform -rotate-1 relative">
+                  <img src={item.content} className="w-full h-full object-cover pointer-events-none border border-gray-100" />
+                </div>
+              )}
+
+              {/* UNIVERSAL RESIZE HANDLE (Drags bottom-right corner) */}
+              <div 
+                className="absolute bottom-0 right-0 w-8 h-8 cursor-nwse-resize opacity-0 group-hover:opacity-100 z-30 flex items-end justify-end p-1.5 hover:bg-black/10 rounded-br-lg"
+                onPointerDown={(e) => { e.stopPropagation(); e.target.setPointerCapture(e.pointerId); }}
+                onPointerMove={(e) => {
+                  if (e.target.hasPointerCapture(e.pointerId)) {
+                    updateBoardItem(item.id, { w: (item.w || 200) + e.movementX, h: (item.h || 200) + e.movementY });
+                  }
+                }}
+                onPointerUp={(e) => e.target.releasePointerCapture(e.pointerId)}
+              >
+                <div className="w-3 h-3 bg-gray-500/50 rounded-full"></div>
               </div>
-            )}
-          </motion.div>
-        ))}
-        {boardItems.length === 0 && <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-medium">Board is empty. Add a note or polaroid!</div>}
+            </motion.div>
+          ))}
+          {boardItems.length === 0 && <div className="absolute top-[10%] left-[10%] text-gray-400 font-medium text-xl">The board is endless. Drag, scroll, and add memories anywhere!</div>}
+        </div>
       </div>
+
+      {/* DRAWING PAD OVERLAY */}
+      <AnimatePresence>
+        {showDrawPad && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowDrawPad(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-serif font-bold text-xl text-gray-800">Write a Note ✍️</h3>
+                <button onClick={() => setShowDrawPad(false)} className="text-gray-400 hover:text-red-500"><X size={20}/></button>
+              </div>
+              <div className="w-full h-64 bg-[#FCF8F9] border-2 border-dashed border-rose-200 rounded-2xl relative overflow-hidden shadow-inner cursor-crosshair">
+                <canvas 
+                  ref={canvasRef} 
+                  className="absolute inset-0 w-full h-full touch-none"
+                  onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+                  onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
+                ></canvas>
+              </div>
+              <div className="flex justify-between mt-6">
+                <button onClick={() => { const ctx = canvasRef.current.getContext('2d'); ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); }} className="text-gray-500 font-medium hover:text-gray-800 text-sm">Clear Board</button>
+                <button onClick={saveDrawing} className="bg-[#8B1235] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#6A0D28] shadow-sm flex items-center gap-2">Stick to Board <Check size={16}/></button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
