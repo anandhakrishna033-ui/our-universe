@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2 } from 'lucide-react';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -107,11 +107,9 @@ const AudioPlayer = ({ src }) => {
         className="hidden" 
         preload="auto"
       />
-      
       <button type="button" onClick={togglePlay} disabled={!playableUrl} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors shadow-sm shrink-0 disabled:opacity-50">
         {isPlaying ? <Pause size={18} /> : <Play size={18} />}
       </button>
-      
       <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
         <motion.div 
           className="h-full bg-[#8B1235]" 
@@ -201,9 +199,6 @@ const RotatingQuotes = ({ quotes }) => {
   );
 };
 
-// ==========================================
-// LIVE CLOCK WIDGET (NEW)
-// ==========================================
 const LiveClockCard = () => {
   const [time, setTime] = useState(new Date());
 
@@ -234,10 +229,7 @@ const Home = ({ memories, quotes, deleteMemory }) => {
   
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      
-      {/* Whispers of the Universe */}
       <RotatingQuotes quotes={quotes} />
-
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/40 backdrop-blur-md rounded-3xl md:rounded-[2rem] p-6 md:p-10 mb-6 md:mb-8 relative overflow-hidden shadow-sm border border-white/50">
         <div className="relative z-10 max-w-xl">
           <p className="text-rose-500 font-medium mb-1 md:mb-2 text-sm md:text-base flex items-center gap-2"><Sparkles size={16} /> Welcome back to our universe</p>
@@ -256,17 +248,13 @@ const Home = ({ memories, quotes, deleteMemory }) => {
         </div>
         <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0"><ImageIcon size={24} /></div>
-          {/* Backwards compatible: checks for old single img OR new images array */}
           <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.filter(m => (m.images && m.images.length > 0) || m.img).length}</h3><p className="text-sm text-gray-600 mt-1">Photos</p></div>
         </div>
         <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"><MapPin size={24} /></div>
           <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.filter(m => m.location).length}</h3><p className="text-sm text-gray-600 mt-1">Places Visited</p></div>
         </div>
-        
-        {/* NEW LIVE CLOCK CARD */}
         <LiveClockCard />
-
       </motion.div>
 
       <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white">
@@ -277,9 +265,7 @@ const Home = ({ memories, quotes, deleteMemory }) => {
           <motion.div layout className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <AnimatePresence>
               {recentMemories.map((m) => {
-                // Safety check: Find the cover image whether it's the old format or new array format
                 const coverImg = (m.images && m.images.length > 0) ? m.images[0] : m.img;
-
                 return (
                   <motion.div 
                     layout
@@ -302,8 +288,7 @@ const Home = ({ memories, quotes, deleteMemory }) => {
                       {coverImg ? (
                         <motion.img 
                           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
-                          src={coverImg} alt={m.title} 
-                          className="w-full h-full object-cover" 
+                          src={coverImg} alt={m.title} className="w-full h-full object-cover" 
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>
@@ -339,7 +324,6 @@ const CreateMemory = ({ onAddMemory }) => {
   const mediaRecorderRef = useRef(null);
 
   const handleMultiImageUpload = async (e) => {
-    // Limit to 4 images to prevent crashing the browser with massive Base64 strings
     const files = Array.from(e.target.files).slice(0, 4);
     if (!files.length) return;
 
@@ -371,18 +355,20 @@ const CreateMemory = ({ onAddMemory }) => {
       let options = {};
       if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
       else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
+      else if (MediaRecorder.isTypeSupported('audio/aac')) options = { mimeType: 'audio/aac' };
       
       mediaRecorderRef.current = new MediaRecorder(stream, options);
       const audioChunks = [];
-      mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorderRef.current.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorderRef.current.onstop = () => { 
-        const audioBlob = new Blob(audioChunks, { type: mediaRecorderRef.current.mimeType }); 
+        const actualMimeType = mediaRecorderRef.current.mimeType;
+        const audioBlob = new Blob(audioChunks, { type: actualMimeType }); 
         setVoiceBlob(audioBlob);
         setVoicePreview(URL.createObjectURL(audioBlob)); 
       };
       mediaRecorderRef.current.start(); 
       setIsRecording(true);
-    } catch (err) { alert("Microphone access denied."); }
+    } catch (err) { alert("Microphone access denied. Please check your browser permissions."); }
   };
 
   const stopRecording = () => { mediaRecorderRef.current.stop(); setIsRecording(false); };
@@ -460,8 +446,6 @@ const CreateMemory = ({ onAddMemory }) => {
 const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPhoto }) => {
   const [isUploading, setIsUploading] = useState(false);
 
-  // Merge the standalone Gallery photos and the Memory photos!
-  // Uses the backwards compatibility check for the image source
   const combinedPhotos = [
     ...galleryPhotos.map(p => ({ ...p, source: 'gallery' })),
     ...memories.filter(m => (m.images && m.images.length > 0) || m.img).map(m => ({ 
@@ -509,7 +493,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-800">Our Gallery 📷</h1>
           <p className="text-gray-500 mt-2 text-sm md:text-base">A collection of our favorite moments and memories.</p>
         </div>
-        
         <label className="bg-[#8B1235] text-white px-6 py-3 rounded-full cursor-pointer hover:bg-[#6A0D28] transition shadow-md font-medium flex items-center gap-2 w-full md:w-auto justify-center">
           {isUploading ? (
             <><span className="animate-pulse">Uploading Photos...</span></>
@@ -530,11 +513,9 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           <AnimatePresence>
             {combinedPhotos.map((photo, index) => {
               const rotateValue = rotations[index % rotations.length];
-              
               return (
                 <motion.div 
-                  key={photo.id}
-                  layout
+                  key={photo.id} layout
                   initial={{ opacity: 0, scale: 0.8, y: 20, rotate: rotateValue }}
                   animate={{ opacity: 1, scale: 1, y: 0, rotate: rotateValue }}
                   exit={{ opacity: 0, scale: 0.8, filter: 'blur(5px)' }}
@@ -545,13 +526,9 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                   <div className="w-full aspect-square bg-gray-200 overflow-hidden shadow-inner border border-black/5">
                     <img src={photo.imgUrl} className="w-full h-full object-cover" alt={photo.heading} />
                   </div>
-                  
                   <div className="absolute bottom-0 left-0 w-full h-12 md:h-16 flex items-center justify-center px-4">
-                    <p className="font-serif italic text-gray-800 text-sm md:text-base font-medium truncate text-center w-full">
-                      {photo.heading}
-                    </p>
+                    <p className="font-serif italic text-gray-800 text-sm md:text-base font-medium truncate text-center w-full">{photo.heading}</p>
                   </div>
-
                   {photo.source === 'gallery' && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); deleteGalleryPhoto(photo.id); }}
@@ -561,11 +538,8 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                       <Trash2 size={16} />
                     </button>
                   )}
-                  
                   {photo.source === 'memory' && (
-                    <div className="absolute top-4 left-4 bg-white/90 px-2 py-1 rounded text-[10px] uppercase font-bold text-rose-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                      From Memory
-                    </div>
+                    <div className="absolute top-4 left-4 bg-white/90 px-2 py-1 rounded text-[10px] uppercase font-bold text-rose-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">From Memory</div>
                   )}
                 </motion.div>
               );
@@ -587,8 +561,6 @@ const Memories = ({ memories, deleteMemory }) => {
     <div className="max-w-6xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">All Memories 💭</h1>
-        
-        {/* LAYOUT TOGGLE */}
         <div className="flex bg-white/60 backdrop-blur-md p-1 rounded-xl shadow-sm border border-white">
           <button onClick={() => setLayout('grid')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${layout === 'grid' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Grid View</button>
           <button onClick={() => setLayout('story')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${layout === 'story' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Story View</button>
@@ -611,7 +583,6 @@ const Memories = ({ memories, deleteMemory }) => {
                   <Trash2 size={16} />
                 </button>
                 
-                {/* MULTIPLE IMAGES RENDERER (Includes Backwards Compatibility) */}
                 {m.images && m.images.length > 0 ? (
                   <div className={`grid gap-2 mb-6 ${m.images.length === 1 ? 'grid-cols-1' : m.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
                     {m.images.map((imgBase64, i) => (
@@ -626,7 +597,6 @@ const Memories = ({ memories, deleteMemory }) => {
                 
                 <h3 className={`${layout === 'story' ? 'text-3xl' : 'text-2xl'} font-bold text-gray-800 font-serif mb-1`}>{m.title}</h3>
                 <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-3">{m.date}</p>
-                
                 {m.location && <p className="text-sm text-gray-500 mb-4 flex items-center gap-1 font-medium"><MapPin size={14} className="text-blue-400" /> {m.location}</p>}
                 {m.description && <p className={`text-gray-600 leading-relaxed flex-1 ${layout === 'story' ? 'text-lg' : 'text-sm mb-4'}`}>{m.description}</p>}
                 {m.voiceNote && <AudioPlayer src={m.voiceNote} />}
@@ -667,26 +637,18 @@ const LovelyMap = ({ memories }) => {
     const fetchCoordinates = async () => {
       const placesWithCoords = [];
       const places = memories.filter(m => m.location);
-      
       for (const place of places) {
         await new Promise(resolve => setTimeout(resolve, 600));
         try {
           const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place.location)}&format=json&limit=1`);
           const data = await response.json();
           if (data && data.length > 0) {
-            placesWithCoords.push({
-              ...place,
-              lat: parseFloat(data[0].lat),
-              lng: parseFloat(data[0].lon)
-            });
+            placesWithCoords.push({ ...place, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
           }
-        } catch (error) {
-          console.error("Error finding coordinates for:", place.location);
-        }
+        } catch (error) { console.error("Error finding coordinates for:", place.location); }
       }
       setMarkers(placesWithCoords);
     };
-
     fetchCoordinates();
   }, [memories]);
 
@@ -700,15 +662,12 @@ const LovelyMap = ({ memories }) => {
           {markers.length} {markers.length === 1 ? 'Pin' : 'Pins'} Dropped
         </p>
       </div>
-      
       <div className="bg-white/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] shadow-sm border border-white/40">
         <div className="w-full h-[500px] md:h-[650px] rounded-2xl overflow-hidden shadow-inner border-4 border-white relative z-0">
           <MapContainer center={center} zoom={7} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png" />
             {markers.map((marker, idx) => {
-              // Safety check for map image cover
               const coverImg = (marker.images && marker.images.length > 0) ? marker.images[0] : marker.img;
-              
               return (
                 <Marker key={idx} position={[marker.lat, marker.lng]} icon={lovelyHeartMarker}>
                   <Popup className="custom-popup border-0 shadow-lg rounded-xl">
@@ -746,7 +705,6 @@ const LockedLetter = ({ letter }) => {
       const days = Math.floor(distance / (1000 * 60 * 60 * 24));
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      
       return `${days}d ${hours}h ${minutes}m remaining`;
     };
 
@@ -789,10 +747,7 @@ const Letters = ({ letters, deleteLetter }) => {
               if (isLocked) {
                 return (
                   <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: idx * 0.1 }} key={letter.firestoreId || letter.id} className="relative group">
-                     <button 
-                        onClick={() => deleteLetter(letter.firestoreId || letter.id)} 
-                        className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50"
-                      >
+                     <button onClick={() => deleteLetter(letter.firestoreId || letter.id)} className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50">
                         <Trash2 size={16} />
                       </button>
                      <LockedLetter letter={letter} />
@@ -802,8 +757,7 @@ const Letters = ({ letters, deleteLetter }) => {
 
               return (
                 <motion.div 
-                  key={letter.firestoreId || letter.id} 
-                  layout
+                  key={letter.firestoreId || letter.id} layout
                   initial={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
                   animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, scale: 0.9, filter: 'blur(5px)' }}
@@ -811,10 +765,7 @@ const Letters = ({ letters, deleteLetter }) => {
                   whileHover={{ scale: 1.01 }} 
                   className={`relative overflow-hidden rounded-3xl shadow-sm border border-gray-100 min-h-[300px] flex flex-col group ${letter.layout === 'image-background' ? 'text-white' : 'bg-white/80 backdrop-blur-md text-gray-800'}`}
                 >
-                  <button 
-                    onClick={() => deleteLetter(letter.firestoreId || letter.id)} 
-                    className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50"
-                  >
+                  <button onClick={() => deleteLetter(letter.firestoreId || letter.id)} className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50">
                     <Trash2 size={16} />
                   </button>
 
@@ -832,9 +783,7 @@ const Letters = ({ letters, deleteLetter }) => {
                     {letter.layout === 'image-top' && letter.img && (
                       <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} src={letter.img} alt="attachment" className="w-full h-48 object-cover rounded-xl mb-4 shadow-sm" />
                     )}
-                    <div className={`flex-1 whitespace-pre-wrap text-lg leading-relaxed ${letter.font}`}>
-                      {letter.content}
-                    </div>
+                    <div className={`flex-1 whitespace-pre-wrap text-lg leading-relaxed ${letter.font}`}>{letter.content}</div>
                     {letter.layout === 'image-bottom' && letter.img && (
                       <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} src={letter.img} alt="attachment" className="w-full h-48 object-cover rounded-xl mt-6 shadow-sm" />
                     )}
@@ -853,8 +802,8 @@ const CreateLetter = ({ onAddLetter }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ title: '', content: '', font: 'font-serif', img: '', layout: 'image-top', unlockDate: '' });
   const [isSaving, setIsSaving] = useState(false);
-
   const symbols = ['♡', '✨', '🌙', '🌸', '🦋', '💌', '♾️', '💍', '🥺', '❤️'];
+
   const handleAddSymbol = (sym) => setFormData({ ...formData, content: formData.content + sym });
 
   const handleImageUpload = async (e) => {
@@ -865,9 +814,7 @@ const CreateLetter = ({ onAddLetter }) => {
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
         setFormData({ ...formData, img: base64String }); 
-      } catch (error) {
-        alert("Failed to process image. Try a slightly smaller picture.");
-      }
+      } catch (error) { alert("Failed to process image. Try a slightly smaller picture."); }
     }
   };
 
@@ -877,11 +824,9 @@ const CreateLetter = ({ onAddLetter }) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
     setIsSaving(true);
-    
     const now = new Date();
     const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    
     const success = await onAddLetter({ ...formData, date, time });
     setIsSaving(false);
     if (success) navigate('/letters');
@@ -932,9 +877,7 @@ const CreateLetter = ({ onAddLetter }) => {
           ) : (
             <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-sm group">
               <img src={formData.img} alt="Preview" className="w-full h-full object-cover" />
-              <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md">
-                <Trash2 size={18} />
-              </button>
+              <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md"><Trash2 size={18} /></button>
             </div>
           )}
         </div>
@@ -948,7 +891,6 @@ const CreateLetter = ({ onAddLetter }) => {
           </div>
           <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 resize-none ${formData.font}`} />
         </div>
-
         <button type="submit" disabled={isSaving} className="w-full bg-[#8B1235] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[#6A0D28] shadow-md">
           {isSaving ? "Sealing envelope... 💌" : "Seal & Save Letter 💌"}
         </button>
@@ -976,7 +918,7 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
     toggleGoal(id, !isCompleted);
     if (!isCompleted) {
       setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 4000); // Stop confetti after 4 seconds
+      setTimeout(() => setShowConfetti(false), 4000); 
     }
   };
 
@@ -1010,115 +952,169 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
 };
 
 // ==========================================
-// 12. THE JUKEBOX (OUR SONGS) 🎵
+// 12. THE PROMISE JAR 🫙
 // ==========================================
-const Jukebox = ({ songs, addSong, deleteSong }) => {
-  const [newSong, setNewSong] = useState({ title: '', artist: '', url: '' });
+const PromiseJar = ({ promises, addPromise, deletePromise }) => {
+  const [newPromise, setNewPromise] = useState('');
+  const [drawnPromise, setDrawnPromise] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!newSong.title || !newSong.url) return;
-    addSong(newSong);
-    setNewSong({ title: '', artist: '', url: '' });
+    if (!newPromise.trim()) return;
+    addPromise({ text: newPromise });
+    setNewPromise('');
+  };
+
+  const drawRandomPromise = () => {
+    if (promises.length === 0) return alert("The jar is empty! Add a sweet note first.");
+    const randomIdx = Math.floor(Math.random() * promises.length);
+    setDrawnPromise(promises[randomIdx]);
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
-      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">The Jukebox 🎶</h1>
-      
-      <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white/40 mb-10 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <input type="text" required placeholder="Song Title" value={newSong.title} onChange={e => setNewSong({...newSong, title: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-purple-400 bg-white/80" />
-        <input type="text" placeholder="Artist" value={newSong.artist} onChange={e => setNewSong({...newSong, artist: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-purple-400 bg-white/80" />
-        <input type="url" required placeholder="Spotify / YouTube Link" value={newSong.url} onChange={e => setNewSong({...newSong, url: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-purple-400 bg-white/80" />
-        <button type="submit" className="bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition">Add Song</button>
-      </form>
+    <div className="max-w-4xl mx-auto pb-10">
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">The Promise Jar 🫙</h1>
+      <p className="text-gray-500 mb-10">Leave a tiny promise, a compliment, or a sweet note. Draw one out when you need a smile.</p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <AnimatePresence>
-          {songs.map(song => (
-            <motion.div key={song.id} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1e1e1e] p-6 rounded-3xl shadow-xl flex flex-col items-center group relative overflow-hidden border-4 border-gray-900">
-              <button onClick={() => deleteSong(song.id)} className="absolute top-3 right-3 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition z-20"><Trash2 size={16}/></button>
-              
-              {/* Vinyl Record Design */}
-              <a href={song.url} target="_blank" rel="noopener noreferrer" className="relative w-32 h-32 bg-black rounded-full border-4 border-gray-800 flex items-center justify-center shadow-2xl group-hover:animate-[spin_4s_linear_infinite] mb-4">
-                <div className="absolute inset-0 rounded-full border border-gray-700 m-2"></div>
-                <div className="absolute inset-0 rounded-full border border-gray-700 m-4"></div>
-                <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center border-2 border-black">
-                  <div className="w-2 h-2 bg-black rounded-full"></div>
+      <div className="grid md:grid-cols-2 gap-10">
+        <div className="flex flex-col items-center justify-center bg-white/40 p-10 rounded-3xl border border-white/50 shadow-sm relative">
+          {/* Jar Visual */}
+          <div 
+            onClick={drawRandomPromise}
+            className="w-48 h-64 border-4 border-gray-300 bg-blue-50/30 rounded-b-3xl rounded-t-xl relative cursor-pointer hover:scale-105 transition-transform shadow-inner flex items-center justify-center overflow-hidden"
+          >
+            <div className="absolute top-0 w-full h-8 bg-gray-300 border-b-4 border-gray-400 opacity-80"></div>
+            {promises.length > 0 ? (
+              <div className="flex flex-wrap justify-center p-4 gap-2 absolute bottom-4">
+                {promises.slice(0, 15).map((_, i) => (
+                  <div key={i} className="w-8 h-8 bg-pink-200 rotate-12 shadow-sm opacity-80" style={{ transform: `rotate(${Math.random() * 40 - 20}deg)` }}></div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 font-medium z-10">Empty</p>
+            )}
+          </div>
+          <p className="mt-6 text-sm font-bold text-gray-500 uppercase tracking-widest cursor-pointer hover:text-pink-500 transition-colors" onClick={drawRandomPromise}>
+            Tap to draw a note
+          </p>
+        </div>
+
+        <div>
+          <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-white mb-8">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Add to the Jar</h3>
+            <textarea 
+              value={newPromise}
+              onChange={(e) => setNewPromise(e.target.value)}
+              placeholder="e.g. I promise to always bring you coffee... or just 'You look beautiful today.'"
+              className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 resize-none font-serif"
+              rows="4"
+            />
+            <button type="submit" className="w-full mt-4 bg-[#8B1235] text-white py-3 rounded-xl font-bold hover:bg-[#6A0D28] transition-colors shadow-sm">Fold & Drop in Jar</button>
+          </form>
+
+          {/* List to manage them */}
+          {promises.length > 0 && (
+            <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+              {promises.map((p) => (
+                <div key={p.id} className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                  <p className="text-sm text-gray-600 truncate flex-1 font-serif italic">"{p.text}"</p>
+                  <button onClick={() => deletePromise(p.id)} className="text-gray-400 hover:text-red-500 ml-2"><Trash2 size={16}/></button>
                 </div>
-              </a>
-              
-              <h3 className="text-white font-bold text-center truncate w-full">{song.title}</h3>
-              <p className="text-gray-400 text-sm text-center truncate w-full">{song.artist}</p>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      <AnimatePresence>
+        {drawnPromise && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
+            <motion.div initial={{ scale: 0.8, y: 50, rotate: -5 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 20 }} className="bg-[#FCF8F9] p-10 max-w-md w-full rounded-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-4 bg-yellow-200/50 rotate-2 shadow-sm"></div>
+              <button onClick={() => setDrawnPromise(null)} className="absolute top-2 right-3 text-gray-400 hover:text-gray-800"><X size={20}/></button>
+              <p className="text-2xl font-serif text-gray-800 text-center leading-relaxed italic mt-4">"{drawnPromise.text}"</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 // ==========================================
-// 13. COUNTDOWN DATES ⏳
+// 13. FREEFORM MOOD BOARD 📌
 // ==========================================
-const CountdownCard = ({ countdown, deleteCountdown }) => {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const distance = new Date(countdown.date).getTime() - new Date().getTime();
-      if (distance < 0) return clearInterval(timer);
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        secs: Math.floor((distance % (1000 * 60)) / 1000)
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [countdown.date]);
-
-  return (
-    <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-rose-50 to-pink-50 p-6 md:p-8 rounded-[2rem] shadow-sm border border-white relative group">
-      <button onClick={() => deleteCountdown(countdown.id)} className="absolute top-4 right-4 text-pink-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 size={18}/></button>
-      <h3 className="text-2xl font-serif font-bold text-[#8B1235] mb-6 text-center">{countdown.title}</h3>
-      <div className="flex justify-center gap-4 text-center">
-        {Object.entries(timeLeft).map(([unit, value]) => (
-          <div key={unit} className="flex flex-col items-center">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center text-2xl md:text-3xl font-bold text-gray-800 font-mono border border-pink-100">{value}</div>
-            <span className="text-xs font-bold text-pink-400 uppercase mt-2">{unit}</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-center text-gray-400 text-xs mt-6">{new Date(countdown.date).toLocaleDateString()}</p>
-    </motion.div>
-  );
-};
-
-const Countdowns = ({ countdowns, addCountdown, deleteCountdown }) => {
-  const [newCD, setNewCD] = useState({ title: '', date: '' });
-
-  const handleSubmit = (e) => {
+const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem }) => {
+  const [newText, setNewText] = useState("");
+  
+  const handleAddText = (e) => {
     e.preventDefault();
-    if (!newCD.title || !newCD.date) return;
-    addCountdown(newCD);
-    setNewCD({ title: '', date: '' });
+    if(!newText.trim()) return;
+    addBoardItem({ type: 'text', content: newText, x: 50, y: 50 });
+    setNewText('');
+  };
+
+  const handleAddImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const options = { maxSizeMB: 0.3, maxWidthOrHeight: 600, useWebWorker: true };
+      const compressed = await imageCompression(file, options);
+      const base64 = await fileToBase64(compressed);
+      addBoardItem({ type: 'image', content: base64, x: 80, y: 80 });
+    } catch (err) { alert("Image upload failed."); }
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
-      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Countdowns ⏳</h1>
-      
-      <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white/40 mb-10 flex flex-col md:flex-row gap-4">
-        <input type="text" required placeholder="Event Name (e.g. Anniversary)" value={newCD.title} onChange={e => setNewCD({...newCD, title: e.target.value})} className="flex-1 p-3 rounded-xl border outline-none focus:border-pink-400 bg-white/80" />
-        <input type="datetime-local" required value={newCD.date} onChange={e => setNewCD({...newCD, date: e.target.value})} className="p-3 rounded-xl border outline-none focus:border-pink-400 bg-white/80 text-gray-700" />
-        <button type="submit" className="bg-pink-500 text-white px-8 rounded-xl font-bold hover:bg-pink-600 transition">Start Timer</button>
-      </form>
+    <div className="max-w-6xl mx-auto pb-10 flex flex-col h-[calc(100vh-100px)]">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 shrink-0">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Mood Board 📌</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Drag items around. We save exactly where you leave them.</p>
+        </div>
+        
+        <div className="flex gap-3 bg-white/60 backdrop-blur-md p-2 rounded-2xl shadow-sm border border-white">
+          <form onSubmit={handleAddText} className="flex gap-2">
+            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type a sticky note..." className="px-4 py-2 rounded-xl text-sm border outline-none focus:border-rose-300 w-32 md:w-48" />
+            <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition"><StickyNote size={18}/></button>
+          </form>
+          <label className="bg-rose-100 text-rose-700 p-2 rounded-xl hover:bg-rose-200 transition cursor-pointer flex items-center justify-center">
+            <ImageIcon size={18} />
+            <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
+          </label>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AnimatePresence>
-          {countdowns.map(cd => <CountdownCard key={cd.id} countdown={cd} deleteCountdown={deleteCountdown} />)}
-        </AnimatePresence>
+      <div className="flex-1 bg-white/30 rounded-3xl border-2 border-dashed border-gray-300 relative overflow-hidden shadow-inner">
+        {boardItems.map(item => (
+          <motion.div
+            key={item.id}
+            drag
+            dragMomentum={false}
+            onDragEnd={(e, info) => {
+              // Update position locally/firebase on drop
+              updateBoardItem(item.id, { x: item.x + info.offset.x, y: item.y + info.offset.y });
+            }}
+            initial={{ x: item.x, y: item.y }}
+            className="absolute cursor-grab active:cursor-grabbing group shadow-md hover:shadow-xl transition-shadow"
+            style={{ touchAction: "none" }}
+          >
+            <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className="absolute -top-3 -right-3 bg-white text-red-500 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"><Trash2 size={14}/></button>
+            
+            {item.type === 'text' && (
+              <div className="bg-yellow-200 p-4 w-40 min-h-[100px] shadow-sm font-serif text-gray-800 text-sm leading-relaxed transform rotate-1">
+                {item.content}
+              </div>
+            )}
+
+            {item.type === 'image' && (
+              <div className="bg-white p-2 pb-8 w-48 shadow-sm transform -rotate-2">
+                <img src={item.content} className="w-full h-auto object-cover border border-gray-100 pointer-events-none" />
+              </div>
+            )}
+          </motion.div>
+        ))}
+        {boardItems.length === 0 && <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-medium">Board is empty. Add a note or polaroid!</div>}
       </div>
     </div>
   );
@@ -1359,8 +1355,8 @@ function App() {
   const [galleryPhotos, setGalleryPhotos] = useState([]);
   
   const [bucketList, setBucketList] = useState([]);
-  const [songs, setSongs] = useState([]);
-  const [countdowns, setCountdowns] = useState([]);
+  const [promises, setPromises] = useState([]);
+  const [boardItems, setBoardItems] = useState([]);
   
   const [loading, setLoading] = useState(true);
 
@@ -1390,13 +1386,13 @@ function App() {
         const bucketSnap = await getDocs(qBucket);
         setBucketList(bucketSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        const qSongs = query(collection(db, "songs"));
-        const songSnap = await getDocs(qSongs);
-        setSongs(songSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        const qPromises = query(collection(db, "promises"));
+        const promiseSnap = await getDocs(qPromises);
+        setPromises(promiseSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        const qCD = query(collection(db, "countdowns"), orderBy("date", "asc"));
-        const cdSnap = await getDocs(qCD);
-        setCountdowns(cdSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        const qBoard = query(collection(db, "moodboard"));
+        const boardSnap = await getDocs(qBoard);
+        setBoardItems(boardSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
       } catch (err) {
         console.error("Error fetching data: ", err);
@@ -1411,7 +1407,6 @@ function App() {
   // --- 2. DATABASE ACTIONS ---
   const addMemory = async (newMemoryData) => {
     try {
-      // Convert all uploaded images to Base64 strings
       const imagesBase64 = [];
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
         for (const file of newMemoryData.imgFiles) {
@@ -1428,7 +1423,7 @@ function App() {
         date: newMemoryData.date || '',
         location: newMemoryData.location || '',
         description: newMemoryData.description || '',
-        images: imagesBase64, // <-- Now saving as an array!
+        images: imagesBase64, 
         voiceNote: voiceBase64,
         id: Date.now() 
       };
@@ -1456,13 +1451,10 @@ function App() {
       const finalLetter = { ...newLetterData, createdAt: new Date().toISOString() };
       const docRef = await addDoc(collection(db, "letters"), finalLetter);
       setLetters(prev => [{ firestoreId: docRef.id, ...finalLetter }, ...prev]);
-      
-      // FIRE EMAIL NOTIFICATION INSTANTLY
       sendInstantNotification("Love Letter", finalLetter.title);
-      
       return true;
     } catch (err) {
-      if (err.code === 'resource-exhausted') alert("Attached image is too large! Try a smaller picture.");
+      alert("Attached image is too large! Try a smaller picture.");
       return false;
     }
   };
@@ -1496,52 +1488,57 @@ function App() {
     } catch (err) { console.error("Error deleting quote: ", err); }
   };
 
-  // --- BUCKET LIST ACTIONS ---
   const addGoal = async (goal) => {
     try {
       const docRef = await addDoc(collection(db, "bucketlist"), goal);
       setBucketList(prev => [...prev, { id: docRef.id, ...goal }]);
-    } catch (err) { console.error("Error adding goal: ", err); }
+    } catch (err) { console.error(err); }
   };
   const toggleGoal = async (id, completed) => {
     try {
       await updateDoc(doc(db, "bucketlist", id), { completed });
       setBucketList(prev => prev.map(g => g.id === id ? { ...g, completed } : g));
-    } catch (err) { console.error("Error updating goal: ", err); }
+    } catch (err) { console.error(err); }
   };
   const deleteGoal = async (id) => {
     try {
       await deleteDoc(doc(db, "bucketlist", id));
       setBucketList(prev => prev.filter(g => g.id !== id));
-    } catch (err) { console.error("Error deleting goal: ", err); }
+    } catch (err) { console.error(err); }
   };
 
-  // --- JUKEBOX ACTIONS ---
-  const addSong = async (song) => {
+  // --- PROMISE JAR ACTIONS ---
+  const addPromise = async (promise) => {
     try {
-      const docRef = await addDoc(collection(db, "songs"), song);
-      setSongs(prev => [...prev, { id: docRef.id, ...song }]);
-    } catch (err) { console.error("Error adding song: ", err); }
+      const docRef = await addDoc(collection(db, "promises"), promise);
+      setPromises(prev => [...prev, { id: docRef.id, ...promise }]);
+    } catch (err) { console.error(err); }
   };
-  const deleteSong = async (id) => {
+  const deletePromise = async (id) => {
     try {
-      await deleteDoc(doc(db, "songs", id));
-      setSongs(prev => prev.filter(s => s.id !== id));
-    } catch (err) { console.error("Error deleting song: ", err); }
+      await deleteDoc(doc(db, "promises", id));
+      setPromises(prev => prev.filter(p => p.id !== id));
+    } catch (err) { console.error(err); }
   };
 
-  // --- COUNTDOWN ACTIONS ---
-  const addCountdown = async (cd) => {
+  // --- MOOD BOARD ACTIONS ---
+  const addBoardItem = async (item) => {
     try {
-      const docRef = await addDoc(collection(db, "countdowns"), cd);
-      setCountdowns(prev => [...prev, { id: docRef.id, ...cd }]);
-    } catch (err) { console.error("Error adding countdown: ", err); }
+      const docRef = await addDoc(collection(db, "moodboard"), item);
+      setBoardItems(prev => [...prev, { id: docRef.id, ...item }]);
+    } catch (err) { console.error(err); }
   };
-  const deleteCountdown = async (id) => {
+  const updateBoardItem = async (id, newProps) => {
     try {
-      await deleteDoc(doc(db, "countdowns", id));
-      setCountdowns(prev => prev.filter(c => c.id !== id));
-    } catch (err) { console.error("Error deleting countdown: ", err); }
+      await updateDoc(doc(db, "moodboard", id), newProps);
+      setBoardItems(prev => prev.map(item => item.id === id ? { ...item, ...newProps } : item));
+    } catch (err) { console.error(err); }
+  };
+  const deleteBoardItem = async (id) => {
+    try {
+      await deleteDoc(doc(db, "moodboard", id));
+      setBoardItems(prev => prev.filter(i => i.id !== id));
+    } catch (err) { console.error(err); }
   };
 
   useEffect(() => {
@@ -1580,8 +1577,9 @@ function App() {
           <Route path="/memories" element={<Memories memories={memories} deleteMemory={deleteMemory} />} />
           
           <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={deleteGoal} />} />
-          <Route path="/jukebox" element={<Jukebox songs={songs} addSong={addSong} deleteSong={deleteSong} />} />
-          <Route path="/countdowns" element={<Countdowns countdowns={countdowns} addCountdown={addCountdown} deleteCountdown={deleteCountdown} />} /> 
+          
+          <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={deletePromise} />} />
+          <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
 
           <Route path="/settings" element={
             <SettingsPage 

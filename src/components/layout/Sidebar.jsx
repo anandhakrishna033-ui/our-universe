@@ -53,7 +53,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </button>
         </div>
 
-        <nav className="flex-1 p-5 space-y-2 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 p-5 space-y-2 overflow-y-auto custom-scrollbar">
           <Link to="/" className={getLinkClass('/')} onClick={closeMenu}>Dashboard</Link>
           <Link to="/memories" className={getLinkClass('/memories')} onClick={closeMenu}>Memories</Link>
           <Link to="/gallery" className={getLinkClass('/gallery')} onClick={closeMenu}>Gallery</Link>
@@ -62,8 +62,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           
           {/* NEW INTERACTIVE FEATURES */}
           <Link to="/bucket-list" className={getLinkClass('/bucket-list')} onClick={closeMenu}>Bucket List</Link>
-          <Link to="/jukebox" className={getLinkClass('/jukebox')} onClick={closeMenu}>Jukebox</Link>
-          <Link to="/countdowns" className={getLinkClass('/countdowns')} onClick={closeMenu}>Countdowns</Link>
+          <Link to="/promise-jar" className={getLinkClass('/promise-jar')} onClick={closeMenu}>Promise Jar</Link>
+          <Link to="/mood-board" className={getLinkClass('/mood-board')} onClick={closeMenu}>Mood Board</Link>
           
           <div className="pt-6 pb-2">
             <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -74,7 +74,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <Link to="/create-memory" className={getLinkClass('/create-memory')} onClick={closeMenu}>Add Memory</Link>
           <Link to="/places" className={getLinkClass('/places')} onClick={closeMenu}>Places</Link>
           <Link to="/settings" className={getLinkClass('/settings')} onClick={closeMenu}>Settings</Link>
-        </nav>
+        </nav>  
       </motion.aside>
     </>
   );
