@@ -1064,87 +1064,197 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
     </div>
   );
 };
-
 // ==========================================
-// 12. THE PROMISE JAR 🫙
+// 12. THE DUAL PROMISE JARS 🫙🫙 (WITH MAGICAL AUDIO)
 // ==========================================
 const PromiseJar = ({ promises, addPromise, deletePromise }) => {
   const [newPromise, setNewPromise] = useState('');
+  const [targetJar, setTargetJar] = useState('jar1'); 
   const [drawnPromise, setDrawnPromise] = useState(null);
+
+  // Editable Jar Names (Saves to local storage so they don't reset)
+  const [jar1Name, setJar1Name] = useState(() => localStorage.getItem('jar1Name') || "My Jar");
+  const [jar2Name, setJar2Name] = useState(() => localStorage.getItem('jar2Name') || "Her Jar");
+
+  useEffect(() => {
+    localStorage.setItem('jar1Name', jar1Name);
+    localStorage.setItem('jar2Name', jar2Name);
+  }, [jar1Name, jar2Name]);
+
+  // --- THE MAGICAL SOUND ENGINE ---
+  const playMagicalDropSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+
+      // Creates a soft, fading chime
+      const playTone = (freq, delay) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine'; // Smooth glass-like wave
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        
+        // Volume envelope: fades in fast, fades out slowly
+        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + delay + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 1.2);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 1.2);
+      };
+
+      // Play a quick, magical 3-note sparkle (C6, E6, G6)
+      playTone(1046.50, 0);   
+      playTone(1318.51, 0.1); 
+      playTone(1567.98, 0.2); 
+    } catch (err) {
+      console.log("Audio play blocked by browser. User must interact first.");
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newPromise.trim()) return;
-    addPromise({ text: newPromise });
+    
+    // Play the sparkling sound!
+    playMagicalDropSound();
+
+    // Tag the promise with the target jar before sending it to Firebase
+    addPromise({ text: newPromise, target: targetJar });
     setNewPromise('');
   };
 
-  const drawRandomPromise = () => {
-    if (promises.length === 0) return alert("The jar is empty! Add a sweet note first.");
-    const randomIdx = Math.floor(Math.random() * promises.length);
-    setDrawnPromise(promises[randomIdx]);
+  // Filter promises: If it's an old promise without a target, it defaults to jar1
+  const jar1Promises = promises.filter(p => p.target === 'jar1' || !p.target);
+  const jar2Promises = promises.filter(p => p.target === 'jar2');
+
+  const drawRandomPromise = (jarPromises) => {
+    if (jarPromises.length === 0) return alert("This jar is empty! Add a sweet note first.");
+    const randomIdx = Math.floor(Math.random() * jarPromises.length);
+    setDrawnPromise(jarPromises[randomIdx]);
   };
 
-  return (
-    <div className="max-w-4xl mx-auto pb-10">
-      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">The Promise Jar 🫙</h1>
-      <p className="text-gray-500 mb-10">Leave a tiny promise, a compliment, or a sweet note. Draw one out when you need a smile.</p>
+  // Reusable component for a single Jar
+  const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
+    <div className="flex flex-col items-center justify-center bg-white/40 p-6 md:p-8 rounded-3xl border border-white/50 shadow-sm relative w-full group">
+      
+      {/* Editable Name Tag */}
+      <input 
+        type="text" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+        className="text-xl md:text-2xl font-serif font-bold text-[#8B1235] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-pink-200 mb-6 w-full transition-colors"
+        placeholder="Name this jar..."
+      />
 
-      <div className="grid md:grid-cols-2 gap-10">
-        <div className="flex flex-col items-center justify-center bg-white/40 p-10 rounded-3xl border border-white/50 shadow-sm relative">
-          {/* Jar Visual */}
-          <div 
-            onClick={drawRandomPromise}
-            className="w-48 h-64 border-4 border-gray-300 bg-blue-50/30 rounded-b-3xl rounded-t-xl relative cursor-pointer hover:scale-105 transition-transform shadow-inner flex items-center justify-center overflow-hidden"
-          >
-            <div className="absolute top-0 w-full h-8 bg-gray-300 border-b-4 border-gray-400 opacity-80"></div>
-            {promises.length > 0 ? (
-              <div className="flex flex-wrap justify-center p-4 gap-2 absolute bottom-4">
-                {promises.slice(0, 15).map((_, i) => (
-                  <div key={i} className="w-8 h-8 bg-pink-200 rotate-12 shadow-sm opacity-80" style={{ transform: `rotate(${Math.random() * 40 - 20}deg)` }}></div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-400 font-medium z-10">Empty</p>
-            )}
-          </div>
-          <p className="mt-6 text-sm font-bold text-gray-500 uppercase tracking-widest cursor-pointer hover:text-pink-500 transition-colors" onClick={drawRandomPromise}>
-            Tap to draw a note
-          </p>
+      {/* The Glass Jar */}
+      <div 
+        onClick={() => onDraw(jarPromises)}
+        className={`w-40 h-56 border-4 border-gray-300 ${color} rounded-b-[2.5rem] rounded-t-xl relative cursor-pointer hover:scale-105 transition-transform shadow-inner flex flex-col justify-end overflow-hidden pb-3`}
+      >
+        {/* Jar Lid/Rim */}
+        <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20"></div>
+        
+        {/* The Falling Notes Area */}
+        <div className="flex flex-wrap-reverse justify-center content-start w-full h-[90%] px-2 gap-1 overflow-hidden relative z-10">
+          <AnimatePresence>
+            {jarPromises.map((p, i) => (
+              <motion.div 
+                key={p.id || i}
+                // THE FALLING ANIMATION: Starts 200px above the jar and drops in!
+                initial={{ y: -200, opacity: 0, rotate: Math.random() * 60 - 30 }}
+                animate={{ y: 0, opacity: 0.85, rotate: Math.random() * 40 - 20 }}
+                transition={{ type: "spring", bounce: 0.5, duration: 0.8 }}
+                className="w-8 h-8 bg-pink-100 shadow-sm border border-pink-200"
+              ></motion.div>
+            ))}
+          </AnimatePresence>
         </div>
-
-        <div>
-          <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-white mb-8">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Add to the Jar</h3>
-            <textarea 
-              value={newPromise}
-              onChange={(e) => setNewPromise(e.target.value)}
-              placeholder="e.g. I promise to always bring you coffee... or just 'You look beautiful today.'"
-              className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 resize-none font-serif"
-              rows="4"
-            />
-            <button type="submit" className="w-full mt-4 bg-[#8B1235] text-white py-3 rounded-xl font-bold hover:bg-[#6A0D28] transition-colors shadow-sm">Fold & Drop in Jar</button>
-          </form>
-
-          {/* List to manage them */}
-          {promises.length > 0 && (
-            <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-              {promises.map((p) => (
-                <div key={p.id} className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-                  <p className="text-sm text-gray-600 truncate flex-1 font-serif italic">"{p.text}"</p>
-                  <button onClick={() => deletePromise(p.id)} className="text-gray-400 hover:text-red-500 ml-2"><Trash2 size={16}/></button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        
+        {jarPromises.length === 0 && (
+          <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 font-medium z-10 text-sm">Empty</p>
+        )}
       </div>
 
+      <p className="mt-6 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-pink-500 transition-colors" onClick={() => onDraw(jarPromises)}>
+        Tap jar to draw
+      </p>
+    </div>
+  );
+
+  return (
+    <div className="max-w-5xl mx-auto pb-10">
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800 text-center md:text-left">The Promise Jars 🫙</h1>
+      
+      <div className="grid md:grid-cols-2 gap-8 mb-12">
+        {/* Render Jar 1 */}
+        <JarVisual name={jar1Name} setName={setJar1Name} jarPromises={jar1Promises} onDraw={drawRandomPromise} color="bg-blue-50/30" />
+        {/* Render Jar 2 */}
+        <JarVisual name={jar2Name} setName={setJar2Name} jarPromises={jar2Promises} onDraw={drawRandomPromise} color="bg-rose-50/30" />
+      </div>
+
+      {/* The Unified Form */}
+      <div className="max-w-2xl mx-auto">
+        <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-md p-6 md:p-8 rounded-[2rem] shadow-sm border border-white">
+          <h3 className="text-xl font-serif font-bold text-gray-800 mb-6">Fold a New Note ✍️</h3>
+          
+          {/* Target Jar Toggle Switch */}
+          <div className="flex bg-white p-1 rounded-xl shadow-inner border border-gray-100 mb-4 w-max">
+            <button 
+              type="button" 
+              onClick={() => setTargetJar('jar1')} 
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar1' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              For {jar1Name}
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setTargetJar('jar2')} 
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar2' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              For {jar2Name}
+            </button>
+          </div>
+
+          <textarea 
+            value={newPromise}
+            onChange={(e) => setNewPromise(e.target.value)}
+            placeholder="Write a tiny promise, compliment, or memory here..."
+            className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-pink-300 bg-white/50 resize-none font-serif text-lg"
+            rows="3"
+          />
+          <button type="submit" className="w-full mt-4 bg-[#8B1235] text-white py-4 rounded-xl font-bold hover:bg-[#6A0D28] transition-all hover:shadow-lg shadow-sm flex items-center justify-center gap-2">
+            Drop Note into Jar <ChevronDown size={18} />
+          </button>
+        </form>
+
+        {/* Master List to manage/delete them */}
+        {promises.length > 0 && (
+          <div className="mt-8 pt-8 border-t border-gray-200 space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Manage All Notes</p>
+            {promises.map((p) => (
+              <div key={p.id} className="flex justify-between items-center bg-white/80 p-4 rounded-xl shadow-sm border border-white">
+                <div>
+                  <p className="text-sm font-bold text-rose-500 uppercase text-[10px] mb-1">
+                    In {p.target === 'jar2' ? jar2Name : jar1Name}
+                  </p>
+                  <p className="text-gray-700 font-serif italic pr-4">"{p.text}"</p>
+                </div>
+                <button onClick={() => deletePromise(p.id)} className="text-gray-400 hover:text-red-500 ml-2 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16}/></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* The Popup when a note is drawn */}
       <AnimatePresence>
         {drawnPromise && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
-            <motion.div initial={{ scale: 0.8, y: 50, rotate: -5 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 20 }} className="bg-[#FCF8F9] p-10 max-w-md w-full rounded-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-4 bg-yellow-200/50 rotate-2 shadow-sm"></div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
+            <motion.div initial={{ scale: 0.5, y: 100, rotate: -10 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 20 }} transition={{ type: "spring", bounce: 0.4 }} className="bg-[#FCF8F9] p-10 max-w-md w-full rounded-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-16 h-5 bg-yellow-200/60 rotate-2 shadow-sm"></div>
               <button onClick={() => setDrawnPromise(null)} className="absolute top-2 right-3 text-gray-400 hover:text-gray-800"><X size={20}/></button>
               <p className="text-2xl font-serif text-gray-800 text-center leading-relaxed italic mt-4">"{drawnPromise.text}"</p>
             </motion.div>
@@ -1154,7 +1264,6 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
     </div>
   );
 };
-
 // ==========================================
 // 13. FREEFORM MOOD BOARD 📌 (PRO SCRAPBOOK EDITION)
 // ==========================================
