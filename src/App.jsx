@@ -1684,19 +1684,23 @@ function App() {
   
   const [loading, setLoading] = useState(false);
 
-  // --- 1. FETCH FROM FIREBASE (FILTERED BY UNIVERSE ID) ---
+ // --- 1. FETCH FROM FIREBASE (FILTERED BY UNIVERSE ID) ---
   useEffect(() => {
-    if (!isAuthenticated || !activeUniverse) return;
+    // THIS IS THE GUARD CLAUSE
+    if (!isAuthenticated || !activeUniverse) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const fetchData = async () => {
       try {
-        // We use a helper to query and then sort locally (prevents Firebase indexing errors)
         const fetchAndSort = async (colName, sortField = 'id') => {
           const q = query(collection(db, colName), where("universeId", "==", activeUniverse));
           const snap = await getDocs(q);
           const data = snap.docs.map(doc => ({ firestoreId: doc.id, id: doc.id, ...doc.data() }));
-          return data.sort((a, b) => (b[sortField] > a[sortField] ? 1 : -1)); // Descending sort
+          return data.sort((a, b) => (b[sortField] > a[sortField] ? 1 : -1));
         };
 
         setMemories(await fetchAndSort('memories'));
@@ -1706,7 +1710,6 @@ function App() {
         setBucketList(await fetchAndSort('bucketlist'));
         setPromises(await fetchAndSort('promises'));
         setBoardItems(await fetchAndSort('moodboard'));
-
       } catch (err) {
         console.error("Error fetching data: ", err);
       } finally {
@@ -1716,7 +1719,6 @@ function App() {
     
     fetchData();
   }, [isAuthenticated, activeUniverse]);
-
   // --- 2. DATABASE ACTIONS (STAMPED WITH UNIVERSE ID) ---
   const addMemory = async (newMemoryData) => {
     try {
