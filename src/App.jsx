@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X } from 'lucide-react';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -608,27 +608,142 @@ const Memories = ({ memories, deleteMemory }) => {
     </div>
   );
 };
+// ==========================================
+// 7. TIMELINE & LOVELY MAP PLACES (PRO EDITION)
+// ==========================================
+const Timeline = ({ memories }) => {
+  const [expandedId, setExpandedId] = useState(null);
+  const [likedMemories, setLikedMemories] = useState({});
 
-// ==========================================
-// 7. TIMELINE & LOVELY MAP PLACES
-// ==========================================
-const Timeline = ({ memories }) => (
-  <div className="max-w-3xl mx-auto pb-10">
-    <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8">Our Journey 🕰️</h1>
-    <div className="border-l-2 border-pink-200 ml-4 md:ml-6 pl-6 md:pl-10 space-y-8">
-      {memories.map((m) => (
-        <div key={m.firestoreId || m.id} className="relative">
-          <div className="absolute -left-[35px] md:-left-[51px] w-5 h-5 bg-[#8B1235] rounded-full border-4 border-[#FCF8F9]"></div>
-          <div className="bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-white">
-            <span className="text-xs font-bold text-pink-400 uppercase tracking-wider">{m.date}</span>
-            <h3 className="text-xl font-serif font-bold text-gray-800 mt-1 mb-2">{m.title}</h3>
-            {m.description && <p className="text-gray-600 text-sm">{m.description}</p>}
-          </div>
-        </div>
-      ))}
+  const toggleExpand = (id) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  const toggleLike = (e, id) => {
+    e.stopPropagation();
+    setLikedMemories(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Sort memories chronologically (oldest to newest) for a true journey timeline
+  const sortedMemories = [...memories].reverse();
+
+  return (
+    <div className="max-w-5xl mx-auto pb-20 px-4 md:px-8 relative">
+      
+      <div className="text-center mb-16 relative z-10">
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-800 mb-3">Our Journey 🕰️</h1>
+        <p className="text-gray-500 font-medium">Every step we've taken, beautifully unfolding.</p>
+      </div>
+
+      {/* The Central Glowing Line (Hidden on mobile, centered on desktop) */}
+      <div className="absolute left-8 md:left-1/2 top-32 bottom-0 w-1.5 md:-translate-x-1/2 rounded-full bg-gradient-to-b from-rose-200 via-pink-300 to-purple-200 opacity-60"></div>
+
+      <div className="space-y-12 md:space-y-24 relative z-10">
+        {sortedMemories.map((m, idx) => {
+          const isEven = idx % 2 === 0;
+          const isExpanded = expandedId === (m.firestoreId || m.id);
+          const isLiked = likedMemories[m.firestoreId || m.id];
+          const coverImg = (m.images && m.images.length > 0) ? m.images[0] : m.img;
+
+          return (
+            <motion.div 
+              key={m.firestoreId || m.id}
+              initial={{ opacity: 0, x: isEven ? -50 : 50, y: 20 }}
+              whileInView={{ opacity: 1, x: 0, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6, type: "spring", bounce: 0.3 }}
+              className={`flex flex-col md:flex-row items-center w-full ${isEven ? 'md:justify-start' : 'md:justify-end'} relative group`}
+            >
+              
+              {/* Center Timeline Node / Dot */}
+              <div className="absolute left-4 md:left-1/2 w-8 h-8 rounded-full border-4 border-[#FCF8F9] bg-[#8B1235] md:-translate-x-1/2 shadow-md z-20 group-hover:scale-125 group-hover:bg-rose-400 transition-all duration-300 flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
+
+              {/* The Memory Card */}
+              <div className={`w-full pl-16 md:pl-0 md:w-[45%] ${isEven ? 'md:pr-12' : 'md:pl-12'}`}>
+                <motion.div 
+                  layout
+                  onClick={() => toggleExpand(m.firestoreId || m.id)}
+                  className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white hover:shadow-xl transition-shadow cursor-pointer relative overflow-hidden"
+                >
+                  {/* Small Floating Date Badge */}
+                  <div className="inline-block bg-rose-50 text-rose-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3 shadow-sm border border-rose-100">
+                    {m.date}
+                  </div>
+
+                  <div className="flex justify-between items-start gap-4">
+                    <h3 className="text-2xl font-serif font-bold text-gray-800 leading-tight mb-2">{m.title}</h3>
+                    
+                    {/* Like Button */}
+                    <button 
+                      onClick={(e) => toggleLike(e, m.firestoreId || m.id)} 
+                      className={`p-2 rounded-full transition-colors ${isLiked ? 'bg-rose-100 text-rose-500' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                    >
+                      <Heart size={18} fill={isLiked ? "currentColor" : "none"} className={isLiked ? "animate-pulse" : ""} />
+                    </button>
+                  </div>
+
+                  {/* Collapsed State Thumbnail */}
+                  {!isExpanded && coverImg && (
+                    <div className="w-full h-24 mt-3 rounded-xl overflow-hidden relative border border-gray-100">
+                      <img src={coverImg} className="w-full h-full object-cover filter brightness-95 group-hover:scale-105 transition-transform duration-700" alt={m.title} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                    </div>
+                  )}
+
+                  {/* Expanded Content Area */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }} 
+                        animate={{ opacity: 1, height: 'auto' }} 
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        {m.location && (
+                          <p className="text-sm text-gray-500 mt-3 mb-4 flex items-center gap-1 font-medium bg-gray-50 w-max px-3 py-1.5 rounded-lg border border-gray-100">
+                            <MapPin size={14} className="text-blue-500" /> {m.location}
+                          </p>
+                        )}
+                        
+                        {m.description && (
+                          <p className="text-gray-600 leading-relaxed text-md mb-6 bg-rose-50/30 p-4 rounded-2xl italic font-serif border-l-4 border-rose-300">
+                            "{m.description}"
+                          </p>
+                        )}
+
+                        {m.images && m.images.length > 0 ? (
+                          <div className={`grid gap-2 mb-4 ${m.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                            {m.images.map((imgBase64, i) => (
+                              <img key={i} src={imgBase64} className="w-full h-48 object-cover rounded-2xl shadow-sm border border-gray-100" />
+                            ))}
+                          </div>
+                        ) : m.img ? (
+                          <img src={m.img} className="w-full h-48 object-cover rounded-2xl shadow-sm mb-4 border border-gray-100" />
+                        ) : null}
+
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Expand/Collapse Indicator */}
+                  <div className="w-full flex justify-center mt-4 text-gray-300 group-hover:text-rose-400 transition-colors">
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </div>
+
+                </motion.div>
+              </div>
+            </motion.div>
+          );
+        })}
+        {memories.length === 0 && (
+          <div className="text-center text-gray-400 font-medium py-20">The journey begins when you add your first memory.</div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const LovelyMap = ({ memories }) => {
   const [markers, setMarkers] = useState([]);
@@ -686,7 +801,6 @@ const LovelyMap = ({ memories }) => {
     </div>
   );
 };
-
 // ==========================================
 // 8. TIME CAPSULE & LOVE LETTERS 💌
 // ==========================================
