@@ -1042,7 +1042,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
 };
 
 // ==========================================
-// 13. FREEFORM MOOD BOARD 📌 (EXPANDED & INTERACTIVE)
+// 13. FREEFORM MOOD BOARD 📌 (PRO SCRAPBOOK EDITION)
 // ==========================================
 const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem }) => {
   // Sticky Note States
@@ -1050,16 +1050,17 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
   const [noteColor, setNoteColor] = useState("bg-yellow-200");
   const [noteFont, setNoteFont] = useState("'Comic Sans MS', 'Chalkboard SE', cursive");
 
-  // Finger-Writing Pad States
+  // Edit Mode & Drawing States
+  const [editingId, setEditingId] = useState(null);
   const [showDrawPad, setShowDrawPad] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const canvasRef = useRef(null);
 
   const colors = [
-    { bg: 'bg-yellow-200', border: 'border-yellow-300' },
-    { bg: 'bg-pink-200', border: 'border-pink-300' },
-    { bg: 'bg-blue-200', border: 'border-blue-300' },
-    { bg: 'bg-green-200', border: 'border-green-300' }
+    { bg: 'bg-yellow-200', border: 'border-yellow-400' },
+    { bg: 'bg-pink-200', border: 'border-pink-400' },
+    { bg: 'bg-blue-200', border: 'border-blue-400' },
+    { bg: 'bg-green-200', border: 'border-green-400' }
   ];
 
   const fonts = [
@@ -1068,14 +1069,15 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     { label: 'Classic', css: "Georgia, serif" }
   ];
 
+  // --- Add Items ---
   const handleAddText = (e) => {
     e.preventDefault();
     if (!newText.trim()) return;
     const viewport = document.getElementById("board-viewport");
-    const startX = viewport ? viewport.scrollLeft + 100 : 100;
-    const startY = viewport ? viewport.scrollTop + 100 : 100;
+    const startX = viewport ? viewport.scrollLeft + 150 : 150;
+    const startY = viewport ? viewport.scrollTop + 150 : 150;
     
-    addBoardItem({ type: 'text', content: newText, x: startX, y: startY, w: 180, h: 180, color: noteColor, font: noteFont });
+    addBoardItem({ type: 'text', content: newText, x: startX, y: startY, w: 200, h: 200, color: noteColor, font: noteFont });
     setNewText('');
   };
 
@@ -1091,17 +1093,20 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
       const startX = viewport ? viewport.scrollLeft + 150 : 150;
       const startY = viewport ? viewport.scrollTop + 150 : 150;
       
+      // We start in Edit Mode automatically so you can crop it immediately!
       addBoardItem({ type: 'image', content: base64, x: startX, y: startY, w: 250, h: 250 });
     } catch (err) { alert("Image upload failed."); }
   };
 
-  // --- Finger Writing Functions ---
+  // --- Transparent Digital Ink Pad ---
   useEffect(() => {
     if (showDrawPad && canvasRef.current) {
       const canvas = canvasRef.current;
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
       const ctx = canvas.getContext("2d");
+      // Clear the background completely so it becomes transparent
+      ctx.clearRect(0, 0, canvas.width, canvas.height); 
       ctx.lineCap = "round";
       ctx.lineWidth = 4;
       ctx.strokeStyle = "#8B1235"; // Deep maroon ink
@@ -1121,7 +1126,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
 
   const draw = (e) => {
     if (!isDrawing || !canvasRef.current) return;
-    e.preventDefault(); // Stops the screen from scrolling while drawing
+    e.preventDefault(); 
     const ctx = canvasRef.current.getContext("2d");
     const rect = canvasRef.current.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -1134,127 +1139,168 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
 
   const saveDrawing = () => {
     if (!canvasRef.current) return;
+    // image/png preserves the transparent background!
     const base64 = canvasRef.current.toDataURL("image/png");
     const viewport = document.getElementById("board-viewport");
     const startX = viewport ? viewport.scrollLeft + 150 : 150;
     const startY = viewport ? viewport.scrollTop + 150 : 150;
     
-    addBoardItem({ type: 'image', content: base64, x: startX, y: startY, w: 300, h: 300 });
+    addBoardItem({ type: 'drawing', content: base64, x: startX, y: startY, w: 300, h: 300 });
     setShowDrawPad(false);
   };
 
   return (
     <div className="max-w-7xl mx-auto pb-10 flex flex-col h-[calc(100vh-100px)]">
+      
       {/* TOOLBAR */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 shrink-0">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 shrink-0 relative z-40">
         <div>
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Mood Board 📌</h1>
-          <p className="text-gray-500 mt-1 text-sm md:text-base">An infinite canvas. Scroll around, resize pictures, and leave handwritten notes.</p>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Double-click any item to Crop & Resize. Drag to move.</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 bg-white/60 backdrop-blur-md p-3 rounded-2xl shadow-sm border border-white">
+        <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-xl p-3 rounded-2xl shadow-sm border border-white">
           <form onSubmit={handleAddText} className="flex flex-wrap items-center gap-2 border-r border-gray-200 pr-3">
-            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type a sticky note..." className="px-4 py-2 rounded-xl text-sm border outline-none focus:border-rose-300 w-32 md:w-40" />
+            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type note..." className="px-3 py-2 rounded-xl text-sm border outline-none focus:border-rose-300 w-28 md:w-36 bg-white/50" />
             
-            {/* Color & Font Pickers */}
+            {/* Color Pickers */}
             <div className="flex gap-1">
               {colors.map(c => (
-                <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-6 h-6 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110' : c.border} transition-transform`}></button>
+                <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-5 h-5 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110 shadow-md' : c.border} transition-transform`}></button>
               ))}
             </div>
-            <select value={noteFont} onChange={e => setNoteFont(e.target.value)} className="px-2 py-1 text-xs border rounded-lg outline-none bg-white">
+            
+            {/* Font Picker */}
+            <select value={noteFont} onChange={e => setNoteFont(e.target.value)} className="px-2 py-1 text-xs border rounded-lg outline-none bg-white text-gray-600 font-medium cursor-pointer">
               {fonts.map(f => <option key={f.label} value={f.css}>{f.label}</option>)}
             </select>
             
-            <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition"><StickyNote size={18}/></button>
+            <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition shadow-sm"><StickyNote size={18}/></button>
           </form>
 
-          <label className="bg-rose-100 text-rose-700 px-4 py-2 rounded-xl hover:bg-rose-200 transition cursor-pointer flex items-center gap-2 font-medium text-sm">
-            <ImageIcon size={18} /> Add Pic
+          <label className="bg-rose-100 text-rose-700 px-4 py-2 rounded-xl hover:bg-rose-200 transition cursor-pointer flex items-center gap-2 font-bold text-sm shadow-sm">
+            <ImageIcon size={18} /> Pic
             <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
           </label>
 
-          <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-medium text-sm">
-            <PenTool size={18} /> Write
+          <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-bold text-sm shadow-sm">
+            <PenTool size={18} /> Ink
           </button>
         </div>
       </div>
 
       {/* INFINITE EXPANDING BOARD */}
-      <div id="board-viewport" className="flex-1 bg-gray-100/50 rounded-3xl border-4 border-white relative overflow-auto shadow-inner custom-scrollbar cursor-move">
-        <div className="w-[3000px] h-[3000px] relative" style={{ backgroundImage: 'radial-gradient(#e5e7eb 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
+      <div id="board-viewport" className="flex-1 bg-white/40 backdrop-blur-sm rounded-3xl border border-white relative overflow-auto shadow-inner custom-scrollbar" onClick={() => setEditingId(null)}>
+        
+        {/* The 3000x3000 Canvas */}
+        <div className="w-[3000px] h-[3000px] relative" style={{ backgroundImage: 'radial-gradient(#d1d5db 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
           
-          {boardItems.map(item => (
-            <motion.div
-              key={item.id}
-              drag
-              dragMomentum={false}
-              onDragEnd={(e, info) => updateBoardItem(item.id, { x: item.x + info.offset.x, y: item.y + info.offset.y })}
-              initial={{ x: item.x, y: item.y }}
-              className="absolute group shadow-md hover:shadow-2xl transition-shadow cursor-grab active:cursor-grabbing flex flex-col"
-              style={{ width: item.w || 200, height: item.h || 200 }}
-            >
-              {/* Delete Button */}
-              <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className="absolute -top-3 -right-3 bg-white text-red-500 p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20"><Trash2 size={14}/></button>
-              
-              {/* TEXT ITEM */}
-              {item.type === 'text' && (
-                <div className={`${item.color || 'bg-yellow-200'} w-full h-full p-4 shadow-sm border border-black/5 transform rotate-1 overflow-hidden`} style={{ fontFamily: item.font || "'Comic Sans MS', cursive" }}>
-                  <p className="text-gray-800 text-lg md:text-xl leading-relaxed whitespace-pre-wrap">{item.content}</p>
-                </div>
-              )}
+          {boardItems.map(item => {
+            const isEditing = editingId === item.id;
 
-              {/* IMAGE ITEM (With Cropping/Resizing Handle) */}
-              {item.type === 'image' && (
-                <div className="bg-white p-2 pb-8 w-full h-full shadow-sm transform -rotate-1 relative">
-                  <img src={item.content} className="w-full h-full object-cover pointer-events-none border border-gray-100" />
-                </div>
-              )}
-
-              {/* UNIVERSAL RESIZE HANDLE (Drags bottom-right corner) */}
-              <div 
-                className="absolute bottom-0 right-0 w-8 h-8 cursor-nwse-resize opacity-0 group-hover:opacity-100 z-30 flex items-end justify-end p-1.5 hover:bg-black/10 rounded-br-lg"
-                onPointerDown={(e) => { e.stopPropagation(); e.target.setPointerCapture(e.pointerId); }}
-                onPointerMove={(e) => {
-                  if (e.target.hasPointerCapture(e.pointerId)) {
-                    updateBoardItem(item.id, { w: (item.w || 200) + e.movementX, h: (item.h || 200) + e.movementY });
-                  }
-                }}
-                onPointerUp={(e) => e.target.releasePointerCapture(e.pointerId)}
+            return (
+              <motion.div
+                key={item.id}
+                drag={!isEditing} // SHAKING FIX: Disables drag completely while you are trying to resize!
+                dragMomentum={false}
+                onDragEnd={(e, info) => updateBoardItem(item.id, { x: item.x + info.offset.x, y: item.y + info.offset.y })}
+                initial={{ x: item.x, y: item.y }}
+                onDoubleClick={(e) => { e.stopPropagation(); setEditingId(item.id); }}
+                className={`absolute group transition-shadow ${isEditing ? 'z-50 shadow-2xl scale-105' : 'cursor-grab active:cursor-grabbing shadow-sm hover:shadow-lg z-10'}`}
+                style={{ touchAction: "none" }}
               >
-                <div className="w-3 h-3 bg-gray-500/50 rounded-full"></div>
-              </div>
-            </motion.div>
-          ))}
-          {boardItems.length === 0 && <div className="absolute top-[10%] left-[10%] text-gray-400 font-medium text-xl">The board is endless. Drag, scroll, and add memories anywhere!</div>}
+                {/* Delete Button */}
+                <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className={`absolute -top-4 -right-4 bg-white text-red-500 p-2 rounded-full shadow-lg transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} z-20`}>
+                  <Trash2 size={16}/>
+                </button>
+
+                {/* EDIT MODE OVERLAY FOR CROPPING */}
+                {isEditing && (
+                  <div className="absolute -inset-3 border-2 border-blue-500 border-dashed rounded-xl pointer-events-none z-30 flex items-end justify-center pb-2">
+                    <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Drag bottom right to crop</span>
+                  </div>
+                )}
+                
+                {/* TEXT ITEM */}
+                {item.type === 'text' && (
+                  <div 
+                    className={`${item.color || 'bg-yellow-200'} p-5 shadow-inner border border-black/5 transform rotate-1 overflow-hidden relative`} 
+                    style={{ fontFamily: item.font || "'Comic Sans MS', cursive", width: item.w || 200, height: item.h || 200, resize: isEditing ? 'both' : 'none' }}
+                    onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}
+                  >
+                    <p className="text-gray-800 text-lg md:text-xl leading-relaxed whitespace-pre-wrap">{item.content}</p>
+                  </div>
+                )}
+
+                {/* IMAGE ITEM (Natively Croppable via CSS Resize) */}
+                {item.type === 'image' && (
+                  <div className="bg-white p-2 pb-10 shadow-sm transform -rotate-1 relative">
+                    <div 
+                      style={{ width: item.w || 250, height: item.h || 250, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }}
+                      onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}
+                    >
+                      <img src={item.content} className="w-full h-full object-cover pointer-events-none rounded-sm border border-gray-100" />
+                    </div>
+                  </div>
+                )}
+
+                {/* DIGITAL INK DRAWING (Transparent) */}
+                {item.type === 'drawing' && (
+                  <div 
+                    className="relative"
+                    style={{ width: item.w || 300, height: item.h || 300, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }}
+                    onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}
+                  >
+                    <img src={item.content} className="w-full h-full object-contain pointer-events-none drop-shadow-sm" />
+                  </div>
+                )}
+
+              </motion.div>
+            );
+          })}
+          {boardItems.length === 0 && <div className="absolute top-[10%] left-[10%] text-gray-400 font-medium text-xl">Double tap any item to edit. Click background to save.</div>}
         </div>
       </div>
 
       {/* DRAWING PAD OVERLAY */}
       <AnimatePresence>
         {showDrawPad && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowDrawPad(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-serif font-bold text-xl text-gray-800">Write a Note ✍️</h3>
-                <button onClick={() => setShowDrawPad(false)} className="text-gray-400 hover:text-red-500"><X size={20}/></button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setShowDrawPad(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+              
+              <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="font-serif font-bold text-xl text-gray-800">Digital Ink ✍️</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1">Background will be transparent.</p>
+                </div>
+                <button onClick={() => setShowDrawPad(false)} className="bg-gray-100 text-gray-500 p-2 rounded-full hover:bg-red-100 hover:text-red-500 transition-colors"><X size={20}/></button>
               </div>
-              <div className="w-full h-64 bg-[#FCF8F9] border-2 border-dashed border-rose-200 rounded-2xl relative overflow-hidden shadow-inner cursor-crosshair">
+              
+              {/* Note: bg-transparent is forced here to ensure no white box is saved */}
+              <div className="w-full h-72 border-2 border-gray-300 rounded-2xl relative shadow-inner cursor-crosshair overflow-hidden" style={{ backgroundImage: 'radial-gradient(#e5e7eb 2px, transparent 2px)', backgroundSize: '20px 20px' }}>
                 <canvas 
                   ref={canvasRef} 
-                  className="absolute inset-0 w-full h-full touch-none"
+                  className="absolute inset-0 w-full h-full touch-none bg-transparent"
                   onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
                   onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
                 ></canvas>
               </div>
-              <div className="flex justify-between mt-6">
-                <button onClick={() => { const ctx = canvasRef.current.getContext('2d'); ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); }} className="text-gray-500 font-medium hover:text-gray-800 text-sm">Clear Board</button>
-                <button onClick={saveDrawing} className="bg-[#8B1235] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#6A0D28] shadow-sm flex items-center gap-2">Stick to Board <Check size={16}/></button>
+
+              <div className="flex justify-between items-center mt-6">
+                <button onClick={() => { const ctx = canvasRef.current.getContext('2d'); ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); }} className="text-gray-500 font-bold hover:text-gray-800 text-sm flex items-center gap-1"><Trash2 size={16}/> Clear</button>
+                <button onClick={saveDrawing} className="bg-[#8B1235] text-white px-6 py-3 rounded-full font-bold hover:bg-[#6A0D28] shadow-md flex items-center gap-2 transition-all hover:scale-105">Stick to Board <Check size={18}/></button>
               </div>
+
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Focus Dimmer Backdrop (Only shows when editing an item) */}
+      {editingId && (
+        <div className="absolute inset-0 bg-black/5 z-20 pointer-events-none rounded-3xl transition-opacity"></div>
+      )}
+
     </div>
   );
 };
