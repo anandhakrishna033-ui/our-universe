@@ -53,14 +53,36 @@ const AudioPlayer = ({ src }) => {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [playableUrl, setPlayableUrl] = useState('');
+
+  useEffect(() => {
+    if (!src) return;
+    if (src.startsWith('data:')) {
+      fetch(src)
+        .then(res => res.blob())
+        .then(blob => {
+          const objectUrl = URL.createObjectURL(blob);
+          setPlayableUrl(objectUrl);
+        })
+        .catch(err => {
+          console.error("Audio conversion failed:", err);
+          setPlayableUrl(src); 
+        });
+    } else {
+      setPlayableUrl(src);
+    }
+    return () => {
+      if (playableUrl && playableUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(playableUrl);
+      }
+    };
+  }, [src]);
 
   const togglePlay = () => {
-    if (!audioRef.current) return;
-    
+    if (!audioRef.current || !playableUrl) return;
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      // Force the browser to load and play the base64 string
       audioRef.current.play().catch(error => {
         console.error("Audio playback failed:", error);
         alert("Your browser blocked the audio. Try making sure your phone isn't on silent mode!");
@@ -77,17 +99,16 @@ const AudioPlayer = ({ src }) => {
 
   return (
     <div className="flex items-center gap-3 bg-white/50 p-3 rounded-2xl border border-white/50 shadow-sm mt-3">
-      {/* The Native Hidden Audio Tag */}
       <audio 
         ref={audioRef} 
-        src={src} 
+        src={playableUrl} 
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => setIsPlaying(false)}
         className="hidden" 
         preload="auto"
       />
       
-      <button type="button" onClick={togglePlay} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors shadow-sm shrink-0">
+      <button type="button" onClick={togglePlay} disabled={!playableUrl} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors shadow-sm shrink-0 disabled:opacity-50">
         {isPlaying ? <Pause size={18} /> : <Play size={18} />}
       </button>
       
@@ -180,6 +201,32 @@ const RotatingQuotes = ({ quotes }) => {
   );
 };
 
+// ==========================================
+// LIVE CLOCK WIDGET (NEW)
+// ==========================================
+const LiveClockCard = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4 hover:scale-[1.02] transition-transform">
+      <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center shrink-0">
+        <Clock size={24} />
+      </div>
+      <div>
+        <h3 className="text-xl md:text-2xl font-bold text-gray-800 leading-none tracking-tight">
+          {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </h3>
+        <p className="text-sm text-gray-600 mt-1">Our Time</p>
+      </div>
+    </div>
+  );
+};
+
 const Home = ({ memories, quotes, deleteMemory }) => {
   const recentMemories = memories.slice(0, 4); 
   const navigate = useNavigate();
@@ -209,16 +256,17 @@ const Home = ({ memories, quotes, deleteMemory }) => {
         </div>
         <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0"><ImageIcon size={24} /></div>
-          <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.filter(m => m.img).length}</h3><p className="text-sm text-gray-600 mt-1">Photos</p></div>
+          {/* Backwards compatible: checks for old single img OR new images array */}
+          <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.filter(m => (m.images && m.images.length > 0) || m.img).length}</h3><p className="text-sm text-gray-600 mt-1">Photos</p></div>
         </div>
         <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"><MapPin size={24} /></div>
           <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.filter(m => m.location).length}</h3><p className="text-sm text-gray-600 mt-1">Places Visited</p></div>
         </div>
-        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center shrink-0"><Calendar size={24} /></div>
-          <div><h3 className="text-2xl font-bold text-gray-800 leading-none">3</h3><p className="text-sm text-gray-600 mt-1">Upcoming Days</p></div>
-        </div>
+        
+        {/* NEW LIVE CLOCK CARD */}
+        <LiveClockCard />
+
       </motion.div>
 
       <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white">
@@ -228,43 +276,46 @@ const Home = ({ memories, quotes, deleteMemory }) => {
         ) : (
           <motion.div layout className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <AnimatePresence>
-              {recentMemories.map((m) => (
-                <motion.div 
-                  layout
-                  initial={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
-                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
-                  transition={{ duration: 0.4, type: "spring" }}
-                  whileHover={{ scale: 1.05 }} 
-                  key={m.firestoreId || m.id} 
-                  className="bg-white p-2.5 pb-6 rounded-sm shadow-md border border-gray-100 relative group"
-                >
-                  <button 
-                    onClick={() => deleteMemory(m.firestoreId || m.id)} 
-                    className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
-                    title="Delete Memory"
+              {recentMemories.map((m) => {
+                // Safety check: Find the cover image whether it's the old format or new array format
+                const coverImg = (m.images && m.images.length > 0) ? m.images[0] : m.img;
+
+                return (
+                  <motion.div 
+                    layout
+                    initial={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
+                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
+                    transition={{ duration: 0.4, type: "spring" }}
+                    whileHover={{ scale: 1.05 }} 
+                    key={m.firestoreId || m.id} 
+                    className="bg-white p-2.5 pb-6 rounded-sm shadow-md border border-gray-100 relative group"
                   >
-                    <Trash2 size={16} />
-                  </button>
-                  <div className="w-full aspect-square bg-gray-100 mb-3 overflow-hidden rounded-sm relative">
-                    {m.img ? (
-                      <motion.img 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
-                        transition={{ duration: 0.5 }}
-                        src={m.img} alt={m.title} 
-                        className="w-full h-full object-cover" 
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>
-                    )}
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-800 font-serif truncate">{m.title}</p>
-                    <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">{m.date}</p>
-                  </div>
-                </motion.div>
-              ))}
+                    <button 
+                      onClick={() => deleteMemory(m.firestoreId || m.id)} 
+                      className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+                      title="Delete Memory"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <div className="w-full aspect-square bg-gray-100 mb-3 overflow-hidden rounded-sm relative">
+                      {coverImg ? (
+                        <motion.img 
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+                          src={coverImg} alt={m.title} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-gray-800 font-serif truncate">{m.title}</p>
+                      <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">{m.date}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </motion.div>
         )}
@@ -274,66 +325,75 @@ const Home = ({ memories, quotes, deleteMemory }) => {
 };
 
 // ==========================================
-// 4. MEMORY CREATION (With Firebase Upload)
+// 4. MEMORY CREATION (With Multiple Images)
 // ==========================================
 const CreateMemory = ({ onAddMemory }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ title: '', date: '', location: '', description: '' });
-  const [imgFile, setImgFile] = useState(null);
-  const [imgPreview, setImgPreview] = useState('');
+  const [imgFiles, setImgFiles] = useState([]);
+  const [imgPreviews, setImgPreviews] = useState([]);
   const [voiceBlob, setVoiceBlob] = useState(null);
   const [voicePreview, setVoicePreview] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const mediaRecorderRef = useRef(null);
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-  
-    if (file) { 
-      setImgPreview(URL.createObjectURL(file));
-      const options = { maxSizeMB: 0.6, maxWidthOrHeight: 1080, useWebWorker: true };
+  const handleMultiImageUpload = async (e) => {
+    // Limit to 4 images to prevent crashing the browser with massive Base64 strings
+    const files = Array.from(e.target.files).slice(0, 4);
+    if (!files.length) return;
+
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setImgPreviews(prev => [...prev, ...newPreviews].slice(0, 4));
+
+    const compressedFiles = [];
+    const options = { maxSizeMB: 0.4, maxWidthOrHeight: 1080, useWebWorker: true };
+    
+    for (const file of files) {
       try {
-        const compressedFile = await imageCompression(file, options);
-        setImgFile(compressedFile);
-      } catch (error) {
-        setImgFile(file); 
+        const compressed = await imageCompression(file, options);
+        compressedFiles.push(compressed);
+      } catch (err) {
+        compressedFiles.push(file);
       }
     }
+    setImgFiles(prev => [...prev, ...compressedFiles].slice(0, 4));
   };
 
- const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorderRef.current = new MediaRecorder(stream);
-    const audioChunks = [];
-    
-    mediaRecorderRef.current.ondataavailable = (e) => audioChunks.push(e.data);
-    
-    mediaRecorderRef.current.onstop = () => { 
-      // THIS IS THE MAGIC FIX: Tell the browser exactly what kind of file this is!
-      const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
-      const audioBlob = new Blob(audioChunks, { type: mimeType }); 
+  const removeImage = (index) => {
+    setImgPreviews(prev => prev.filter((_, i) => i !== index));
+    setImgFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let options = {};
+      if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
+      else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
       
-      setVoiceBlob(audioBlob);
-      setVoicePreview(URL.createObjectURL(audioBlob)); 
-    };
-    
-    mediaRecorderRef.current.start(); 
-    setIsRecording(true);
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
+      const audioChunks = [];
+      mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorderRef.current.onstop = () => { 
+        const audioBlob = new Blob(audioChunks, { type: mediaRecorderRef.current.mimeType }); 
+        setVoiceBlob(audioBlob);
+        setVoicePreview(URL.createObjectURL(audioBlob)); 
+      };
+      mediaRecorderRef.current.start(); 
+      setIsRecording(true);
+    } catch (err) { alert("Microphone access denied."); }
   };
 
-  const stopRecording = () => { 
-    mediaRecorderRef.current.stop(); 
-    setIsRecording(false); 
-  };
+  const stopRecording = () => { mediaRecorderRef.current.stop(); setIsRecording(false); };
 
   const handleSubmit = async (e) => { 
     e.preventDefault(); 
     if (!formData.title) return;
     setIsSaving(true);
-    const success = await onAddMemory({ ...formData, imgFile, voiceBlob }); 
+    const success = await onAddMemory({ ...formData, imgFiles, voiceBlob }); 
     setIsSaving(false);
-    if (success) navigate('/'); 
+    if (success) navigate('/memories'); 
   };
 
   return (
@@ -356,36 +416,29 @@ const CreateMemory = ({ onAddMemory }) => {
         </div>
         
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Upload Photo</label>
-          {!imgPreview ? (
-             <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full mt-2 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#8B1235] file:text-white" />
-          ) : (
-             <div className="relative h-40 w-40 mt-2 group">
-                <img src={imgPreview} className="h-full w-full object-cover rounded-xl shadow-sm"/>
-                <button type="button" onClick={() => {setImgFile(null); setImgPreview('');}} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-md opacity-80 hover:opacity-100 transition-opacity">
-                   <Trash2 size={14}/>
-                </button>
-             </div>
-          )}
+          <label className="block text-sm font-bold text-gray-700 mb-2">Upload Photos (Max 4)</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+            {imgPreviews.map((preview, idx) => (
+              <div key={idx} className="relative aspect-square group">
+                <img src={preview} className="h-full w-full object-cover rounded-xl shadow-sm"/>
+                <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-md opacity-80 hover:opacity-100"><Trash2 size={14}/></button>
+              </div>
+            ))}
+            {imgPreviews.length < 4 && (
+              <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl hover:bg-white/50 cursor-pointer transition">
+                <Plus className="text-gray-400 mb-1" />
+                <span className="text-xs text-gray-500 font-medium">Add Photo</span>
+                <input type="file" accept="image/*" multiple onChange={handleMultiImageUpload} className="hidden" />
+              </label>
+            )}
+          </div>
         </div>
 
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Voice Note</label>
-          {!isRecording && !voicePreview && (
-            <button type="button" onClick={startRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-pink-100 text-[#8B1235] hover:bg-pink-200 transition-colors">
-              <Mic size={18}/> Record Voice
-            </button>
-          )}
-          {isRecording && (
-            <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-red-500 text-white shadow-md animate-pulse">
-              <StopCircle size={18}/> Stop Recording
-            </button>
-          )}
-          {voicePreview && (
-             <div className="text-sm text-green-600 font-bold flex items-center gap-2 mt-2 bg-green-50 w-max px-4 py-2 rounded-full border border-green-200">
-                <Check size={16}/> Voice note ready!
-             </div>
-          )}
+          {!isRecording && !voicePreview && <button type="button" onClick={startRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-pink-100 text-[#8B1235] hover:bg-pink-200"><Mic size={18}/> Record Voice</button>}
+          {isRecording && <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-red-500 text-white shadow-md animate-pulse"><StopCircle size={18}/> Stop Recording</button>}
+          {voicePreview && <div className="text-sm text-green-600 font-bold flex items-center gap-2 mt-2 bg-green-50 w-max px-4 py-2 rounded-full border border-green-200"><Check size={16}/> Voice note ready!</div>}
         </div>
         
         <div>
@@ -408,18 +461,19 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
   const [isUploading, setIsUploading] = useState(false);
 
   // Merge the standalone Gallery photos and the Memory photos!
+  // Uses the backwards compatibility check for the image source
   const combinedPhotos = [
     ...galleryPhotos.map(p => ({ ...p, source: 'gallery' })),
-    ...memories.filter(m => m.img).map(m => ({ 
+    ...memories.filter(m => (m.images && m.images.length > 0) || m.img).map(m => ({ 
       id: m.firestoreId || m.id, 
-      imgUrl: m.img, 
+      imgUrl: (m.images && m.images.length > 0) ? m.images[0] : m.img, 
       heading: m.title, 
       timestamp: m.date, 
       source: 'memory' 
     }))
   ];
 
-  const rotations = [-3, 2, -1, 4, -2, 3]; // Predetermined rotations for authentic polaroid look
+  const rotations = [-3, 2, -1, 4, -2, 3]; 
 
   const handleMultiUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -430,7 +484,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
       ? prompt(`Uploading ${files.length} photos. Give them a shared caption (or leave blank):`) 
       : prompt("Give this memory a short caption:");
 
-    // Process all files in a loop
     for (const file of files) {
       try {
         const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
@@ -463,7 +516,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           ) : (
             <><Plus size={20} /> Add Photos</>
           )}
-          {/* Multiple attribute allows selecting 5-10 pictures at once! */}
           <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiUpload} disabled={isUploading} />
         </label>
       </div>
@@ -490,19 +542,16 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                   whileHover={{ scale: 1.05, rotate: 0, zIndex: 10, transition: { duration: 0.2 } }}
                   className="bg-[#FCF8F9] p-3 pb-12 md:p-4 md:pb-16 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative group cursor-pointer"
                 >
-                  {/* Image Area */}
                   <div className="w-full aspect-square bg-gray-200 overflow-hidden shadow-inner border border-black/5">
                     <img src={photo.imgUrl} className="w-full h-full object-cover" alt={photo.heading} />
                   </div>
                   
-                  {/* Handwritten Text Area */}
                   <div className="absolute bottom-0 left-0 w-full h-12 md:h-16 flex items-center justify-center px-4">
                     <p className="font-serif italic text-gray-800 text-sm md:text-base font-medium truncate text-center w-full">
                       {photo.heading}
                     </p>
                   </div>
 
-                  {/* Delete Button */}
                   {photo.source === 'gallery' && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); deleteGalleryPhoto(photo.id); }}
@@ -513,7 +562,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                     </button>
                   )}
                   
-                  {/* Small tag to show where the photo came from */}
                   {photo.source === 'memory' && (
                     <div className="absolute top-4 left-4 bg-white/90 px-2 py-1 rounded text-[10px] uppercase font-bold text-rose-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                       From Memory
@@ -530,57 +578,57 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 };
 
 // ==========================================
-// 6. ALL MEMORIES PAGE
+// 6. ALL MEMORIES PAGE (With Interactive Layout Toggle)
 // ==========================================
 const Memories = ({ memories, deleteMemory }) => {
+  const [layout, setLayout] = useState('grid'); // 'grid' or 'story'
+
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">All Memories 💭</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">All Memories 💭</h1>
+        
+        {/* LAYOUT TOGGLE */}
+        <div className="flex bg-white/60 backdrop-blur-md p-1 rounded-xl shadow-sm border border-white">
+          <button onClick={() => setLayout('grid')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${layout === 'grid' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Grid View</button>
+          <button onClick={() => setLayout('story')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${layout === 'story' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Story View</button>
+        </div>
+      </div>
       
       {memories.length === 0 ? (
-        <p className="text-gray-500 text-center py-10 bg-white/50 backdrop-blur-sm rounded-3xl border border-white">
-          No memories yet. Add your first one!
-        </p>
+        <p className="text-gray-500 text-center py-10 bg-white/50 backdrop-blur-sm rounded-3xl border border-white">No memories yet. Add your first one!</p>
       ) : (
-        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div layout className={layout === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-12 max-w-2xl mx-auto"}>
           <AnimatePresence>
             {memories.map((m, idx) => (
               <motion.div 
-                key={m.firestoreId || m.id} 
-                layout
-                initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -30, filter: 'blur(5px)' }}
+                key={m.firestoreId || m.id} layout
+                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.5, delay: idx * 0.05 }}
-                whileHover={{ scale: 1.02 }}
-                className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-white flex flex-col relative group"
+                className={`bg-white/80 backdrop-blur-md rounded-3xl shadow-sm border border-white relative group flex flex-col ${layout === 'grid' ? 'p-6 hover:scale-[1.02] transition-transform' : 'p-8 md:p-10'}`}
               >
-                <button 
-                  onClick={() => deleteMemory(m.firestoreId || m.id)} 
-                  className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
-                >
+                <button onClick={() => deleteMemory(m.firestoreId || m.id)} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-20">
                   <Trash2 size={16} />
                 </button>
                 
-                {m.img && (
-                  <motion.img 
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
-                    src={m.img} alt={m.title} className="w-full h-48 object-cover rounded-2xl mb-4 shadow-sm" 
-                  />
-                )}
-                <h3 className="text-2xl font-bold text-gray-800 font-serif mb-1">{m.title}</h3>
-                <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-2">{m.date}</p>
+                {/* MULTIPLE IMAGES RENDERER (Includes Backwards Compatibility) */}
+                {m.images && m.images.length > 0 ? (
+                  <div className={`grid gap-2 mb-6 ${m.images.length === 1 ? 'grid-cols-1' : m.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
+                    {m.images.map((imgBase64, i) => (
+                      <img key={i} src={imgBase64} alt={`Memory ${i}`} className={`w-full object-cover rounded-2xl shadow-sm ${m.images.length === 1 ? 'h-64 md:h-80' : 'h-40 md:h-48'}`} />
+                    ))}
+                  </div>
+                ) : m.img ? (
+                  <div className="grid gap-2 mb-6 grid-cols-1">
+                     <img src={m.img} alt="Memory" className="w-full object-cover rounded-2xl shadow-sm h-64 md:h-80" />
+                  </div>
+                ) : null}
                 
-                {m.location && (
-                  <p className="text-sm text-gray-500 mb-3 flex items-center gap-1 font-medium">
-                    <MapPin size={14} className="text-blue-400" /> {m.location}
-                  </p>
-                )}
+                <h3 className={`${layout === 'story' ? 'text-3xl' : 'text-2xl'} font-bold text-gray-800 font-serif mb-1`}>{m.title}</h3>
+                <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-3">{m.date}</p>
                 
-                {m.description && (
-                  <p className="text-gray-600 text-sm mb-4 leading-relaxed flex-1">{m.description}</p>
-                )}
-                
+                {m.location && <p className="text-sm text-gray-500 mb-4 flex items-center gap-1 font-medium"><MapPin size={14} className="text-blue-400" /> {m.location}</p>}
+                {m.description && <p className={`text-gray-600 leading-relaxed flex-1 ${layout === 'story' ? 'text-lg' : 'text-sm mb-4'}`}>{m.description}</p>}
                 {m.voiceNote && <AudioPlayer src={m.voiceNote} />}
               </motion.div>
             ))}
@@ -657,17 +705,22 @@ const LovelyMap = ({ memories }) => {
         <div className="w-full h-[500px] md:h-[650px] rounded-2xl overflow-hidden shadow-inner border-4 border-white relative z-0">
           <MapContainer center={center} zoom={7} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png" />
-            {markers.map((marker, idx) => (
-              <Marker key={idx} position={[marker.lat, marker.lng]} icon={lovelyHeartMarker}>
-                <Popup className="custom-popup border-0 shadow-lg rounded-xl">
-                  <div className="p-1 text-center min-w-[150px]">
-                    {marker.img && <img src={marker.img} alt={marker.title} className="w-full h-28 object-cover rounded-lg mb-3 shadow-md" />}
-                    <h3 className="font-bold font-serif text-[#8B1235] text-lg leading-tight">{marker.title}</h3>
-                    <p className="text-xs font-semibold text-gray-600 mt-1 uppercase tracking-wider">{marker.location}</p>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+            {markers.map((marker, idx) => {
+              // Safety check for map image cover
+              const coverImg = (marker.images && marker.images.length > 0) ? marker.images[0] : marker.img;
+              
+              return (
+                <Marker key={idx} position={[marker.lat, marker.lng]} icon={lovelyHeartMarker}>
+                  <Popup className="custom-popup border-0 shadow-lg rounded-xl">
+                    <div className="p-1 text-center min-w-[150px]">
+                      {coverImg && <img src={coverImg} alt={marker.title} className="w-full h-28 object-cover rounded-lg mb-3 shadow-md" />}
+                      <h3 className="font-bold font-serif text-[#8B1235] text-lg leading-tight">{marker.title}</h3>
+                      <p className="text-xs font-semibold text-gray-600 mt-1 uppercase tracking-wider">{marker.location}</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
           </MapContainer>
         </div>
       </div>
@@ -1075,19 +1128,16 @@ const Countdowns = ({ countdowns, addCountdown, deleteCountdown }) => {
 // SILENT EMAIL NOTIFICATION HELPER
 // ==========================================
 const sendInstantNotification = (itemType, itemTitle) => {
-  // Grab the saved emails from local storage
   const email1 = localStorage.getItem('notifyEmail1');
   const email2 = localStorage.getItem('notifyEmail2');
 
-  // Put them in an array and filter out any blank ones
   const validEmails = [email1, email2].filter(Boolean);
 
-  if (validEmails.length === 0) return; // Stop if no emails are set
+  if (validEmails.length === 0) return;
 
-  // Loop through the valid emails and send a direct, individual ping to each one
   validEmails.forEach((targetEmail) => {
     const templateParams = {
-      to_email: targetEmail, // <-- Sends to just ONE person at a time
+      to_email: targetEmail,
       subject: `New ${itemType} Added to Our Universe! ✨`,
       message: `A new ${itemType} titled "${itemTitle}" was just added. Go check it out!`
     };
@@ -1112,7 +1162,6 @@ const SettingsPage = ({ theme, setTheme, secretWord, setSecretWord, isPasswordRe
   const [newQuote, setNewQuote] = useState("");
   const [isSavingQuote, setIsSavingQuote] = useState(false);
 
-  // States for Email Notifications
   const [email1, setEmail1] = useState(() => localStorage.getItem('notifyEmail1') || '');
   const [email2, setEmail2] = useState(() => localStorage.getItem('notifyEmail2') || '');
 
@@ -1362,9 +1411,16 @@ function App() {
   // --- 2. DATABASE ACTIONS ---
   const addMemory = async (newMemoryData) => {
     try {
-      let imgBase64 = '';
+      // Convert all uploaded images to Base64 strings
+      const imagesBase64 = [];
+      if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
+        for (const file of newMemoryData.imgFiles) {
+          const base64 = await fileToBase64(file);
+          imagesBase64.push(base64);
+        }
+      }
+
       let voiceBase64 = '';
-      if (newMemoryData.imgFile) imgBase64 = await fileToBase64(newMemoryData.imgFile);
       if (newMemoryData.voiceBlob) voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
 
       const finalMemory = {
@@ -1372,21 +1428,17 @@ function App() {
         date: newMemoryData.date || '',
         location: newMemoryData.location || '',
         description: newMemoryData.description || '',
-        img: imgBase64,
+        images: imagesBase64, // <-- Now saving as an array!
         voiceNote: voiceBase64,
         id: Date.now() 
       };
 
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
       setMemories(prev => [{ ...finalMemory, firestoreId: docRef.id }, ...prev]);
-      
-      // FIRE EMAIL NOTIFICATION INSTANTLY
       sendInstantNotification("Memory", finalMemory.title);
-      
       return true;
     } catch (err) {
-      if (err.code === 'resource-exhausted') alert("File is too large! Please upload a smaller image.");
-      else alert(`Memory upload failed! Reason: ${err.message}`);
+      alert(`Memory upload failed! Reason: ${err.message}`);
       return false;
     }
   };
