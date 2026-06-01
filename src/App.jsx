@@ -2444,38 +2444,41 @@ function App() {
   return (
     <BrowserRouter>
       <GlobalThemeStyles />
-      <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500">
-        <DashboardLayout theme={theme}>
-          <Routes>
-            <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} theme={theme} />} />
-            <Route path="/timeline" element={<Timeline memories={memories} />} />
-            <Route path="/places" element={<LovelyMap memories={memories} />} />
-            <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
-            
-            <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
-            
-            <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} editLetter={editLetter} />} />
-            <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
-            
-            <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} editMemory={editMemory} />} />
-            
-            <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} currentUser={currentUser} />} />
-            
-            <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
-            <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
+      <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500 pb-28 pt-8">
+        
+        {/* WE REMOVED DASHBOARDLAYOUT AND REPLACED IT WITH THE ROUTER DIRECTLY */}
+        <Routes>
+          <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} theme={theme} />} />
+          <Route path="/timeline" element={<Timeline memories={memories} />} />
+          <Route path="/places" element={<LovelyMap memories={memories} />} />
+          <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
+          
+          <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
+          
+          <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} editLetter={editLetter} />} />
+          <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
+          
+          <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} editMemory={editMemory} />} />
+          
+          <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} currentUser={currentUser} />} />
+          
+          <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
+          <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
 
-            <Route path="/settings" element={
-              <SettingsPage 
-                theme={theme} setTheme={setTheme}
-                activeUniverse={activeUniverse}
-                quotes={quotes} deleteQuote={triggerDeleteQuote}
-                showAlert={showAlert}
-              />
-            } />
-          </Routes>
-        </DashboardLayout>
+          <Route path="/settings" element={
+            <SettingsPage 
+              theme={theme} setTheme={setTheme}
+              activeUniverse={activeUniverse}
+              quotes={quotes} deleteQuote={triggerDeleteQuote}
+              showAlert={showAlert}
+            />
+          } />
+        </Routes>
 
-        {/* GLOBAL MODALS */}
+        {/* 1. OUR BRAND NEW FLOATING DOCK */}
+        <FloatingNav />
+
+        {/* 2. GLOBAL MODALS */}
         <DeleteConfirmModal 
           isOpen={confirmModal.isOpen}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
