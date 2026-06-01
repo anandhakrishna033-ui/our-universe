@@ -1096,7 +1096,6 @@ const LovelyMap = ({ memories }) => {
     </div>
   );
 };
-
 // ==========================================
 // 8. TIME CAPSULE & LOVE LETTERS 💌
 // ==========================================
@@ -1124,11 +1123,13 @@ const LockedLetter = ({ letter }) => {
   }, [letter.unlockDate]);
 
   return (
-    <div className="bg-black/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
-      <Lock size={48} className="text-[var(--color-primary)] mb-4 opacity-80" />
-      <h3 className="text-2xl font-bold text-gray-800 mb-2">Time Capsule Sealed</h3>
-      <p className="text-gray-700 mb-4">"Do not open until our special day."</p>
-      <div className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-full font-mono text-sm font-bold shadow-inner">
+    <div className="bg-rose-950/80 backdrop-blur-md border border-rose-800/50 rounded-sm p-8 flex flex-col items-center justify-center text-center h-full min-h-[300px] shadow-xl relative overflow-hidden">
+      <div className="absolute inset-2 border border-rose-800/30 rounded-sm pointer-events-none"></div>
+      <Lock size={48} className="text-rose-300 mb-4 opacity-80" />
+      <h3 className="text-2xl font-serif font-bold text-rose-100 mb-2 tracking-wide">Time Capsule</h3>
+      <div className="w-12 h-px bg-rose-400/50 my-3"></div>
+      <p className="text-rose-200/80 mb-6 font-serif italic">"Do not open until our special day."</p>
+      <div className="bg-rose-900/50 border border-rose-400/30 text-rose-100 px-5 py-2.5 rounded-full font-mono text-sm shadow-inner tracking-widest">
         {timeLeft}
       </div>
     </div>
@@ -1157,7 +1158,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
     <div className="max-w-6xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Love Letters 💌</h1>
-        <button onClick={() => navigate('/create-letter')} className="bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 shadow-sm">
+        <button onClick={() => navigate('/create-letter')} className="bg-[#8B1235] text-white px-6 py-3 rounded-full font-medium hover:bg-[#6A0D28] transition-all flex items-center gap-2 shadow-md">
           <PenTool size={18} /> Write a Letter
         </button>
       </div>
@@ -1165,7 +1166,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
       {letters.length === 0 ? (
         <p className="text-gray-500 text-center py-10 bg-white/50 backdrop-blur-sm rounded-3xl border border-white">No letters written yet. Leave a sweet note!</p>
       ) : (
-        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatePresence>
             {letters.map((letter, idx) => {
               const isLocked = letter.unlockDate && new Date(letter.unlockDate).getTime() > new Date().getTime();
@@ -1191,34 +1192,44 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
                   whileHover={{ scale: 1.02, rotate: randomRotation, zIndex: 10 }} 
                   onClick={() => openLetter(letter)}
-                  className={`p-4 pb-12 rounded-sm shadow-xl hover:shadow-2xl border relative cursor-pointer group flex flex-col h-72 overflow-hidden ${
-                    letter.layout === 'image-background' ? 'border-transparent text-white' : 'bg-white border-gray-200 text-gray-800'
+                  className={`p-6 pb-12 rounded-sm shadow-lg hover:shadow-2xl transition-all relative cursor-pointer group flex flex-col h-[320px] overflow-hidden ${
+                    letter.layout === 'image-background' 
+                      ? 'border border-gray-300 text-white' 
+                      : 'bg-[#FFFAF0] border-[8px] border-white outline outline-1 outline-gray-200 text-gray-800'
                   }`}
                 >
+                  {/* Subtle inner romantic border for non-background letters */}
+                  {letter.layout !== 'image-background' && (
+                    <div className="absolute inset-2 border border-rose-200/50 rounded-sm pointer-events-none z-10"></div>
+                  )}
+
                   <button onClick={(e) => { e.stopPropagation(); deleteLetter(letter.firestoreId || letter.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-50">
                     <Trash2 size={16} />
                   </button>
 
-                  {/* RESTORED: Image Preview for Full Background in Grid View */}
+                  {/* RESTORED & FIXED: Full Background Preview */}
                   {letter.layout === 'image-background' && letter.img && (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${letter.img})` }}>
-                      <div className="absolute inset-0 bg-black/60"></div>
+                    <div className="absolute inset-0 z-0">
+                      <img src={letter.img} alt="Background" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"></div>
+                      <div className="absolute inset-3 border border-white/30 rounded-sm pointer-events-none"></div>
                     </div>
                   )}
 
-                  <div className="relative z-10 flex flex-col flex-1">
-                    <div className={`mb-2 border-b pb-2 ${letter.layout === 'image-background' ? 'border-white/30' : 'border-gray-200'}`}>
-                      <h3 className={`text-xl font-bold mb-1 truncate ${letter.layout === 'image-background' ? 'text-white' : 'text-gray-800'}`}>{letter.title}</h3>
-                      <p className={`text-[10px] uppercase tracking-wider ${letter.layout === 'image-background' ? 'text-gray-300' : 'text-gray-400'}`}>{letter.date}</p>
+                  <div className="relative z-10 flex flex-col flex-1 h-full text-center mt-2">
+                    <div className="mb-4">
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${letter.layout === 'image-background' ? 'text-rose-200' : 'text-rose-400'}`}>{letter.date}</p>
+                      <h3 className={`text-2xl font-serif font-bold mb-2 truncate ${letter.layout === 'image-background' ? 'text-white' : 'text-[#8B1235]'}`}>{letter.title}</h3>
+                      <div className={`w-10 h-px mx-auto ${letter.layout === 'image-background' ? 'bg-white/40' : 'bg-rose-200'}`}></div>
                     </div>
                     
                     {/* Image Preview for Top/Bottom Layouts */}
                     {letter.img && letter.layout !== 'image-background' && (
-                       <img src={letter.img} className="w-full h-24 object-cover rounded-xl mb-3 shadow-sm border border-gray-100" alt="Letter Attachment" />
+                       <img src={letter.img} className="w-full h-28 object-cover rounded-md mb-4 shadow-sm border border-gray-200" alt="Letter Attachment" />
                     )}
 
-                    <div className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed overflow-hidden ${letter.font} ${letter.layout === 'image-background' ? 'text-gray-200' : 'text-gray-500'}`}>
-                      {letter.content.substring(0, 100)}...
+                    <div className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed overflow-hidden ${letter.font} ${letter.layout === 'image-background' ? 'text-gray-100' : 'text-gray-600'}`}>
+                      {letter.content.substring(0, 110)}...
                     </div>
                   </div>
                 </motion.div>
@@ -1231,48 +1242,77 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
       {/* FULL SCREEN READING MODAL FOR LETTERS */}
       <AnimatePresence>
         {selectedLetter && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto" onClick={() => setSelectedLetter(null)}>
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm overflow-y-auto" 
+            onClick={() => setSelectedLetter(null)}
+          >
+            {/* Elegant 3D Unfolding Animation */}
             <motion.div 
-              initial={{ scale: 0.8, y: 50, rotate: 2 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 50 }} 
-              transition={{ type: "spring", bounce: 0.4 }}
-              className={`p-6 md:p-10 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto border-[10px] border-white ${selectedLetter.layout === 'image-background' ? 'text-white' : 'bg-white text-gray-800'}`} 
+              initial={{ opacity: 0, scale: 0.9, y: 30, rotateX: 15 }} 
+              animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: -20 }} 
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className={`p-8 md:p-14 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto ${
+                selectedLetter.layout === 'image-background' 
+                  ? 'border border-gray-500 text-white overflow-hidden' 
+                  : 'bg-[#FDFBF7] border-[12px] border-white outline outline-1 outline-rose-100 text-gray-800'
+              }`} 
               onClick={e => e.stopPropagation()}
             >
-              <button onClick={() => setSelectedLetter(null)} className="absolute -top-4 -right-4 bg-white text-gray-800 p-3 rounded-full shadow-xl hover:bg-gray-100 z-50"><X size={24}/></button>
+              {/* Inner Decorative Border */}
+              {selectedLetter.layout !== 'image-background' && (
+                <div className="absolute inset-3 border-[1.5px] border-rose-200/60 rounded-sm pointer-events-none z-10"></div>
+              )}
+
+              <button onClick={() => setSelectedLetter(null)} className="absolute top-4 right-4 bg-white/90 text-gray-800 p-2.5 rounded-full shadow-md hover:bg-gray-100 z-50 transition-transform hover:scale-110"><X size={20}/></button>
               
+              {/* Full Background Mode Layout */}
               {selectedLetter.layout === 'image-background' && selectedLetter.img && (
-                <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${selectedLetter.img})` }}>
-                  <div className="absolute inset-0 bg-black/60"></div>
+                <div className="absolute inset-0 z-0">
+                  <img src={selectedLetter.img} alt="Background" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]"></div>
+                  <div className="absolute inset-4 border border-white/20 rounded-sm pointer-events-none"></div>
                 </div>
               )}
 
               <div className="relative z-10">
                 {!isEditing ? (
-                  <>
-                    <button onClick={() => setIsEditing(true)} className="absolute top-0 right-0 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-2 rounded-full font-bold text-sm hover:bg-white transition shadow-sm">Edit Letter</button>
-                    <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedLetter.date} • {selectedLetter.time}</p>
-                    <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight border-b border-current pb-4 opacity-90">{selectedLetter.title}</h2>
+                  <div className="flex flex-col text-center">
+                    <button onClick={() => setIsEditing(true)} className="absolute -top-2 left-0 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-1.5 rounded-full font-bold text-xs hover:bg-white transition shadow-sm border border-white/50">Edit</button>
+                    
+                    <p className={`font-bold tracking-widest uppercase text-xs mb-3 ${selectedLetter.layout === 'image-background' ? 'text-rose-200' : 'text-[#8B1235]'}`}>
+                      {selectedLetter.date} <span className="mx-1">•</span> {selectedLetter.time}
+                    </p>
+                    
+                    <h2 className={`text-4xl md:text-5xl font-serif font-bold mb-4 leading-tight ${selectedLetter.layout === 'image-background' ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedLetter.title}
+                    </h2>
+                    
+                    <div className={`text-xl mb-8 opacity-70 tracking-widest ${selectedLetter.layout === 'image-background' ? 'text-white' : 'text-rose-400'}`}>~ ♡ ~</div>
                     
                     {selectedLetter.layout === 'image-top' && selectedLetter.img && (
-                      <img src={selectedLetter.img} className="w-full object-cover rounded-xl mb-6 shadow-md border-4 border-white" />
+                      <img src={selectedLetter.img} className="w-full object-cover rounded-md mb-8 shadow-md border-4 border-white" alt="Letter Attachment" />
                     )}
 
-                    <div className={`whitespace-pre-wrap text-xl leading-relaxed ${selectedLetter.font}`}>
+                    <div className={`whitespace-pre-wrap text-lg md:text-xl leading-loose text-left ${selectedLetter.font} ${selectedLetter.layout === 'image-background' ? 'text-gray-100' : 'text-gray-700'}`}>
                       {selectedLetter.content}
                     </div>
 
                     {selectedLetter.layout === 'image-bottom' && selectedLetter.img && (
-                      <img src={selectedLetter.img} className="w-full object-cover rounded-xl mt-8 shadow-md border-4 border-white" />
+                      <img src={selectedLetter.img} className="w-full object-cover rounded-md mt-10 shadow-md border-4 border-white" alt="Letter Attachment" />
                     )}
-                  </>
+                  </div>
                 ) : (
-                  <div className="space-y-4 bg-white p-6 rounded-2xl shadow-inner text-gray-800">
-                    <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Letter</h3>
-                    <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-bold text-xl outline-none focus:border-[var(--color-primary)] text-gray-800" />
-                    <textarea rows="12" value={editForm.content} onChange={e => setEditForm({...editForm, content: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-serif text-lg outline-none focus:border-[var(--color-primary)] text-gray-800" />
-                    <div className="flex justify-end gap-3 pt-4">
-                      <button onClick={() => setIsEditing(false)} className="px-6 py-3 font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancel</button>
-                      <button onClick={handleSaveEdit} className="px-6 py-3 font-bold bg-[var(--color-primary)] text-white rounded-xl shadow-md hover:bg-[var(--color-primary-hover)]">Save Changes</button>
+                  <div className="space-y-4 bg-white/95 backdrop-blur-md p-6 md:p-8 rounded-xl shadow-xl text-gray-800 relative z-20">
+                    <h3 className="text-2xl font-serif font-bold text-[#8B1235] border-b border-rose-100 pb-3">Edit Letter</h3>
+                    <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-bold text-xl outline-none focus:border-[#8B1235] bg-gray-50/50" />
+                    <textarea rows="12" value={editForm.content} onChange={e => setEditForm({...editForm, content: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-serif text-lg outline-none focus:border-[#8B1235] leading-relaxed bg-gray-50/50" />
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                      <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 font-bold text-gray-500 hover:bg-gray-100 rounded-full transition">Cancel</button>
+                      <button onClick={handleSaveEdit} className="px-6 py-2.5 font-bold bg-[#8B1235] text-white rounded-full shadow-md hover:bg-[#6A0D28] transition">Save Changes</button>
                     </div>
                   </div>
                 )}
@@ -1343,7 +1383,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
-        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
 
@@ -1376,13 +1416,13 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       <form onSubmit={handleSubmit} className="bg-white/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-sm border border-white space-y-6">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">Heading / Subject</label>
-          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
+          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50" />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Letter Font</label>
-            <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
+            <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
               <option value="font-serif">Elegant Serif (Classic)</option>
               <option value="font-sans">Clean Sans (Modern)</option>
               <option value="font-mono">Typewriter (Vintage)</option>
@@ -1391,7 +1431,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Image Layout</label>
-            <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
+            <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
               <option value="image-top">Image at the Top</option>
               <option value="image-bottom">Image at the Bottom</option>
               <option value="image-background">Full Background Image</option>
@@ -1399,7 +1439,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Time Capsule Lock</label>
-            <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
+            <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50" />
           </div>
         </div>
 
@@ -1409,12 +1449,12 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
             <label className="flex flex-col items-center justify-center w-full h-32 md:h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white/50 hover:bg-white/80 cursor-pointer transition-colors">
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-500"><span className="font-semibold text-[var(--color-primary)]">Tap to upload</span></p>
+                <p className="text-sm text-gray-500"><span className="font-semibold text-[#8B1235]">Tap to upload</span></p>
               </div>
               <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
             </label>
           ) : (
-            <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-sm group">
+            <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-md border-4 border-white group">
               <img src={formData.img} alt="Preview" className="w-full h-full object-cover" />
               <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md transition-all"><Trash2 size={18} /></button>
             </div>
@@ -1428,9 +1468,9 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
               {symbols.map(sym => <button key={sym} type="button" onClick={() => handleAddSymbol(sym)} className="hover:bg-white p-1 rounded transition-colors text-sm shrink-0">{sym}</button>)}
             </div>
           </div>
-          <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 resize-none ${formData.font}`} />
+          <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 resize-none ${formData.font}`} />
         </div>
-        <button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[var(--color-primary-hover)] shadow-md">
+        <button type="submit" disabled={isSaving} className="w-full bg-[#8B1235] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[#6A0D28] shadow-md transition-colors">
           {isSaving ? "Sealing envelope... 💌" : "Seal & Save Letter 💌"}
         </button>
       </form>
@@ -1439,30 +1479,33 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       <AnimatePresence>
         {rawImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-            <h3 className="text-white text-xl font-bold mb-4 font-serif">Frame Your Photo ✂️</h3>
+            <h3 className="text-white text-xl font-bold mb-2 font-serif text-center">Frame Your Photo ✂️</h3>
+            <p className="text-gray-400 text-xs mb-6 text-center">
+              {formData.layout === 'image-background' ? "Portrait mode selected for full backgrounds." : "Landscape mode selected for classic photos."}
+            </p>
             
-            <div className="relative w-full max-w-2xl h-[50vh] bg-black rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20">
+            <div className="relative w-full max-w-2xl h-[55vh] bg-black rounded-xl overflow-hidden shadow-2xl border border-white/20">
               <Cropper
                 image={rawImage}
                 crop={crop}
                 zoom={zoom}
-                // Automatically sizes the crop box depending on if it's a background or inline!
-                aspect={formData.layout === 'image-background' ? 3 / 4 : 16 / 9}
+                // Automatically locks to 9:16 (Tall) for Backgrounds, or 4:3 (Wide) for inline pictures!
+                aspect={formData.layout === 'image-background' ? 9 / 16 : 4 / 3}
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
                 onZoomChange={setZoom}
               />
             </div>
             
-            <div className="mt-6 w-full max-w-md flex items-center gap-4">
-               <span className="text-white text-sm"><ImageIcon size={16}/></span>
-               <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="w-full accent-[var(--color-primary)]" />
-               <span className="text-white text-sm"><ImageIcon size={24}/></span>
+            <div className="mt-6 w-full max-w-md flex items-center gap-4 bg-white/10 p-3 rounded-full backdrop-blur-md">
+               <span className="text-white text-sm pl-2"><ImageIcon size={16}/></span>
+               <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="w-full accent-rose-400" />
+               <span className="text-white text-sm pr-2"><ImageIcon size={24}/></span>
             </div>
             
             <div className="mt-8 flex gap-4">
-              <button type="button" onClick={() => setRawImage(null)} className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full font-bold transition-colors">Cancel</button>
-              <button type="button" onClick={confirmCrop} disabled={isSaving} className="px-6 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-full font-bold transition-colors shadow-md flex items-center gap-2">
+              <button type="button" onClick={() => setRawImage(null)} className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-full font-bold transition-colors shadow-lg">Cancel</button>
+              <button type="button" onClick={confirmCrop} disabled={isSaving} className="px-6 py-3 bg-[#8B1235] hover:bg-[#6A0D28] text-white rounded-full font-bold transition-colors shadow-lg flex items-center gap-2 border border-rose-400/30">
                 {isSaving ? "Cropping..." : <><Check size={18} /> Apply Crop</>}
               </button>
             </div>
@@ -1471,8 +1514,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       </AnimatePresence>
     </div>
   );
-};
-// ==========================================
+};// ==========================================
 // 11. OUR BUCKET LIST 📝
 // ==========================================
 const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }) => {
