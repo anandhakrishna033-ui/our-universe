@@ -18,6 +18,42 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
 import imageCompression from 'browser-image-compression';
 
 // ==========================================
+// THEME ENGINE (CSS VARIABLES)
+// ==========================================
+const GlobalThemeStyles = () => (
+  <style>{`
+    :root {
+      --color-primary: #8B1235;
+      --color-primary-hover: #6A0D28;
+      --color-bg: #FCF8F9;
+      --color-bg-alt: #f0dce1;
+      --color-heart: #E11D48;
+    }
+    [data-theme='lavender'] {
+      --color-primary: #7E57C2;
+      --color-primary-hover: #5E35B1;
+      --color-bg: #F5F3FF;
+      --color-bg-alt: #EAE6F9;
+      --color-heart: #7E57C2;
+    }
+    [data-theme='beach'] {
+      --color-primary: #0C4A6E;
+      --color-primary-hover: #072C41;
+      --color-bg: #F4F9F9;
+      --color-bg-alt: #D0E3E8;
+      --color-heart: #0891B2;
+    }
+    [data-theme='sunset'] {
+      --color-primary: #EA580C;
+      --color-primary-hover: #C2410C;
+      --color-bg: #FFF2EB;
+      --color-bg-alt: #FAD5C4;
+      --color-heart: #EA580C;
+    }
+  `}</style>
+);
+
+// ==========================================
 // UTILITY: PRIVATE BASE64 CONVERTER
 // ==========================================
 const fileToBase64 = (fileOrBlob) => new Promise((resolve, reject) => {
@@ -29,7 +65,7 @@ const fileToBase64 = (fileOrBlob) => new Promise((resolve, reject) => {
 
 // Custom glowing heart icon for your map pins
 const heartIcon = new L.DivIcon({
-  html: `<div style="font-size: 28px; color: #E11D48; filter: drop-shadow(0px 0px 8px rgba(225,29,72,0.8));">❤️</div>`,
+  html: `<div style="font-size: 28px; color: var(--color-heart); filter: drop-shadow(0px 0px 8px var(--color-heart));">❤️</div>`,
   className: 'custom-heart-icon',
   iconSize: [28, 28],
   iconAnchor: [14, 28],
@@ -40,8 +76,8 @@ const heartIcon = new L.DivIcon({
 const lovelyHeartMarker = new L.DivIcon({
   className: 'bg-transparent',
   html: `<div class="relative flex h-8 w-8 items-center justify-center">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-6 w-6 bg-[#8B1235] items-center justify-center text-white text-xs shadow-lg">❤️</span>
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style="background-color: var(--color-primary)"></span>
+          <span class="relative inline-flex rounded-full h-6 w-6 items-center justify-center text-white text-xs shadow-lg" style="background-color: var(--color-primary)">❤️</span>
         </div>`,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
@@ -65,7 +101,7 @@ const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
       {isOpen && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl">
-            <h3 className="text-xl font-serif font-bold text-[#8B1235] mb-2">
+            <h3 className="text-xl font-serif font-bold text-[var(--color-primary)] mb-2">
               {fileCount > 1 ? `Uploading ${fileCount} Photos` : "Add a Caption"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">Give your memory a beautiful short caption.</p>
@@ -77,11 +113,11 @@ const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
                 value={caption} 
                 onChange={(e) => setCaption(e.target.value)} 
                 placeholder="e.g. A beautiful moment..." 
-                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-gray-50 mb-6"
+                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-gray-50 mb-6"
               />
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" className="px-5 py-2.5 bg-[#8B1235] text-white font-bold rounded-xl shadow-md hover:bg-[#6A0D28] transition-colors">Save Photos</button>
+                <button type="submit" className="px-5 py-2.5 bg-[var(--color-primary)] text-white font-bold rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">Save Photos</button>
               </div>
             </form>
           </motion.div>
@@ -120,12 +156,12 @@ const AlertModal = ({ isOpen, onClose, title, message }) => {
       {isOpen && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl text-center">
-            <div className="w-16 h-16 bg-pink-50 text-[#8B1235] rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-pink-50 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4">
               <Sparkles size={32} />
             </div>
             <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">{title}</h3>
             <p className="text-gray-500 mb-8">{message}</p>
-            <button onClick={onClose} className="w-full py-3 bg-[#8B1235] text-white font-bold rounded-xl shadow-md hover:bg-[#6A0D28] transition-colors">Okay</button>
+            <button onClick={onClose} className="w-full py-3 bg-[var(--color-primary)] text-white font-bold rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">Okay</button>
           </motion.div>
         </motion.div>
       )}
@@ -197,12 +233,12 @@ const AudioPlayer = ({ src }) => {
           className="hidden" 
           preload="auto"
         />
-        <button type="button" onClick={togglePlay} disabled={!playableUrl} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors shadow-sm shrink-0 disabled:opacity-50">
+        <button type="button" onClick={togglePlay} disabled={!playableUrl} className="w-10 h-10 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-full hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm shrink-0 disabled:opacity-50">
           {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
         <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
           <motion.div 
-            className="h-full bg-[#8B1235]" 
+            className="h-full bg-[var(--color-primary)]" 
             style={{ width: `${progress}%` }}
             layout
           ></motion.div>
@@ -296,18 +332,18 @@ const AuthGateway = ({ onUnlock }) => {
 
   const handleLogout = () => { signOut(auth); setPin(''); };
 
-  if (authStep === 'LOADING') return <div className="min-h-screen bg-[#f0dce1] flex items-center justify-center font-serif text-[#8B1235] text-xl animate-pulse">Loading Gateway...</div>;
+  if (authStep === 'LOADING') return <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center font-serif text-[var(--color-primary)] text-xl animate-pulse">Loading Gateway...</div>;
 
   return (
-    <div className="min-h-screen bg-[#f0dce1] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
       <div className="absolute top-[-30%] left-[-30%] w-[500px] h-[500px] bg-pink-200/50 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
       
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/60 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-xl border border-white/50 max-w-md w-full relative z-10 text-center">
-        <div className="w-16 h-16 bg-rose-100 text-[#8b0a2f] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+        <div className="w-16 h-16 bg-rose-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
           {authStep === 'AUTH' ? <Shield size={32} /> : authStep === 'UNIVERSE_SETUP' ? <Sparkles size={32} /> : <Lock size={32} />}
         </div>
         
-        <h1 className="text-3xl font-serif text-[#8B1235] mb-2">
+        <h1 className="text-3xl font-serif text-[var(--color-primary)] mb-2">
           {authStep === 'AUTH' ? "Our Universe" : authStep === 'UNIVERSE_SETUP' ? "Initialize Universe" : "App Locked"}
         </h1>
         
@@ -316,12 +352,12 @@ const AuthGateway = ({ onUnlock }) => {
         {/* STEP 1: FIREBASE EMAIL/PASSWORD */}
         {authStep === 'AUTH' && (
           <form onSubmit={handleAuthSubmit} className="space-y-4 mt-6">
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[#8B1235] text-gray-800 shadow-inner" />
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[#8B1235] text-gray-800 shadow-inner" />
-            <button type="submit" disabled={isLoading} className="w-full mt-2 bg-[#8B1235] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#6A0D28] shadow-md flex justify-center gap-2">
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[var(--color-primary)] text-gray-800 shadow-inner" />
+            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[var(--color-primary)] text-gray-800 shadow-inner" />
+            <button type="submit" disabled={isLoading} className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] shadow-md flex justify-center gap-2 transition-colors">
               {isLoading ? "Authenticating..." : (isLoginMode ? "Secure Login" : "Create Account")}
             </button>
-            <p className="text-sm text-gray-500 mt-4 cursor-pointer hover:text-[#8B1235]" onClick={() => setIsLoginMode(!isLoginMode)}>
+            <p className="text-sm text-gray-500 mt-4 cursor-pointer hover:text-[var(--color-primary)]" onClick={() => setIsLoginMode(!isLoginMode)}>
               {isLoginMode ? "Need an account? Sign up" : "Have an account? Log in"}
             </p>
           </form>
@@ -331,7 +367,7 @@ const AuthGateway = ({ onUnlock }) => {
         {authStep === 'UNIVERSE_SETUP' && (
           <div className="space-y-6 mt-6">
             <p className="text-sm text-gray-500 mb-4">You need a shared space to store memories.</p>
-            <button onClick={() => handleUniverseSetup('CREATE')} disabled={isLoading} className="w-full bg-[#8B1235] text-white py-4 rounded-2xl font-bold shadow-md hover:bg-[#6A0D28]">
+            <button onClick={() => handleUniverseSetup('CREATE')} disabled={isLoading} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">
               Create New Universe
             </button>
             <div className="relative flex items-center py-2"><div className="flex-grow border-t border-gray-300"></div><span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-bold">OR</span><div className="flex-grow border-t border-gray-300"></div></div>
@@ -349,8 +385,8 @@ const AuthGateway = ({ onUnlock }) => {
         {(authStep === 'PIN_SETUP' || authStep === 'PIN_ENTRY') && (
           <form onSubmit={handlePinSubmit} className="space-y-4 mt-6">
             <p className="text-sm text-gray-500 mb-4">{authStep === 'PIN_SETUP' ? "Create a personal 4-digit PIN for this device." : "Enter your PIN to unlock."}</p>
-            <input type="password" required maxLength="8" value={pin} onChange={e => setPin(e.target.value)} placeholder={authStep === 'PIN_ENTRY' ? "Enter PIN" : "Create PIN"} className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[#8B1235] text-center text-2xl tracking-widest text-gray-800 shadow-inner" />
-            <button type="submit" className="w-full mt-2 bg-[#8B1235] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#6A0D28] shadow-md">
+            <input type="password" required maxLength="8" value={pin} onChange={e => setPin(e.target.value)} placeholder={authStep === 'PIN_ENTRY' ? "Enter PIN" : "Create PIN"} className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-2xl tracking-widest text-gray-800 shadow-inner" />
+            <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
               {authStep === 'PIN_ENTRY' ? "Unlock App" : "Set PIN & Enter"}
             </button>
             <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
@@ -419,7 +455,7 @@ const LiveClockCard = () => {
   );
 };
 
-const Home = ({ memories, quotes, deleteMemory }) => {
+const Home = ({ memories, quotes, deleteMemory, theme }) => {
   const recentMemories = memories.slice(0, 4); 
   const navigate = useNavigate();
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.15 } } };
@@ -429,10 +465,18 @@ const Home = ({ memories, quotes, deleteMemory }) => {
       <RotatingQuotes quotes={quotes} />
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/40 backdrop-blur-md rounded-3xl md:rounded-[2rem] p-6 md:p-10 mb-6 md:mb-8 relative overflow-hidden shadow-sm border border-white/50">
         <div className="relative z-10 max-w-xl">
-          <p className="text-rose-500 font-medium mb-1 md:mb-2 text-sm md:text-base flex items-center gap-2"><Sparkles size={16} /> Welcome back to our universe</p>
-          <h1 className="text-3xl md:text-5xl font-serif text-gray-800 leading-tight mb-4">"I will be there for you <span className="text-[#8B1235] italic font-light">always</span>."</h1>
+          <p className="text-[var(--color-primary)] font-medium mb-1 md:mb-2 text-sm md:text-base flex items-center gap-2">
+            <Sparkles size={16} /> 
+            {theme === 'lavender' ? "Welcome to our lavender dream" : 
+             theme === 'beach' ? "Welcome to our paradise" :
+             theme === 'sunset' ? "Welcome to our golden hour" :
+             "Welcome back to our universe"}
+          </p>
+          <h1 className="text-3xl md:text-5xl font-serif text-gray-800 leading-tight mb-4">
+            "I will be there for you <span className="text-[var(--color-primary)] italic font-light">always</span>."
+          </h1>
           <p className="text-gray-600 mb-6 md:mb-8 text-sm md:text-base leading-relaxed">Every photo, every letter, every little moment we share is kept safe right here.</p>
-          <button onClick={() => navigate('/create-memory')} className="bg-[#8B1235] text-white px-5 md:px-6 py-2.5 md:py-3 rounded-full font-medium hover:bg-[#6A0D28] transition-all flex items-center gap-2 text-sm md:text-base shadow-md hover:shadow-lg">
+          <button onClick={() => navigate('/create-memory')} className="bg-[var(--color-primary)] text-white px-5 md:px-6 py-2.5 md:py-3 rounded-full font-medium hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 text-sm md:text-base shadow-md hover:shadow-lg">
             <Plus size={18} /> Add New Memory
           </button>
         </div>
@@ -440,7 +484,7 @@ const Home = ({ memories, quotes, deleteMemory }) => {
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
         <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0"><Heart size={24} /></div>
+          <div className="w-12 h-12 rounded-xl bg-rose-50 text-[var(--color-heart)] flex items-center justify-center shrink-0"><Heart size={24} /></div>
           <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.length}</h3><p className="text-sm text-gray-600 mt-1">Total Memories</p></div>
         </div>
         <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
@@ -587,16 +631,16 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
       <form onSubmit={handleSubmit} className="bg-white/70 backdrop-blur-xl p-8 rounded-3xl shadow-sm border border-white space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235]" placeholder="e.g. The night we met" />
+          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="e.g. The night we met" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input type="text" onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235]" placeholder="dd/mm/yyyy" />
+            <input type="text" onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="dd/mm/yyyy" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-            <input type="text" onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235]" placeholder="e.g. Central Park" />
+            <input type="text" onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="e.g. Central Park" />
           </div>
         </div>
         
@@ -621,17 +665,17 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
 
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Voice Note</label>
-          {!isRecording && !voicePreview && <button type="button" onClick={startRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-pink-100 text-[#8B1235] hover:bg-pink-200"><Mic size={18}/> Record Voice</button>}
+          {!isRecording && !voicePreview && <button type="button" onClick={startRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-pink-100 text-[var(--color-primary)] hover:bg-pink-200"><Mic size={18}/> Record Voice</button>}
           {isRecording && <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-red-500 text-white shadow-md animate-pulse"><StopCircle size={18}/> Stop Recording</button>}
           {voicePreview && <div className="text-sm text-green-600 font-bold flex items-center gap-2 mt-2 bg-green-50 w-max px-4 py-2 rounded-full border border-green-200"><Check size={16}/> Voice note ready!</div>}
         </div>
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Our Story</label>
-          <textarea rows="4" onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235]" placeholder="Write what happened..."></textarea>
+          <textarea rows="4" onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="Write what happened..."></textarea>
         </div>
         
-        <button type="submit" disabled={isSaving} className="w-full bg-[#8B1235] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-colors shadow-md hover:shadow-lg">
+        <button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-colors shadow-md hover:shadow-lg">
           {isSaving ? "Safely embedding to Database... ✨" : "Save Private Memory"}
         </button>
       </form>
@@ -712,7 +756,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-800">Our Gallery 📷</h1>
           <p className="text-gray-500 mt-2 text-sm md:text-base">A collection of our favorite moments and memories.</p>
         </div>
-        <label className="bg-[#8B1235] text-white px-6 py-3 rounded-full cursor-pointer hover:bg-[#6A0D28] transition shadow-md font-medium flex items-center gap-2 w-full md:w-auto justify-center">
+        <label className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md font-medium flex items-center gap-2 w-full md:w-auto justify-center">
           {isUploading ? (
             <><span className="animate-pulse">Uploading Photos...</span></>
           ) : (
@@ -740,7 +784,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                   exit={{ opacity: 0, scale: 0.8, filter: 'blur(5px)' }}
                   transition={{ duration: 0.4 }}
                   whileHover={{ scale: 1.05, rotate: 0, zIndex: 10, transition: { duration: 0.2 } }}
-                  className="bg-[#FCF8F9] p-3 pb-12 md:p-4 md:pb-16 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative group cursor-pointer"
+                  className="bg-white p-3 pb-12 md:p-4 md:pb-16 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative group cursor-pointer"
                 >
                   <div className="w-full aspect-square bg-gray-200 overflow-hidden shadow-inner border border-black/5">
                     <img src={photo.imgUrl} className="w-full h-full object-cover" alt={photo.heading} />
@@ -758,7 +802,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                     </button>
                   )}
                   {photo.source === 'memory' && (
-                    <div className="absolute top-4 left-4 bg-white/90 px-2 py-1 rounded text-[10px] uppercase font-bold text-rose-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">From Memory</div>
+                    <div className="absolute top-4 left-4 bg-white/90 px-2 py-1 rounded text-[10px] uppercase font-bold text-[var(--color-primary)] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">From Memory</div>
                   )}
                 </motion.div>
               );
@@ -834,7 +878,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
             <motion.div 
               initial={{ scale: 0.8, y: 50, rotate: -2 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 50 }} 
               transition={{ type: "spring", bounce: 0.4 }}
-              className="bg-[#FCF8F9] p-6 md:p-10 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto border-[10px] border-white" 
+              className="bg-[var(--color-bg)] p-6 md:p-10 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto border-[10px] border-white" 
               onClick={e => e.stopPropagation()}
             >
               <button onClick={() => setSelectedMemory(null)} className="absolute -top-4 -right-4 bg-white text-gray-800 p-3 rounded-full shadow-xl hover:bg-gray-100 z-50"><X size={24}/></button>
@@ -842,7 +886,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
               {!isEditing ? (
                 <>
                   <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 bg-gray-100 text-gray-600 px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition">Edit Note</button>
-                  <p className="text-rose-500 font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                  <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
                   <h2 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-6 leading-tight">{selectedMemory.title}</h2>
                   
                   {selectedMemory.images && selectedMemory.images.length > 0 && (
@@ -851,19 +895,19 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                      </div>
                   )}
 
-                  <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-relaxed whitespace-pre-wrap bg-white/50 p-6 rounded-2xl border border-pink-100 shadow-inner">
+                  <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-relaxed whitespace-pre-wrap bg-white/50 p-6 rounded-2xl border border-gray-100 shadow-inner">
                     {selectedMemory.description || "No story written for this moment yet."}
                   </div>
                   {selectedMemory.voiceNote && <div className="mt-6"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
                 </>
               ) : (
                 <div className="space-y-4">
-                  <h3 className="text-2xl font-serif font-bold text-[#8B1235]">Edit Memory</h3>
-                  <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-bold text-xl outline-none focus:border-rose-400" />
-                  <textarea rows="8" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-serif text-lg outline-none focus:border-rose-400" />
+                  <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Memory</h3>
+                  <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-bold text-xl outline-none focus:border-[var(--color-primary)]" />
+                  <textarea rows="8" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-serif text-lg outline-none focus:border-[var(--color-primary)]" />
                   <div className="flex justify-end gap-3 pt-4">
                     <button onClick={() => setIsEditing(false)} className="px-6 py-3 font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancel</button>
-                    <button onClick={handleSaveEdit} className="px-6 py-3 font-bold bg-[#8B1235] text-white rounded-xl shadow-md hover:bg-[#6A0D28]">Save Changes</button>
+                    <button onClick={handleSaveEdit} className="px-6 py-3 font-bold bg-[var(--color-primary)] text-white rounded-xl shadow-md hover:bg-[var(--color-primary-hover)]">Save Changes</button>
                   </div>
                 </div>
               )}
@@ -900,7 +944,7 @@ const Timeline = ({ memories }) => {
         <p className="text-gray-500 font-medium">Every step we've taken, beautifully unfolding.</p>
       </div>
 
-      <div className="absolute left-8 md:left-1/2 top-32 bottom-0 w-1.5 md:-translate-x-1/2 rounded-full bg-gradient-to-b from-rose-200 via-pink-300 to-purple-200 opacity-60"></div>
+      <div className="absolute left-8 md:left-1/2 top-32 bottom-0 w-1.5 md:-translate-x-1/2 rounded-full bg-gradient-to-b from-gray-200 via-gray-300 to-gray-200 opacity-60"></div>
 
       <div className="space-y-12 md:space-y-24 relative z-10">
         {sortedMemories.map((m, idx) => {
@@ -918,7 +962,7 @@ const Timeline = ({ memories }) => {
               transition={{ duration: 0.6, type: "spring", bounce: 0.3 }}
               className={`flex flex-col md:flex-row items-center w-full ${isEven ? 'md:justify-start' : 'md:justify-end'} relative group`}
             >
-              <div className="absolute left-4 md:left-1/2 w-8 h-8 rounded-full border-4 border-[#FCF8F9] bg-[#8B1235] md:-translate-x-1/2 shadow-md z-20 group-hover:scale-125 group-hover:bg-rose-400 transition-all duration-300 flex items-center justify-center">
+              <div className="absolute left-4 md:left-1/2 w-8 h-8 rounded-full border-4 border-[var(--color-bg)] bg-[var(--color-primary)] md:-translate-x-1/2 shadow-md z-20 group-hover:scale-125 group-hover:bg-[var(--color-primary-hover)] transition-all duration-300 flex items-center justify-center">
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               </div>
 
@@ -928,7 +972,7 @@ const Timeline = ({ memories }) => {
                   onClick={() => toggleExpand(m.firestoreId || m.id)}
                   className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white hover:shadow-xl transition-shadow cursor-pointer relative overflow-hidden"
                 >
-                  <div className="inline-block bg-rose-50 text-rose-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3 shadow-sm border border-rose-100">
+                  <div className="inline-block bg-[var(--color-bg-alt)] text-[var(--color-primary)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3 shadow-sm border border-white">
                     {m.date}
                   </div>
 
@@ -963,7 +1007,7 @@ const Timeline = ({ memories }) => {
                           </p>
                         )}
                         {m.description && (
-                          <p className="text-gray-600 leading-relaxed text-md mb-6 bg-rose-50/30 p-4 rounded-2xl italic font-serif border-l-4 border-rose-300">
+                          <p className="text-gray-600 leading-relaxed text-md mb-6 bg-white/50 p-4 rounded-2xl italic font-serif border-l-4 border-[var(--color-primary)]">
                             "{m.description}"
                           </p>
                         )}
@@ -980,7 +1024,7 @@ const Timeline = ({ memories }) => {
                     )}
                   </AnimatePresence>
 
-                  <div className="w-full flex justify-center mt-4 text-gray-300 group-hover:text-rose-400 transition-colors">
+                  <div className="w-full flex justify-center mt-4 text-gray-300 group-hover:text-[var(--color-primary)] transition-colors">
                     {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </div>
                 </motion.div>
@@ -1024,7 +1068,7 @@ const LovelyMap = ({ memories }) => {
     <div className="max-w-6xl mx-auto pb-10">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">The Map of Us 🌍</h1>
-        <p className="text-sm font-medium bg-rose-100 text-rose-700 px-4 py-2 rounded-full shadow-sm">
+        <p className="text-sm font-medium bg-white text-[var(--color-primary)] border border-gray-200 px-4 py-2 rounded-full shadow-sm">
           {markers.length} {markers.length === 1 ? 'Pin' : 'Pins'} Dropped
         </p>
       </div>
@@ -1039,7 +1083,7 @@ const LovelyMap = ({ memories }) => {
                   <Popup className="custom-popup border-0 shadow-lg rounded-xl">
                     <div className="p-1 text-center min-w-[150px]">
                       {coverImg && <img src={coverImg} alt={marker.title} className="w-full h-28 object-cover rounded-lg mb-3 shadow-md" />}
-                      <h3 className="font-bold font-serif text-[#8B1235] text-lg leading-tight">{marker.title}</h3>
+                      <h3 className="font-bold font-serif text-[var(--color-primary)] text-lg leading-tight">{marker.title}</h3>
                       <p className="text-xs font-semibold text-gray-600 mt-1 uppercase tracking-wider">{marker.location}</p>
                     </div>
                   </Popup>
@@ -1080,24 +1124,40 @@ const LockedLetter = ({ letter }) => {
   }, [letter.unlockDate]);
 
   return (
-    <div className="bg-rose-900/10 backdrop-blur-md border border-rose-900/20 rounded-3xl p-8 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
-      <Lock size={48} className="text-rose-600 mb-4 opacity-80" />
-      <h3 className="text-2xl font-bold text-rose-900 mb-2">Time Capsule Sealed</h3>
-      <p className="text-rose-700 mb-4">"Do not open until our special day."</p>
-      <div className="bg-rose-900 text-white px-4 py-2 rounded-full font-mono text-sm font-bold shadow-inner">
+    <div className="bg-black/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
+      <Lock size={48} className="text-[var(--color-primary)] mb-4 opacity-80" />
+      <h3 className="text-2xl font-bold text-gray-800 mb-2">Time Capsule Sealed</h3>
+      <p className="text-gray-700 mb-4">"Do not open until our special day."</p>
+      <div className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-full font-mono text-sm font-bold shadow-inner">
         {timeLeft}
       </div>
     </div>
   );
 };
 
-const Letters = ({ letters, deleteLetter }) => {
+const Letters = ({ letters, deleteLetter, editLetter }) => {
   const navigate = useNavigate();
+  const [selectedLetter, setSelectedLetter] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', content: '' });
+
+  const openLetter = (l) => {
+    setSelectedLetter(l);
+    setEditForm({ title: l.title, content: l.content });
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = () => {
+    editLetter(selectedLetter.firestoreId, editForm);
+    setSelectedLetter({ ...selectedLetter, ...editForm });
+    setIsEditing(false);
+  };
+
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Love Letters 💌</h1>
-        <button onClick={() => navigate('/create-letter')} className="bg-[#8B1235] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#6A0D28] transition-all flex items-center gap-2 shadow-sm">
+        <button onClick={() => navigate('/create-letter')} className="bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 shadow-sm">
           <PenTool size={18} /> Write a Letter
         </button>
       </div>
@@ -1105,10 +1165,11 @@ const Letters = ({ letters, deleteLetter }) => {
       {letters.length === 0 ? (
         <p className="text-gray-500 text-center py-10 bg-white/50 backdrop-blur-sm rounded-3xl border border-white">No letters written yet. Leave a sweet note!</p>
       ) : (
-        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
             {letters.map((letter, idx) => {
               const isLocked = letter.unlockDate && new Date(letter.unlockDate).getTime() > new Date().getTime();
+              const randomRotation = (idx % 2 === 0 ? 1 : -1) * ((idx % 3) + 1);
 
               if (isLocked) {
                 return (
@@ -1124,35 +1185,26 @@ const Letters = ({ letters, deleteLetter }) => {
               return (
                 <motion.div 
                   key={letter.firestoreId || letter.id} layout
-                  initial={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
-                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, scale: 0.9, filter: 'blur(5px)' }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  whileHover={{ scale: 1.01 }} 
-                  className={`relative overflow-hidden rounded-3xl shadow-sm border border-gray-100 min-h-[300px] flex flex-col group ${letter.layout === 'image-background' ? 'text-white' : 'bg-white/80 backdrop-blur-md text-gray-800'}`}
+                  whileHover={{ scale: 1.02, rotate: randomRotation, zIndex: 10 }} 
+                  onClick={() => openLetter(letter)}
+                  className="bg-white p-4 pb-12 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative cursor-pointer group flex flex-col h-64 overflow-hidden"
                 >
-                  <button onClick={() => deleteLetter(letter.firestoreId || letter.id)} className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50">
+                  <button onClick={(e) => { e.stopPropagation(); deleteLetter(letter.firestoreId || letter.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-50">
                     <Trash2 size={16} />
                   </button>
 
-                  {letter.layout === 'image-background' && letter.img && (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${letter.img})` }}>
-                      <div className="absolute inset-0 bg-black/50"></div>
+                  <div className="relative z-10 flex flex-col flex-1">
+                    <div className="mb-2 border-b border-gray-200 pb-2">
+                      <h3 className="text-xl font-bold mb-1 text-gray-800 truncate">{letter.title}</h3>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400">{letter.date}</p>
                     </div>
-                  )}
-
-                  <div className="relative z-10 p-6 md:p-8 flex flex-col flex-1">
-                    <div className="mb-4 border-b border-current pb-4 opacity-80">
-                      <h3 className="text-2xl font-bold mb-1">{letter.title}</h3>
-                      <p className="text-xs uppercase tracking-wider">{letter.date} • {letter.time}</p>
+                    <div className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-500 ${letter.font} overflow-hidden`}>
+                      {letter.content.substring(0, 150)}...
                     </div>
-                    {letter.layout === 'image-top' && letter.img && (
-                      <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} src={letter.img} alt="attachment" className="w-full h-48 object-cover rounded-xl mb-4 shadow-sm" />
-                    )}
-                    <div className={`flex-1 whitespace-pre-wrap text-lg leading-relaxed ${letter.font}`}>{letter.content}</div>
-                    {letter.layout === 'image-bottom' && letter.img && (
-                      <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} src={letter.img} alt="attachment" className="w-full h-48 object-cover rounded-xl mt-6 shadow-sm" />
-                    )}
                   </div>
                 </motion.div>
               )
@@ -1160,6 +1212,60 @@ const Letters = ({ letters, deleteLetter }) => {
           </AnimatePresence>
         </motion.div>
       )}
+
+      {/* FULL SCREEN READING MODAL FOR LETTERS */}
+      <AnimatePresence>
+        {selectedLetter && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto" onClick={() => setSelectedLetter(null)}>
+            <motion.div 
+              initial={{ scale: 0.8, y: 50, rotate: 2 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 50 }} 
+              transition={{ type: "spring", bounce: 0.4 }}
+              className={`p-6 md:p-10 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto border-[10px] border-white ${selectedLetter.layout === 'image-background' ? 'text-white' : 'bg-white text-gray-800'}`} 
+              onClick={e => e.stopPropagation()}
+            >
+              <button onClick={() => setSelectedLetter(null)} className="absolute -top-4 -right-4 bg-white text-gray-800 p-3 rounded-full shadow-xl hover:bg-gray-100 z-50"><X size={24}/></button>
+              
+              {selectedLetter.layout === 'image-background' && selectedLetter.img && (
+                <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${selectedLetter.img})` }}>
+                  <div className="absolute inset-0 bg-black/60"></div>
+                </div>
+              )}
+
+              <div className="relative z-10">
+                {!isEditing ? (
+                  <>
+                    <button onClick={() => setIsEditing(true)} className="absolute top-0 right-0 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-2 rounded-full font-bold text-sm hover:bg-white transition">Edit Letter</button>
+                    <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedLetter.date} • {selectedLetter.time}</p>
+                    <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight border-b border-current pb-4 opacity-90">{selectedLetter.title}</h2>
+                    
+                    {selectedLetter.layout === 'image-top' && selectedLetter.img && (
+                      <img src={selectedLetter.img} className="w-full object-cover rounded-xl mb-6 shadow-md border-4 border-white" />
+                    )}
+
+                    <div className={`whitespace-pre-wrap text-xl leading-relaxed ${selectedLetter.font}`}>
+                      {selectedLetter.content}
+                    </div>
+
+                    {selectedLetter.layout === 'image-bottom' && selectedLetter.img && (
+                      <img src={selectedLetter.img} className="w-full object-cover rounded-xl mt-8 shadow-md border-4 border-white" />
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-4 bg-white p-6 rounded-2xl">
+                    <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Letter</h3>
+                    <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-bold text-xl outline-none focus:border-[var(--color-primary)] text-gray-800" />
+                    <textarea rows="12" value={editForm.content} onChange={e => setEditForm({...editForm, content: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-serif text-lg outline-none focus:border-[var(--color-primary)] text-gray-800" />
+                    <div className="flex justify-end gap-3 pt-4">
+                      <button onClick={() => setIsEditing(false)} className="px-6 py-3 font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancel</button>
+                      <button onClick={handleSaveEdit} className="px-6 py-3 font-bold bg-[var(--color-primary)] text-white rounded-xl shadow-md hover:bg-[var(--color-primary-hover)]">Save Changes</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1206,12 +1312,12 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       <form onSubmit={handleSubmit} className="bg-white/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-sm border border-white space-y-6">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">Heading / Subject</label>
-          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50" />
+          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Letter Font</label>
-            <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
+            <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
               <option value="font-serif">Elegant Serif (Classic)</option>
               <option value="font-sans">Clean Sans (Modern)</option>
               <option value="font-mono">Typewriter (Vintage)</option>
@@ -1220,15 +1326,15 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Image Layout</label>
-            <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
+            <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
               <option value="image-top">Image at the Top</option>
               <option value="image-bottom">Image at the Bottom</option>
               <option value="image-background">Full Background Image</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-bold text-rose-600 mb-1">Time Capsule Lock</label>
-            <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-rose-200 outline-none focus:border-[#8B1235] bg-rose-50 text-rose-900" />
+            <label className="block text-sm font-bold text-gray-700 mb-1">Time Capsule Lock</label>
+            <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
           </div>
         </div>
 
@@ -1238,7 +1344,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
             <label className="flex flex-col items-center justify-center w-full h-32 md:h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white/50 hover:bg-white/80 cursor-pointer transition-colors">
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-500"><span className="font-semibold text-[#8B1235]">Tap to upload</span></p>
+                <p className="text-sm text-gray-500"><span className="font-semibold text-[var(--color-primary)]">Tap to upload</span></p>
               </div>
               <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
             </label>
@@ -1257,9 +1363,9 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
               {symbols.map(sym => <button key={sym} type="button" onClick={() => handleAddSymbol(sym)} className="hover:bg-white p-1 rounded transition-colors text-sm shrink-0">{sym}</button>)}
             </div>
           </div>
-          <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 resize-none ${formData.font}`} />
+          <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 resize-none ${formData.font}`} />
         </div>
-        <button type="submit" disabled={isSaving} className="w-full bg-[#8B1235] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[#6A0D28] shadow-md">
+        <button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[var(--color-primary-hover)] shadow-md">
           {isSaving ? "Sealing envelope... 💌" : "Seal & Save Letter 💌"}
         </button>
       </form>
@@ -1303,7 +1409,7 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
       const compressed = await imageCompression(file, options);
       const base64 = await fileToBase64(compressed);
       
-      toggleGoal(completingGoalId, true, base64); // Pass image to backend
+      toggleGoal(completingGoalId, true, base64);
       setCompletingGoalId(null);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000); 
@@ -1314,10 +1420,8 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
 
   const handleToggle = (id, isCompleted) => {
     if (!isCompleted) {
-      // If marking as complete, ask for a photo!
       setCompletingGoalId(id);
     } else {
-      // If un-checking, just toggle it normally
       toggleGoal(id, false);
     }
   };
@@ -1328,16 +1432,15 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
     <div className="max-w-4xl mx-auto pb-10">
       {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
       
-      {/* Photo Proof Modal */}
       <AnimatePresence>
         {completingGoalId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
-              <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4"><ImageIcon size={32} /></div>
+              <div className="w-16 h-16 bg-gray-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4"><ImageIcon size={32} /></div>
               <h3 className="text-2xl font-bold font-serif text-gray-800 mb-2">Goal Completed! 🎉</h3>
               <p className="text-gray-500 mb-6">Attach a photo of this moment to immortalize it as a polaroid.</p>
               
-              <label className="block w-full bg-[#8B1235] text-white py-3 rounded-xl font-bold cursor-pointer hover:bg-[#6A0D28] transition shadow-md mb-3">
+              <label className="block w-full bg-[var(--color-primary)] text-white py-3 rounded-xl font-bold cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md mb-3">
                 Upload Photo Proof
                 <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               </label>
@@ -1351,32 +1454,30 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
 
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Our Bucket List ✈️</h1>
       
-      {/* Filter Row */}
       <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
         <button onClick={() => setFilter("All")} className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${filter === "All" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-100"}`}>All</button>
         {categories.map(cat => (
-          <button key={cat} onClick={() => setFilter(cat)} className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors shadow-sm ${filter === cat ? "bg-[#8B1235] text-white" : "bg-white text-gray-600 hover:bg-rose-50"}`}>{cat}</button>
+          <button key={cat} onClick={() => setFilter(cat)} className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors shadow-sm ${filter === cat ? "bg-[var(--color-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>{cat}</button>
         ))}
       </div>
 
       <form onSubmit={handleSubmit} className="mb-8 bg-white/60 backdrop-blur-md p-4 rounded-3xl border border-white shadow-sm flex flex-col gap-4">
         <div className="flex gap-2 overflow-x-auto pb-2">
           {categories.map(cat => (
-            <button type="button" key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition ${selectedCategory === cat ? "bg-rose-100 text-rose-700 border border-rose-200" : "bg-gray-50 text-gray-500"}`}>{cat}</button>
+            <button type="button" key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition ${selectedCategory === cat ? "bg-gray-100 text-[var(--color-primary)] border border-gray-200" : "bg-gray-50 text-gray-500"}`}>{cat}</button>
           ))}
         </div>
         <div className="flex gap-3">
-          <input type="text" value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="What's our next adventure?" className="flex-1 p-4 rounded-2xl border border-gray-200 outline-none focus:border-[#8B1235] shadow-inner bg-white" />
-          <button type="submit" className="bg-[#8B1235] text-white px-6 py-4 rounded-2xl font-bold hover:bg-[#6A0D28] transition shadow-md"><Plus size={24} /></button>
+          <input type="text" value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="What's our next adventure?" className="flex-1 p-4 rounded-2xl border border-gray-200 outline-none focus:border-[var(--color-primary)] shadow-inner bg-white" />
+          <button type="submit" className="bg-[var(--color-primary)] text-white px-6 py-4 rounded-2xl font-bold hover:bg-[var(--color-primary-hover)] transition shadow-md"><Plus size={24} /></button>
         </div>
       </form>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AnimatePresence>
           {filteredList.map(goal => (
-            <motion.div key={goal.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${goal.completed ? 'bg-[#FCF8F9] border-rose-100' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
+            <motion.div key={goal.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${goal.completed ? 'bg-[var(--color-bg)] border-white' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
               
-              {/* If it has a photo proof, show it like a polaroid header */}
               {goal.completed && goal.proofImage && (
                 <div className="w-full h-40 bg-gray-200 relative">
                   <img src={goal.proofImage} className="w-full h-full object-cover filter contrast-110" alt="Proof" />
@@ -1390,14 +1491,14 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
                     {goal.completed && <Check size={16} className="text-white" />}
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500 block mb-0.5">{goal.category}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] block mb-0.5">{goal.category}</span>
                     <span className={`text-lg font-serif font-bold transition-all block leading-tight ${goal.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{goal.title}</span>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <button onClick={() => deleteGoal(goal.id)} className="text-gray-300 hover:text-red-500 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16} /></button>
                   {goal.authorEmail && (
-                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px] font-bold uppercase border border-blue-200" title={`Added by ${goal.authorEmail}`}>
+                    <div className="w-6 h-6 rounded-full bg-blue-50 text-[var(--color-primary)] flex items-center justify-center text-[10px] font-bold uppercase border border-blue-100" title={`Added by ${goal.authorEmail}`}>
                       {goal.authorEmail.charAt(0)}
                     </div>
                   )}
@@ -1410,37 +1511,25 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
     </div>
   );
 };
+
 // ==========================================
 // 12. THE DUAL PROMISE JARS 🫙🫙
 // ==========================================
 
-// Stable component outside of PromiseJar prevents typing re-animation bug!
-const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
+const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
   <div className="flex flex-col items-center justify-center p-6 md:p-8 relative w-full group">
     <input 
       type="text" 
       value={name} 
       onChange={(e) => setName(e.target.value)} 
-      className="text-xl md:text-2xl font-serif font-bold text-[#8B1235] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-pink-200 mb-6 w-full transition-colors z-10"
+      className="text-xl md:text-2xl font-serif font-bold text-[var(--color-primary)] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-gray-200 mb-6 w-full transition-colors z-10"
       placeholder="Name this jar..."
     />
     
-    {/* THE FROSTED GLASS JAR */}
-    <div 
-      onClick={() => onDraw(jarPromises)} 
-      className={`w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)] ${color}`}
-    >
-      
-      {/* THE CORK LID */}
-      <div className="absolute top-0 w-full h-8 bg-gradient-to-r from-amber-800 via-amber-600 to-amber-900 border-b-4 border-amber-900/80 shadow-[0_5px_10px_rgba(0,0,0,0.3)] z-20 flex items-center justify-center">
-         <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-2"></div>
-         <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-5"></div>
-      </div>
-      
-      {/* GLASS HIGHLIGHT GLARE */}
+    <div onClick={() => onDraw(jarPromises)} className={`w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)]`}>
+      <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20 shadow-sm"></div>
       <div className="absolute top-0 left-[30%] w-3 h-full bg-gradient-to-b from-white/60 to-transparent rounded-full transform -skew-x-12 z-20 pointer-events-none"></div>
 
-      {/* THE FALLING NOTES */}
       <div className="flex justify-center w-full h-[90%] px-4 relative z-10 overflow-hidden">
         <AnimatePresence>
           {jarPromises.map((p, i) => {
@@ -1448,13 +1537,12 @@ const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
             const pseudoRandomX = Math.sin(seed) * 50; 
             const pseudoRandomY = -(i * 4) - Math.abs(Math.cos(seed) * 15); 
             const pseudoRandomRot = Math.sin(seed * 2) * 60; 
-            const colors = ['bg-pink-100', 'bg-rose-100', 'bg-white', 'bg-red-50'];
+            const colors = ['bg-gray-100', 'bg-white', 'bg-[var(--color-bg-alt)]'];
             const noteColor = colors[seed % colors.length];
 
             return (
               <motion.div 
                 key={p.id || i}
-                // Falling leaf physics: starts at 0 X, sways back and forth smoothly down to its position
                 initial={{ y: -250, opacity: 0, x: 0, rotate: 0 }}
                 animate={{ 
                   y: pseudoRandomY, 
@@ -1462,14 +1550,11 @@ const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
                   x: [0, pseudoRandomX * -0.6, pseudoRandomX * 1.4, pseudoRandomX * 0.3, pseudoRandomX],
                   rotate: [0, 45, -35, 20, pseudoRandomRot]
                 }}
-                transition={{ 
-                  duration: 3.2, // Slower leaf descent simulation
-                  ease: "easeInOut"
-                }}
+                transition={{ duration: 3.2, ease: "easeInOut" }}
                 className={`w-10 h-10 ${noteColor} shadow-md border border-black/5 absolute bottom-2 flex items-center justify-center rounded-sm`}
                 style={{ zIndex: i }}
               >
-                <div className="w-6 h-6 border border-pink-200/50 rounded-sm opacity-50"></div>
+                <div className="w-6 h-6 border border-gray-200/50 rounded-sm opacity-50"></div>
               </motion.div>
             );
           })}
@@ -1477,7 +1562,7 @@ const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
       </div>
     </div>
     
-    <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-rose-500 transition-colors bg-white/50 px-4 py-2 rounded-full shadow-sm" onClick={() => onDraw(jarPromises)}>
+    <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-[var(--color-primary)] transition-colors bg-white/50 px-4 py-2 rounded-full shadow-sm" onClick={() => onDraw(jarPromises)}>
       Tap jar to open 
     </p>
   </div>
@@ -1534,7 +1619,6 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
 
   const drawRandomPromise = (jarPromises) => {
     if (jarPromises.length === 0) {
-      // Fallback to standard alert if showAlert isn't provided by the parent
       return showAlert ? showAlert("Empty Jar", "This jar is empty! Add a sweet note first.") : alert("This jar is empty! Add a sweet note first.");
     }
     const randomIdx = Math.floor(Math.random() * jarPromises.length);
@@ -1546,19 +1630,19 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800 text-center md:text-left">The Promise Jars 🫙</h1>
       
       <div className="grid md:grid-cols-2 gap-8 mb-12">
-        <JarVisual name={jar1Name} setName={setJar1Name} jarPromises={jar1Promises} onDraw={drawRandomPromise} color="bg-blue-50/10" />
-        <JarVisual name={jar2Name} setName={setJar2Name} jarPromises={jar2Promises} onDraw={drawRandomPromise} color="bg-rose-50/10" />
+        <JarVisual name={jar1Name} setName={setJar1Name} jarPromises={jar1Promises} onDraw={drawRandomPromise} />
+        <JarVisual name={jar2Name} setName={setJar2Name} jarPromises={jar2Promises} onDraw={drawRandomPromise} />
       </div>
       
       <div className="max-w-2xl mx-auto">
         <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-md p-6 md:p-8 rounded-[2rem] shadow-sm border border-white">
           <h3 className="text-xl font-serif font-bold text-gray-800 mb-6">Fold a New Note ✍️</h3>
           <div className="flex bg-white p-1 rounded-xl shadow-inner border border-gray-100 mb-4 w-max">
-            <button type="button" onClick={() => setTargetJar('jar1')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar1' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>For {jar1Name}</button>
-            <button type="button" onClick={() => setTargetJar('jar2')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar2' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>For {jar2Name}</button>
+            <button type="button" onClick={() => setTargetJar('jar1')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar1' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>For {jar1Name}</button>
+            <button type="button" onClick={() => setTargetJar('jar2')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${targetJar === 'jar2' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>For {jar2Name}</button>
           </div>
-          <textarea value={newPromise} onChange={(e) => setNewPromise(e.target.value)} placeholder="Write a tiny promise, compliment, or memory here..." className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-pink-300 bg-white/50 resize-none font-serif text-lg" rows="3" />
-          <button type="submit" className="w-full mt-4 bg-[#8B1235] text-white py-4 rounded-xl font-bold hover:bg-[#6A0D28] transition-all hover:shadow-lg shadow-sm flex items-center justify-center gap-2">Drop Note into Jar <ChevronDown size={18} /></button>
+          <textarea value={newPromise} onChange={(e) => setNewPromise(e.target.value)} placeholder="Write a tiny promise, compliment, or memory here..." className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 resize-none font-serif text-lg" rows="3" />
+          <button type="submit" className="w-full mt-4 bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold hover:bg-[var(--color-primary-hover)] transition-all hover:shadow-lg shadow-sm flex items-center justify-center gap-2">Drop Note into Jar <ChevronDown size={18} /></button>
         </form>
         
         {promises.length > 0 && (
@@ -1567,7 +1651,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
             {promises.map((p) => (
               <div key={p.id} className="flex justify-between items-center bg-white/80 p-4 rounded-xl shadow-sm border border-white">
                 <div>
-                  <p className="text-sm font-bold text-rose-500 uppercase text-[10px] mb-1">In {p.target === 'jar2' ? jar2Name : jar1Name}</p>
+                  <p className="text-sm font-bold text-[var(--color-primary)] uppercase text-[10px] mb-1">In {p.target === 'jar2' ? jar2Name : jar1Name}</p>
                   <p className="text-gray-700 font-serif italic pr-4">"{p.text}"</p>
                 </div>
                 <button onClick={() => deletePromise(p.id)} className="text-gray-400 hover:text-red-500 ml-2 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16}/></button>
@@ -1576,13 +1660,12 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
           </div>
         )}
       </div>
-
       <AnimatePresence>
         {drawnPromise && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
-            <motion.div initial={{ scale: 0.5, y: 100, rotate: -10 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 20 }} transition={{ type: "spring", bounce: 0.4 }} className="bg-[#FCF8F9] p-10 max-w-md w-full rounded-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <motion.div initial={{ scale: 0.5, y: 100, rotate: -10 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 20 }} transition={{ type: "spring", bounce: 0.4 }} className="bg-[var(--color-bg)] p-10 max-w-md w-full rounded-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-16 h-5 bg-yellow-200/60 rotate-2 shadow-sm"></div>
-              <button onClick={() => setDrawnPromise(null)} className="absolute top-2 right-3 text-gray-400 hover:text-gray-800"><X size={20}/></button>
+              <button onClick={() => setDrawnPromise(null)} className="absolute top-2 right-3 text-gray-400 hover:text-[var(--color-primary)]"><X size={20}/></button>
               <p className="text-2xl font-serif text-gray-800 text-center leading-relaxed italic mt-4">"{drawnPromise.text}"</p>
             </motion.div>
           </motion.div>
@@ -1591,6 +1674,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
     </div>
   );
 };
+
 // ==========================================
 // 13. FREEFORM MOOD BOARD 📌
 // ==========================================
@@ -1649,7 +1733,8 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
       ctx.clearRect(0, 0, canvas.width, canvas.height); 
       ctx.lineCap = "round";
       ctx.lineWidth = 4;
-      ctx.strokeStyle = "#8B1235";
+      // Drawing color inherits theme primary color logically
+      ctx.strokeStyle = "#8B1235"; 
     }
   }, [showDrawPad]);
 
@@ -1696,7 +1781,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
         </div>
         <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-xl p-3 rounded-2xl shadow-sm border border-white">
           <form onSubmit={handleAddText} className="flex flex-wrap items-center gap-2 border-r border-gray-200 pr-3">
-            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type note..." className="px-3 py-2 rounded-xl text-sm border outline-none focus:border-rose-300 w-28 md:w-36 bg-white/50" />
+            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type note..." className="px-3 py-2 rounded-xl text-sm border outline-none focus:border-[var(--color-primary)] w-28 md:w-36 bg-white/50" />
             <div className="flex gap-1">
               {colors.map(c => (
                 <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-5 h-5 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110 shadow-md' : c.border} transition-transform`}></button>
@@ -1707,11 +1792,11 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
             </select>
             <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition shadow-sm"><StickyNote size={18}/></button>
           </form>
-          <label className="bg-rose-100 text-rose-700 px-4 py-2 rounded-xl hover:bg-rose-200 transition cursor-pointer flex items-center gap-2 font-bold text-sm shadow-sm">
+          <label className="bg-gray-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-gray-200 transition cursor-pointer flex items-center gap-2 font-bold text-sm shadow-sm">
             <ImageIcon size={18} /> Pic
             <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
           </label>
-          <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-bold text-sm shadow-sm">
+          <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-bold text-sm shadow-sm">
             <PenTool size={18} /> Ink
           </button>
         </div>
@@ -1779,7 +1864,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
               </div>
               <div className="flex justify-between items-center mt-6">
                 <button onClick={() => { const ctx = canvasRef.current.getContext('2d'); ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); }} className="text-gray-500 font-bold hover:text-gray-800 text-sm flex items-center gap-1"><Trash2 size={16}/> Clear</button>
-                <button onClick={saveDrawing} className="bg-[#8B1235] text-white px-6 py-3 rounded-full font-bold hover:bg-[#6A0D28] shadow-md flex items-center gap-2 transition-all hover:scale-105">Stick to Board <Check size={18}/></button>
+                <button onClick={saveDrawing} className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full font-bold hover:bg-[var(--color-primary-hover)] shadow-md flex items-center gap-2 transition-all hover:scale-105">Stick to Board <Check size={18}/></button>
               </div>
             </motion.div>
           </motion.div>
@@ -1872,8 +1957,8 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
           <p className="text-sm text-gray-500 mb-6">Send this code to your partner. When they create an account, they can select "Join Universe" and paste this code to sync your memories securely.</p>
           
           <div className="flex items-center bg-gray-50 border border-gray-200 p-4 rounded-xl gap-4">
-            <code className="text-xl font-bold tracking-widest text-[#8B1235] flex-1 text-center">{activeUniverse}</code>
-            <button onClick={copyUniverseCode} className="bg-[#8B1235] text-white p-3 rounded-lg hover:bg-[#6A0D28] transition-colors"><Copy size={20} /></button>
+            <code className="text-xl font-bold tracking-widest text-[var(--color-primary)] flex-1 text-center">{activeUniverse}</code>
+            <button onClick={copyUniverseCode} className="bg-[var(--color-primary)] text-white p-3 rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"><Copy size={20} /></button>
           </div>
         </motion.div>
 
@@ -1903,14 +1988,14 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
         {/* --- WHISPERS OF THE UNIVERSE (ROTATING QUOTES) --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
            <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-pink-100 text-[#8B1235] rounded-xl"><PenTool size={20} /></div>
+            <div className="p-2.5 bg-gray-100 text-[var(--color-primary)] rounded-xl"><PenTool size={20} /></div>
             <h2 className="text-xl font-semibold text-gray-800">Whispers of the Universe</h2>
           </div>
           
           <form onSubmit={handleAddQuote} className="mb-6">
             <label className="block text-sm md:text-base text-gray-600 mb-2 font-medium">Add a lovely sentence to rotate on the dashboard</label>
-            <textarea value={newQuote} onChange={(e) => setNewQuote(e.target.value)} placeholder="e.g. You are my today and all of my tomorrows..." className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-pink-200 bg-white/50 resize-none font-serif text-lg" rows="3" />
-            <button type="submit" disabled={isSavingQuote || !newQuote.trim()} className="mt-4 bg-[#8B1235] text-white px-6 py-3 rounded-xl w-full font-medium hover:bg-[#6A0D28] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            <textarea value={newQuote} onChange={(e) => setNewQuote(e.target.value)} placeholder="e.g. You are my today and all of my tomorrows..." className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-200 bg-white/50 resize-none font-serif text-lg" rows="3" />
+            <button type="submit" disabled={isSavingQuote || !newQuote.trim()} className="mt-4 bg-[var(--color-primary)] text-white px-6 py-3 rounded-xl w-full font-medium hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               {isSavingQuote ? "Adding to the stars..." : <><Sparkles size={18}/> Add to Dashboard</>}
             </button>
           </form>
@@ -1921,7 +2006,7 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
               <div className="space-y-3">
                 <AnimatePresence>
                   {quotes.map(q => (
-                    <motion.div key={q.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center bg-white/80 p-3 rounded-xl border border-pink-50 shadow-sm">
+                    <motion.div key={q.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center bg-white/80 p-3 rounded-xl border border-gray-100 shadow-sm">
                       <p className="font-serif italic text-gray-700 truncate pr-4 text-sm md:text-base">"{q.text}"</p>
                       <button onClick={() => deleteQuote(q.id)} className="text-gray-400 hover:text-red-500 p-2 transition-colors shrink-0 bg-white rounded-lg shadow-sm border border-gray-100"><Trash2 size={16}/></button>
                     </motion.div>
@@ -1938,19 +2023,28 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
             <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><Palette size={20} /></div>
             <h2 className="text-xl font-semibold text-gray-800">Aesthetic Theme</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onClick={() => setTheme('light')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'light' ? 'border-rose-400 bg-rose-50 shadow-md scale-[1.02]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <button onClick={() => setTheme('light')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'light' ? 'border-rose-400 bg-rose-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
               <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#FCF8F9] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#8B1235] shadow-sm"></div></div>
-              <div><p className="font-semibold text-gray-800">Light Romantic</p><p className="text-xs text-gray-500 mt-0.5">Soft whites and deep maroon.</p></div>
+              <div><p className="font-semibold text-gray-800">Light Romantic</p><p className="text-[10px] text-gray-500 mt-0.5">Soft whites and deep maroon.</p></div>
             </button>
-            <button onClick={() => setTheme('beach')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'beach' ? 'border-cyan-400 bg-cyan-50 shadow-md scale-[1.02]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+            
+            <button onClick={() => setTheme('lavender')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'lavender' ? 'border-purple-400 bg-purple-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
+              <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#F5F3FF] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#7E57C2] shadow-sm"></div></div>
+              <div><p className="font-semibold text-gray-800">Lavender Dream</p><p className="text-[10px] text-gray-500 mt-0.5">Soft lavenders and deep violet.</p></div>
+            </button>
+
+            <button onClick={() => setTheme('beach')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'beach' ? 'border-cyan-400 bg-cyan-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
               <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#F4F9F9] border border-cyan-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#0C4A6E] shadow-sm"></div></div>
-              <div><p className="font-semibold text-gray-800">Heavenly Beach</p><p className="text-xs text-gray-500 mt-0.5">Soft ocean blues and warm shores.</p></div>
+              <div><p className="font-semibold text-gray-800">Heavenly Beach</p><p className="text-[10px] text-gray-500 mt-0.5">Soft ocean blues and warm shores.</p></div>
             </button>
-            <button onClick={() => setTheme('sunset')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'sunset' ? 'border-orange-400 bg-orange-50 shadow-md scale-[1.02]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+            
+            <button onClick={() => setTheme('sunset')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'sunset' ? 'border-orange-400 bg-orange-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
               <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#FFF2EB] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#ea580c] shadow-sm"></div></div>
-              <div><p className="font-semibold text-gray-800">Sunset Glow</p><p className="text-xs text-gray-500 mt-0.5">Warm peaches and vibrant orange.</p></div>
+              <div><p className="font-semibold text-gray-800">Sunset Glow</p><p className="text-[10px] text-gray-500 mt-0.5">Warm peaches and vibrant orange.</p></div>
             </button>
+
           </div>
         </motion.div>
       </motion.div>
@@ -1962,7 +2056,7 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
 // 10. MAIN APP ROUTER & FIREBASE LOGIC
 // ==========================================
 function App() {
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'light');
   
   // SECURE AUTH STATES
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1985,6 +2079,13 @@ function App() {
   const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '' });
 
   const showAlert = (title, message) => setAlertState({ isOpen: true, title, message });
+
+  // --- THEME EFFECT ---
+  useEffect(() => {
+    localStorage.setItem('appTheme', theme);
+    document.body.setAttribute('data-theme', theme);
+    document.body.style.backgroundColor = 'var(--color-bg)';
+  }, [theme]);
 
  // --- 1. FETCH FROM FIREBASE (FILTERED BY UNIVERSE ID) ---
   useEffect(() => {
@@ -2064,7 +2165,8 @@ function App() {
   const triggerDeleteQuote = (id) => setConfirmModal({ isOpen: true, id, type: 'quote', title: 'Delete Quote?', message: 'Are you sure you want to delete this quote from your universe?' });
   const triggerDeleteGoal = (id) => setConfirmModal({ isOpen: true, id, type: 'goal', title: 'Delete Goal?', message: 'Are you sure you want to remove this goal from your bucket list?' });
   const triggerDeletePromise = (id) => setConfirmModal({ isOpen: true, id, type: 'promise', title: 'Delete Note?', message: 'Are you sure you want to permanently remove this sweet note?' });
-const editMemory = async (id, updatedFields) => {
+
+  const editMemory = async (id, updatedFields) => {
     try {
       await updateDoc(doc(db, "memories", id), updatedFields);
       setMemories(prev => prev.map(m => m.firestoreId === id ? { ...m, ...updatedFields } : m));
@@ -2077,6 +2179,7 @@ const editMemory = async (id, updatedFields) => {
       setLetters(prev => prev.map(l => l.firestoreId === id ? { ...l, ...updatedFields } : l));
     } catch (err) { console.error(err); }
   };
+
   // --- GLOBAL DELETION EXECUTOR ---
   const handleConfirmAction = async () => {
     const { type, id } = confirmModal;
@@ -2136,7 +2239,7 @@ const editMemory = async (id, updatedFields) => {
     } catch (err) { console.error(err); }
   };
   
- const toggleGoal = async (id, completed, proofImage = null) => {
+  const toggleGoal = async (id, completed, proofImage = null) => {
     try {
       const updateData = { completed };
       if (proofImage) updateData.proofImage = proofImage;
@@ -2181,63 +2284,72 @@ const editMemory = async (id, updatedFields) => {
     setIsAuthenticated(true);
   };
 
-  if (!isAuthenticated) return <AuthGateway onUnlock={handleUnlock} />;
+  if (!isAuthenticated) return (
+    <>
+      <GlobalThemeStyles />
+      <AuthGateway onUnlock={handleUnlock} />
+    </>
+  );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FCF8F9] flex items-center justify-center">
-        <div className="animate-pulse text-[#8B1235] text-xl font-serif">Syncing Universe {activeUniverse}... ✨</div>
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+        <GlobalThemeStyles />
+        <div className="animate-pulse text-[var(--color-primary)] text-xl font-serif">Syncing Universe {activeUniverse}... ✨</div>
       </div>
     );
   }
 
   return (
     <BrowserRouter>
-      <DashboardLayout theme={theme}>
-        <Routes>
-          <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} />} />
-          <Route path="/timeline" element={<Timeline memories={memories} />} />
-          <Route path="/places" element={<LovelyMap memories={memories} />} />
-          <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
-          
-          <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
-          
-          <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} />} />
-          <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
-          
-          <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} />} />
-          
-          <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} />} />
-          
-          <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
-          <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
+      <GlobalThemeStyles />
+      <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500">
+        <DashboardLayout theme={theme}>
+          <Routes>
+            <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} theme={theme} />} />
+            <Route path="/timeline" element={<Timeline memories={memories} />} />
+            <Route path="/places" element={<LovelyMap memories={memories} />} />
+            <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
+            
+            <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
+            
+            <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} editLetter={editLetter} />} />
+            <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
+            
+            <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} editMemory={editMemory} />} />
+            
+            <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} currentUser={currentUser} />} />
+            
+            <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
+            <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
 
-          <Route path="/settings" element={
-            <SettingsPage 
-              theme={theme} setTheme={setTheme}
-              activeUniverse={activeUniverse}
-              quotes={quotes} deleteQuote={triggerDeleteQuote}
-              showAlert={showAlert}
-            />
-          } />
-        </Routes>
-      </DashboardLayout>
+            <Route path="/settings" element={
+              <SettingsPage 
+                theme={theme} setTheme={setTheme}
+                activeUniverse={activeUniverse}
+                quotes={quotes} deleteQuote={triggerDeleteQuote}
+                showAlert={showAlert}
+              />
+            } />
+          </Routes>
+        </DashboardLayout>
 
-      {/* GLOBAL MODALS */}
-      <DeleteConfirmModal 
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={handleConfirmAction}
-        title={confirmModal.title}
-        message={confirmModal.message}
-      />
+        {/* GLOBAL MODALS */}
+        <DeleteConfirmModal 
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+          onConfirm={handleConfirmAction}
+          title={confirmModal.title}
+          message={confirmModal.message}
+        />
 
-      <AlertModal 
-        isOpen={alertState.isOpen}
-        onClose={() => setAlertState({ ...alertState, isOpen: false })}
-        title={alertState.title}
-        message={alertState.message}
-      />
+        <AlertModal 
+          isOpen={alertState.isOpen}
+          onClose={() => setAlertState({ ...alertState, isOpen: false })}
+          title={alertState.title}
+          message={alertState.message}
+        />
+      </div>
     </BrowserRouter>
   );
 }
