@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -36,7 +36,7 @@ const heartIcon = new L.DivIcon({
   popupAnchor: [0, -28],
 });
 
-// The Custom Pulsing Heart Marker for the new LovelyMap
+// The Custom Pulsing Heart Marker for the LovelyMap
 const lovelyHeartMarker = new L.DivIcon({
   className: 'bg-transparent',
   html: `<div class="relative flex h-8 w-8 items-center justify-center">
@@ -57,7 +57,7 @@ const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(caption);
-    setCaption(""); // Reset for next time
+    setCaption(""); 
   };
 
   return (
@@ -114,6 +114,25 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   );
 };
 
+const AlertModal = ({ isOpen, onClose, title, message }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl text-center">
+            <div className="w-16 h-16 bg-pink-50 text-[#8B1235] rounded-full flex items-center justify-center mx-auto mb-4">
+              <Sparkles size={32} />
+            </div>
+            <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">{title}</h3>
+            <p className="text-gray-500 mb-8">{message}</p>
+            <button onClick={onClose} className="w-full py-3 bg-[#8B1235] text-white font-bold rounded-xl shadow-md hover:bg-[#6A0D28] transition-colors">Okay</button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 
 // ==========================================
 // 1. BULLETPROOF AUDIO PLAYER
@@ -123,6 +142,7 @@ const AudioPlayer = ({ src }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [playableUrl, setPlayableUrl] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!src) return;
@@ -152,9 +172,9 @@ const AudioPlayer = ({ src }) => {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(error => {
-        console.error("Audio playback failed:", error);
-        alert("Your browser blocked the audio. Try making sure your phone isn't on silent mode!");
+      audioRef.current.play().catch(e => {
+        console.error("Audio playback failed:", e);
+        setError("Browser blocked audio. Check silent mode.");
       });
     }
     setIsPlaying(!isPlaying);
@@ -167,26 +187,29 @@ const AudioPlayer = ({ src }) => {
   };
 
   return (
-    <div className="flex items-center gap-3 bg-white/50 p-3 rounded-2xl border border-white/50 shadow-sm mt-3">
-      <audio 
-        ref={audioRef} 
-        src={playableUrl} 
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={() => setIsPlaying(false)}
-        className="hidden" 
-        preload="auto"
-      />
-      <button type="button" onClick={togglePlay} disabled={!playableUrl} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors shadow-sm shrink-0 disabled:opacity-50">
-        {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-      </button>
-      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-        <motion.div 
-          className="h-full bg-[#8B1235]" 
-          style={{ width: `${progress}%` }}
-          layout
-        ></motion.div>
+    <div>
+      <div className="flex items-center gap-3 bg-white/50 p-3 rounded-2xl border border-white/50 shadow-sm mt-3">
+        <audio 
+          ref={audioRef} 
+          src={playableUrl} 
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={() => setIsPlaying(false)}
+          className="hidden" 
+          preload="auto"
+        />
+        <button type="button" onClick={togglePlay} disabled={!playableUrl} className="w-10 h-10 flex items-center justify-center bg-[#8B1235] text-white rounded-full hover:bg-[#6A0D28] transition-colors shadow-sm shrink-0 disabled:opacity-50">
+          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+        </button>
+        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <motion.div 
+            className="h-full bg-[#8B1235]" 
+            style={{ width: `${progress}%` }}
+            layout
+          ></motion.div>
+        </div>
+        <Volume2 size={16} className="text-gray-400 shrink-0" />
       </div>
-      <Volume2 size={16} className="text-gray-400 shrink-0" />
+      {error && <p className="text-xs text-red-500 mt-1 ml-2 font-bold flex items-center gap-1"><AlertCircle size={12}/> {error}</p>}
     </div>
   );
 };
@@ -486,7 +509,7 @@ const Home = ({ memories, quotes, deleteMemory }) => {
 // ==========================================
 // 4. MEMORY CREATION
 // ==========================================
-const CreateMemory = ({ onAddMemory }) => {
+const CreateMemory = ({ onAddMemory, showAlert }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ title: '', date: '', location: '', description: '' });
   const [imgFiles, setImgFiles] = useState([]);
@@ -542,7 +565,9 @@ const CreateMemory = ({ onAddMemory }) => {
       };
       mediaRecorderRef.current.start(); 
       setIsRecording(true);
-    } catch (err) { alert("Microphone access denied. Please check your browser permissions."); }
+    } catch (err) { 
+      showAlert("Mic Access Denied", "Microphone access denied. Please check your browser permissions."); 
+    }
   };
 
   const stopRecording = () => { mediaRecorderRef.current.stop(); setIsRecording(false); };
@@ -675,7 +700,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
   return (
     <div className="max-w-6xl mx-auto pb-10 relative">
-      {/* ADD THE NEW CAPTION MODAL HERE */}
       <CaptionModal 
         isOpen={isCaptionModalOpen} 
         fileCount={pendingFiles.length}
@@ -1093,7 +1117,7 @@ const Letters = ({ letters, deleteLetter }) => {
   );
 };
 
-const CreateLetter = ({ onAddLetter }) => {
+const CreateLetter = ({ onAddLetter, showAlert }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ title: '', content: '', font: 'font-serif', img: '', layout: 'image-top', unlockDate: '' });
   const [isSaving, setIsSaving] = useState(false);
@@ -1109,7 +1133,9 @@ const CreateLetter = ({ onAddLetter }) => {
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
         setFormData({ ...formData, img: base64String }); 
-      } catch (error) { alert("Failed to process image. Try a slightly smaller picture."); }
+      } catch (error) { 
+        showAlert("Image Too Large", "Failed to process image. Try a slightly smaller picture."); 
+      }
     }
   };
 
@@ -1249,7 +1275,7 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
 // ==========================================
 // 12. THE DUAL PROMISE JARS 🫙🫙
 // ==========================================
-const PromiseJar = ({ promises, addPromise, deletePromise }) => {
+const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const [newPromise, setNewPromise] = useState('');
   const [targetJar, setTargetJar] = useState('jar1'); 
   const [drawnPromise, setDrawnPromise] = useState(null);
@@ -1299,7 +1325,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
   const jar2Promises = promises.filter(p => p.target === 'jar2');
 
   const drawRandomPromise = (jarPromises) => {
-    if (jarPromises.length === 0) return alert("This jar is empty! Add a sweet note first.");
+    if (jarPromises.length === 0) return showAlert("Empty Jar", "This jar is empty! Add a sweet note first.");
     const randomIdx = Math.floor(Math.random() * jarPromises.length);
     setDrawnPromise(jarPromises[randomIdx]);
   };
@@ -1315,17 +1341,26 @@ const PromiseJar = ({ promises, addPromise, deletePromise }) => {
       />
       <div onClick={() => onDraw(jarPromises)} className={`w-40 h-56 border-4 border-gray-300 ${color} rounded-b-[2.5rem] rounded-t-xl relative cursor-pointer hover:scale-105 transition-transform shadow-inner flex flex-col justify-end overflow-hidden pb-3`}>
         <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20"></div>
-        <div className="flex flex-wrap-reverse justify-center content-start w-full h-[90%] px-2 gap-1 overflow-hidden relative z-10">
+        <div className="flex justify-center w-full h-[90%] px-2 relative z-10 overflow-hidden">
           <AnimatePresence>
-            {jarPromises.map((p, i) => (
-              <motion.div 
-                key={p.id || i}
-                initial={{ y: -200, opacity: 0, rotate: Math.random() * 60 - 30 }}
-                animate={{ y: 0, opacity: 0.85, rotate: Math.random() * 40 - 20 }}
-                transition={{ type: "spring", bounce: 0.5, duration: 0.8 }}
-                className="w-8 h-8 bg-pink-100 shadow-sm border border-pink-200"
-              ></motion.div>
-            ))}
+            {jarPromises.map((p, i) => {
+              // Creating deterministic random layouts based on item index/id so they stack perfectly
+              const seed = p.id ? p.id.charCodeAt(0) + i : i;
+              const pseudoRandomX = Math.sin(seed) * 45; 
+              const pseudoRandomY = -(i * 2.5) - Math.abs(Math.cos(seed) * 15); 
+              const pseudoRandomRot = Math.sin(seed * 2) * 60; 
+
+              return (
+                <motion.div 
+                  key={p.id || i}
+                  initial={{ y: -300, opacity: 0, x: pseudoRandomX, rotate: pseudoRandomRot - 90 }}
+                  animate={{ y: pseudoRandomY, opacity: 0.95, x: pseudoRandomX, rotate: pseudoRandomRot }}
+                  transition={{ type: "spring", bounce: 0.6, duration: 1.5, delay: 0.1 }}
+                  className="w-8 h-8 bg-pink-100 shadow-md border border-pink-200 absolute bottom-2"
+                  style={{ zIndex: i }}
+                ></motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
         {jarPromises.length === 0 && <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 font-medium z-10 text-sm">Empty</p>}
@@ -1612,7 +1647,7 @@ const sendInstantNotification = (itemType, itemTitle) => {
 // ==========================================
 // 9. FULL ADVANCED SETTINGS PAGE 
 // ==========================================
-const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote }) => {
+const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, showAlert }) => {
   const [newQuote, setNewQuote] = useState("");
   const [isSavingQuote, setIsSavingQuote] = useState(false);
   const [email1, setEmail1] = useState(() => localStorage.getItem('notifyEmail1') || '');
@@ -1623,12 +1658,11 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote }) 
     if (!newQuote.trim()) return;
     setIsSavingQuote(true);
     try {
-      // NOTE: Universe ID must be stamped on the quote!
       await addDoc(collection(db, "quotes"), { text: newQuote, timestamp: new Date(), universeId: activeUniverse });
       setNewQuote("");
-      alert("Quote added to the universe! ✨ (Refresh to see it below)");
+      showAlert("Quote Added! ✨", "Your quote was beautifully added to the universe.");
     } catch (error) {
-      alert("Failed to add quote.");
+      showAlert("Error", "Failed to add quote.");
     }
     setIsSavingQuote(false);
   };
@@ -1636,12 +1670,12 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote }) 
   const handleSaveEmails = () => {
     localStorage.setItem('notifyEmail1', email1);
     localStorage.setItem('notifyEmail2', email2);
-    alert("Notification emails saved! You will now get pinged when memories are added. 💌");
+    showAlert("Saved! 💌", "Notification emails saved! You will now get pinged when memories are added.");
   };
 
   const copyUniverseCode = () => {
     navigator.clipboard.writeText(activeUniverse);
-    alert("Universe Code copied! Send this to your partner.");
+    showAlert("Copied! 🔑", "Universe Code copied! Send this to your partner.");
   };
 
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } }};
@@ -1773,8 +1807,11 @@ function App() {
   
   const [loading, setLoading] = useState(false);
   
-  // NEW STATE: DELETION MODAL
-  const [deletePrompt, setDeletePrompt] = useState({ isOpen: false, id: null });
+  // CENTRALIZED MODAL STATES
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
+  const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '' });
+
+  const showAlert = (title, message) => setAlertState({ isOpen: true, title, message });
 
  // --- 1. FETCH FROM FIREBASE (FILTERED BY UNIVERSE ID) ---
   useEffect(() => {
@@ -1834,7 +1871,7 @@ function App() {
         images: imagesBase64, 
         voiceNote: voiceBase64,
         id: Date.now(),
-        universeId: activeUniverse // STAMPED
+        universeId: activeUniverse 
       };
 
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
@@ -1842,75 +1879,73 @@ function App() {
       sendInstantNotification("Memory", finalMemory.title);
       return true;
     } catch (err) {
-      alert(`Memory upload failed! Reason: ${err.message}`);
+      showAlert("Upload Failed", `Memory upload failed! Reason: ${err.message}`);
       return false;
     }
   };
 
-  // --- NEW MEMORY DELETION LOGIC ---
-  const triggerDeleteMemory = (firestoreId) => {
-    setDeletePrompt({ isOpen: true, id: firestoreId });
-  };
+  // --- GLOBAL DELETION TRIGGERS ---
+  const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
+  const triggerDeleteLetter = (id) => setConfirmModal({ isOpen: true, id, type: 'letter', title: 'Delete Letter?', message: 'Are you sure you want to permanently delete this letter?' });
+  const triggerDeleteGalleryPhoto = (id) => setConfirmModal({ isOpen: true, id, type: 'gallery', title: 'Remove Photo?', message: 'Are you sure you want to remove this beautiful photo from the gallery?' });
+  const triggerDeleteQuote = (id) => setConfirmModal({ isOpen: true, id, type: 'quote', title: 'Delete Quote?', message: 'Are you sure you want to delete this quote from your universe?' });
+  const triggerDeleteGoal = (id) => setConfirmModal({ isOpen: true, id, type: 'goal', title: 'Delete Goal?', message: 'Are you sure you want to remove this goal from your bucket list?' });
+  const triggerDeletePromise = (id) => setConfirmModal({ isOpen: true, id, type: 'promise', title: 'Delete Note?', message: 'Are you sure you want to permanently remove this sweet note?' });
 
-  const confirmDeleteMemory = async () => {
-    const firestoreId = deletePrompt.id;
-    if (!firestoreId) return;
+  // --- GLOBAL DELETION EXECUTOR ---
+  const handleConfirmAction = async () => {
+    const { type, id } = confirmModal;
+    if (!id) return;
     
     try {
-      await deleteDoc(doc(db, "memories", firestoreId));
-      setMemories(prev => prev.filter(m => m.firestoreId !== firestoreId));
-      setDeletePrompt({ isOpen: false, id: null }); // Close the modal
+      if (type === 'memory') {
+        await deleteDoc(doc(db, "memories", id));
+        setMemories(prev => prev.filter(m => m.firestoreId !== id));
+      } else if (type === 'letter') {
+        await deleteDoc(doc(db, "letters", id));
+        setLetters(prev => prev.filter(l => l.firestoreId !== id));
+      } else if (type === 'gallery') {
+        await deleteDoc(doc(db, "gallery", id));
+        setGalleryPhotos(prev => prev.filter(p => p.id !== id));
+      } else if (type === 'quote') {
+        await deleteDoc(doc(db, "quotes", id));
+        setQuotes(prev => prev.filter(q => q.id !== id));
+      } else if (type === 'goal') {
+        await deleteDoc(doc(db, "bucketlist", id));
+        setBucketList(prev => prev.filter(g => g.id !== id));
+      } else if (type === 'promise') {
+        await deleteDoc(doc(db, "promises", id));
+        setPromises(prev => prev.filter(p => p.id !== id));
+      }
+      setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' }); 
     } catch (err) { 
-      console.error("Error deleting memory: ", err); 
+      console.error("Error deleting item: ", err); 
     }
   };
 
+
   const addLetter = async (newLetterData) => {
     try {
-      const finalLetter = { ...newLetterData, createdAt: new Date().toISOString(), universeId: activeUniverse }; // STAMPED
+      const finalLetter = { ...newLetterData, createdAt: new Date().toISOString(), universeId: activeUniverse }; 
       const docRef = await addDoc(collection(db, "letters"), finalLetter);
       setLetters(prev => [{ firestoreId: docRef.id, ...finalLetter }, ...prev]);
       sendInstantNotification("Love Letter", finalLetter.title);
       return true;
     } catch (err) {
-      alert("Attached image is too large! Try a smaller picture.");
+      showAlert("Image Too Large", "Attached image is too large! Try a smaller picture.");
       return false;
     }
   };
 
-  const deleteLetter = async (firestoreId) => {
-    if (!firestoreId || !window.confirm("Are you sure you want to delete this letter?")) return;
-    try {
-      await deleteDoc(doc(db, "letters", firestoreId));
-      setLetters(prev => prev.filter(l => l.firestoreId !== firestoreId));
-    } catch (err) { console.error("Error deleting letter: ", err); }
-  };
-
   const addGalleryPhotos = async (newPhoto) => {
-    const finalPhoto = { ...newPhoto, universeId: activeUniverse }; // STAMPED
+    const finalPhoto = { ...newPhoto, universeId: activeUniverse }; 
     const docRef = await addDoc(collection(db, "gallery"), finalPhoto);
     setGalleryPhotos(prev => [{ id: docRef.id, ...finalPhoto }, ...prev]);
   };
 
-  const deleteGalleryPhoto = async (id) => {
-    if (!id || !window.confirm("Are you sure you want to remove this from the gallery?")) return;
-    try {
-      await deleteDoc(doc(db, "gallery", id));
-      setGalleryPhotos(prev => prev.filter(p => p.id !== id));
-    } catch (err) { console.error("Error deleting photo: ", err); }
-  };
-
-  const deleteQuote = async (id) => {
-    if (!id || !window.confirm("Are you sure you want to delete this quote?")) return;
-    try {
-      await deleteDoc(doc(db, "quotes", id));
-      setQuotes(prev => prev.filter(q => q.id !== id));
-    } catch (err) { console.error("Error deleting quote: ", err); }
-  };
-
   const addGoal = async (goal) => {
     try {
-      const finalGoal = { ...goal, universeId: activeUniverse }; // STAMPED
+      const finalGoal = { ...goal, universeId: activeUniverse }; 
       const docRef = await addDoc(collection(db, "bucketlist"), finalGoal);
       setBucketList(prev => [...prev, { id: docRef.id, ...finalGoal }]);
     } catch (err) { console.error(err); }
@@ -1923,33 +1958,17 @@ function App() {
     } catch (err) { console.error(err); }
   };
   
-  const deleteGoal = async (id) => {
-    try {
-      await deleteDoc(doc(db, "bucketlist", id));
-      setBucketList(prev => prev.filter(g => g.id !== id));
-    } catch (err) { console.error(err); }
-  };
-
-  // --- PROMISE JAR ACTIONS ---
   const addPromise = async (promise) => {
     try {
-      const finalPromise = { ...promise, universeId: activeUniverse }; // STAMPED
+      const finalPromise = { ...promise, universeId: activeUniverse };
       const docRef = await addDoc(collection(db, "promises"), finalPromise);
       setPromises(prev => [...prev, { id: docRef.id, ...finalPromise }]);
     } catch (err) { console.error(err); }
   };
-  
-  const deletePromise = async (id) => {
-    try {
-      await deleteDoc(doc(db, "promises", id));
-      setPromises(prev => prev.filter(p => p.id !== id));
-    } catch (err) { console.error(err); }
-  };
 
-  // --- MOOD BOARD ACTIONS ---
   const addBoardItem = async (item) => {
     try {
-      const finalItem = { ...item, universeId: activeUniverse }; // STAMPED
+      const finalItem = { ...item, universeId: activeUniverse }; 
       const docRef = await addDoc(collection(db, "moodboard"), finalItem);
       setBoardItems(prev => [...prev, { id: docRef.id, ...finalItem }]);
     } catch (err) { console.error(err); }
@@ -1989,42 +2008,48 @@ function App() {
     <BrowserRouter>
       <DashboardLayout theme={theme}>
         <Routes>
-          {/* UPDATED: Passing triggerDeleteMemory */}
           <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} />} />
           <Route path="/timeline" element={<Timeline memories={memories} />} />
           <Route path="/places" element={<LovelyMap memories={memories} />} />
-          <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} />} />
+          <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
           
-          <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={deleteGalleryPhoto} />} />
+          <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
           
-          <Route path="/letters" element={<Letters letters={letters} deleteLetter={deleteLetter} />} />
-          <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} />} />
+          <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} />} />
+          <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
           
-          {/* UPDATED: Passing triggerDeleteMemory */}
           <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} />} />
           
-          <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={deleteGoal} />} />
+          <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} />} />
           
-          <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={deletePromise} />} />
+          <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
           <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
 
           <Route path="/settings" element={
             <SettingsPage 
               theme={theme} setTheme={setTheme}
               activeUniverse={activeUniverse}
-              quotes={quotes} deleteQuote={deleteQuote}
+              quotes={quotes} deleteQuote={triggerDeleteQuote}
+              showAlert={showAlert}
             />
           } />
         </Routes>
       </DashboardLayout>
 
-      {/* NEW: The Global Delete Confirmation Modal */}
+      {/* GLOBAL MODALS */}
       <DeleteConfirmModal 
-        isOpen={deletePrompt.isOpen}
-        onClose={() => setDeletePrompt({ isOpen: false, id: null })}
-        onConfirm={confirmDeleteMemory}
-        title="Delete Memory?"
-        message="Are you sure you want to permanently delete this memory from your universe? This cannot be undone."
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={handleConfirmAction}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
+
+      <AlertModal 
+        isOpen={alertState.isOpen}
+        onClose={() => setAlertState({ ...alertState, isOpen: false })}
+        title={alertState.title}
+        message={alertState.message}
       />
     </BrowserRouter>
   );
