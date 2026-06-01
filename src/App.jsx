@@ -9,6 +9,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import emailjs from '@emailjs/browser'; 
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
+import ChangePasscode from './components/ChangePasscode';
 
 // --- FIREBASE IMPORTS ---
 import { db, storage, auth } from './firebase'; 
@@ -1602,6 +1603,10 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote }) 
               <Check size={18} /> Save Notification Emails
             </button>
           </div>
+        </motion.div>
+        {/* --- NEW: CHANGE APP LOCK --- */}
+        <motion.div variants={itemVariants}>
+          <ChangePasscode />
         </motion.div>
 
         {/* --- WHISPERS OF THE UNIVERSE (ROTATING QUOTES) --- */}
