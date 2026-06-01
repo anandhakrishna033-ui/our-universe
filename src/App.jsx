@@ -1191,7 +1191,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
                   whileHover={{ scale: 1.02, rotate: randomRotation, zIndex: 10 }} 
                   onClick={() => openLetter(letter)}
-                  className="bg-white p-4 pb-12 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative cursor-pointer group flex flex-col h-64 overflow-hidden"
+                  className="bg-white p-4 pb-12 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative cursor-pointer group flex flex-col h-72 overflow-hidden"
                 >
                   <button onClick={(e) => { e.stopPropagation(); deleteLetter(letter.firestoreId || letter.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-50">
                     <Trash2 size={16} />
@@ -1202,8 +1202,14 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                       <h3 className="text-xl font-bold mb-1 text-gray-800 truncate">{letter.title}</h3>
                       <p className="text-[10px] uppercase tracking-wider text-gray-400">{letter.date}</p>
                     </div>
+                    
+                    {/* RESTORED: Image Preview in the Grid View */}
+                    {letter.img && letter.layout !== 'image-background' && (
+                       <img src={letter.img} className="w-full h-24 object-cover rounded-xl mb-3 shadow-sm border border-gray-100" alt="Letter Attachment" />
+                    )}
+
                     <div className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-500 ${letter.font} overflow-hidden`}>
-                      {letter.content.substring(0, 150)}...
+                      {letter.content.substring(0, 100)}...
                     </div>
                   </div>
                 </motion.div>
@@ -1234,7 +1240,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
               <div className="relative z-10">
                 {!isEditing ? (
                   <>
-                    <button onClick={() => setIsEditing(true)} className="absolute top-0 right-0 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-2 rounded-full font-bold text-sm hover:bg-white transition">Edit Letter</button>
+                    <button onClick={() => setIsEditing(true)} className="absolute top-0 right-0 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-2 rounded-full font-bold text-sm hover:bg-white transition shadow-sm">Edit Letter</button>
                     <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedLetter.date} • {selectedLetter.time}</p>
                     <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight border-b border-current pb-4 opacity-90">{selectedLetter.title}</h2>
                     
@@ -1251,7 +1257,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                     )}
                   </>
                 ) : (
-                  <div className="space-y-4 bg-white p-6 rounded-2xl">
+                  <div className="space-y-4 bg-white p-6 rounded-2xl shadow-inner text-gray-800">
                     <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Letter</h3>
                     <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-bold text-xl outline-none focus:border-[var(--color-primary)] text-gray-800" />
                     <textarea rows="12" value={editForm.content} onChange={e => setEditForm({...editForm, content: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-serif text-lg outline-none focus:border-[var(--color-primary)] text-gray-800" />
@@ -1372,7 +1378,6 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
     </div>
   );
 };
-
 // ==========================================
 // 11. OUR BUCKET LIST 📝
 // ==========================================

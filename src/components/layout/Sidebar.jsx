@@ -10,8 +10,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     const isActive = location.pathname === path;
     return `block px-4 py-3 rounded-xl transition-all duration-300 font-medium ${
       isActive 
-        ? "bg-[#8B1235] text-white shadow-md" 
-        : "text-gray-700 hover:bg-pink-50 hover:text-[#8B1235]"
+        ? "bg-[var(--color-primary)] text-white shadow-md" 
+        : "text-gray-700 hover:bg-[var(--color-bg-alt)] hover:text-[var(--color-primary)]"
     }`;
   };
 
@@ -35,19 +35,19 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
       {/* The Sidebar Itself */}
       <motion.aside 
-        className={`fixed md:relative top-0 left-0 h-screen w-72 md:w-64 bg-white border-r border-gray-100 shadow-2xl md:shadow-sm z-50 flex flex-col transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed md:relative top-0 left-0 h-screen w-72 md:w-64 bg-[var(--color-bg)] border-r border-black/5 shadow-2xl md:shadow-sm z-50 flex flex-col transform transition-transform duration-500 ease-in-out md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-100 shrink-0">
-          <h2 className="text-3xl font-serif text-[#8B1235] tracking-wide">
-            Our Story <span className="text-pink-300">♡</span>
+        <div className="h-20 flex items-center justify-between px-6 border-b border-black/5 shrink-0">
+          <h2 className="text-3xl font-serif text-[var(--color-primary)] tracking-wide">
+            Our Story <span className="text-[var(--color-heart)]">♡</span>
           </h2>
           
           {/* Mobile Close Button */}
           <button 
             onClick={closeMenu}
-            className="md:hidden p-2 text-gray-400 hover:text-[#8B1235] bg-gray-50 hover:bg-pink-50 rounded-full transition-colors"
+            className="md:hidden p-2 text-gray-400 hover:text-[var(--color-primary)] bg-white hover:bg-[var(--color-bg-alt)] rounded-full transition-colors shadow-sm"
           >
             <X size={20} />
           </button>
