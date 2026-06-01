@@ -1413,6 +1413,76 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
 // ==========================================
 // 12. THE DUAL PROMISE JARS 🫙🫙
 // ==========================================
+
+// Stable component outside of PromiseJar prevents typing re-animation bug!
+const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
+  <div className="flex flex-col items-center justify-center p-6 md:p-8 relative w-full group">
+    <input 
+      type="text" 
+      value={name} 
+      onChange={(e) => setName(e.target.value)} 
+      className="text-xl md:text-2xl font-serif font-bold text-[#8B1235] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-pink-200 mb-6 w-full transition-colors z-10"
+      placeholder="Name this jar..."
+    />
+    
+    {/* THE FROSTED GLASS JAR */}
+    <div 
+      onClick={() => onDraw(jarPromises)} 
+      className={`w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)] ${color}`}
+    >
+      
+      {/* THE CORK LID */}
+      <div className="absolute top-0 w-full h-8 bg-gradient-to-r from-amber-800 via-amber-600 to-amber-900 border-b-4 border-amber-900/80 shadow-[0_5px_10px_rgba(0,0,0,0.3)] z-20 flex items-center justify-center">
+         <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-2"></div>
+         <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-5"></div>
+      </div>
+      
+      {/* GLASS HIGHLIGHT GLARE */}
+      <div className="absolute top-0 left-[30%] w-3 h-full bg-gradient-to-b from-white/60 to-transparent rounded-full transform -skew-x-12 z-20 pointer-events-none"></div>
+
+      {/* THE FALLING NOTES */}
+      <div className="flex justify-center w-full h-[90%] px-4 relative z-10 overflow-hidden">
+        <AnimatePresence>
+          {jarPromises.map((p, i) => {
+            const seed = p.id ? p.id.toString().charCodeAt(0) + i : i;
+            const pseudoRandomX = Math.sin(seed) * 50; 
+            const pseudoRandomY = -(i * 4) - Math.abs(Math.cos(seed) * 15); 
+            const pseudoRandomRot = Math.sin(seed * 2) * 60; 
+            const colors = ['bg-pink-100', 'bg-rose-100', 'bg-white', 'bg-red-50'];
+            const noteColor = colors[seed % colors.length];
+
+            return (
+              <motion.div 
+                key={p.id || i}
+                // Falling leaf physics: starts at 0 X, sways back and forth smoothly down to its position
+                initial={{ y: -250, opacity: 0, x: 0, rotate: 0 }}
+                animate={{ 
+                  y: pseudoRandomY, 
+                  opacity: 0.95, 
+                  x: [0, pseudoRandomX * -0.6, pseudoRandomX * 1.4, pseudoRandomX * 0.3, pseudoRandomX],
+                  rotate: [0, 45, -35, 20, pseudoRandomRot]
+                }}
+                transition={{ 
+                  duration: 3.2, // Slower leaf descent simulation
+                  ease: "easeInOut"
+                }}
+                className={`w-10 h-10 ${noteColor} shadow-md border border-black/5 absolute bottom-2 flex items-center justify-center rounded-sm`}
+                style={{ zIndex: i }}
+              >
+                <div className="w-6 h-6 border border-pink-200/50 rounded-sm opacity-50"></div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+    </div>
+    
+    <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-rose-500 transition-colors bg-white/50 px-4 py-2 rounded-full shadow-sm" onClick={() => onDraw(jarPromises)}>
+      Tap jar to open 
+    </p>
+  </div>
+);
+
 const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const [newPromise, setNewPromise] = useState('');
   const [targetJar, setTargetJar] = useState('jar1'); 
@@ -1463,71 +1533,23 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const jar2Promises = promises.filter(p => p.target === 'jar2');
 
   const drawRandomPromise = (jarPromises) => {
-    if (jarPromises.length === 0) return showAlert("Empty Jar", "This jar is empty! Add a sweet note first.");
+    if (jarPromises.length === 0) {
+      // Fallback to standard alert if showAlert isn't provided by the parent
+      return showAlert ? showAlert("Empty Jar", "This jar is empty! Add a sweet note first.") : alert("This jar is empty! Add a sweet note first.");
+    }
     const randomIdx = Math.floor(Math.random() * jarPromises.length);
     setDrawnPromise(jarPromises[randomIdx]);
   };
 
-   const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
-    <div className="flex flex-col items-center justify-center p-6 md:p-8 relative w-full group">
-      <input 
-        type="text" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-        className="text-xl md:text-2xl font-serif font-bold text-[#8B1235] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-pink-200 mb-6 w-full transition-colors z-10"
-        placeholder="Name this jar..."
-      />
-      {/* THE FROSTED GLASS JAR */}
-      <div onClick={() => onDraw(jarPromises)} className="w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)]">
-        
-        {/* THE CORK LID */}
-        <div className="absolute top-0 w-full h-8 bg-gradient-to-r from-amber-800 via-amber-600 to-amber-900 border-b-4 border-amber-900/80 shadow-[0_5px_10px_rgba(0,0,0,0.3)] z-20 flex items-center justify-center">
-           <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-2"></div>
-           <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-5"></div>
-        </div>
-        
-        {/* GLASS HIGHLIGHT GLARE */}
-        <div className="absolute top-0 left-[10%] w-3 h-full bg-gradient-to-b from-white/60 to-transparent rounded-full transform -skew-x-12 z-20 pointer-events-none"></div>
-
-        {/* THE FALLING NOTES */}
-        <div className="flex justify-center w-full h-[90%] px-4 relative z-10 overflow-hidden">
-          <AnimatePresence>
-            {jarPromises.map((p, i) => {
-              const seed = p.id ? p.id.charCodeAt(0) + i : i;
-              const pseudoRandomX = Math.sin(seed) * 50; 
-              const pseudoRandomY = -(i * 4) - Math.abs(Math.cos(seed) * 15); 
-              const pseudoRandomRot = Math.sin(seed * 2) * 60; 
-              const colors = ['bg-pink-100', 'bg-rose-100', 'bg-white', 'bg-red-50'];
-              const noteColor = colors[seed % colors.length];
-
-              return (
-                <motion.div 
-                  key={p.id || i}
-                  initial={{ y: -300, opacity: 0, x: pseudoRandomX, rotate: pseudoRandomRot - 90 }}
-                  animate={{ y: pseudoRandomY, opacity: 0.95, x: pseudoRandomX, rotate: pseudoRandomRot }}
-                  transition={{ type: "spring", bounce: 0.6, duration: 1.5, delay: 0.1 }}
-                  className={`w-10 h-10 ${noteColor} shadow-md border border-black/5 absolute bottom-2 flex items-center justify-center rounded-sm`}
-                  style={{ zIndex: i }}
-                >
-                  <div className="w-6 h-6 border border-pink-200/50 rounded-sm opacity-50"></div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      </div>
-      <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-rose-500 transition-colors bg-white/50 px-4 py-2 rounded-full" onClick={() => onDraw(jarPromises)}>
-        Tap jar to open 
-      </p>
-    </div>
-  );
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800 text-center md:text-left">The Promise Jars 🫙</h1>
+      
       <div className="grid md:grid-cols-2 gap-8 mb-12">
-        <JarVisual name={jar1Name} setName={setJar1Name} jarPromises={jar1Promises} onDraw={drawRandomPromise} color="bg-blue-50/30" />
-        <JarVisual name={jar2Name} setName={setJar2Name} jarPromises={jar2Promises} onDraw={drawRandomPromise} color="bg-rose-50/30" />
+        <JarVisual name={jar1Name} setName={setJar1Name} jarPromises={jar1Promises} onDraw={drawRandomPromise} color="bg-blue-50/10" />
+        <JarVisual name={jar2Name} setName={setJar2Name} jarPromises={jar2Promises} onDraw={drawRandomPromise} color="bg-rose-50/10" />
       </div>
+      
       <div className="max-w-2xl mx-auto">
         <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-md p-6 md:p-8 rounded-[2rem] shadow-sm border border-white">
           <h3 className="text-xl font-serif font-bold text-gray-800 mb-6">Fold a New Note ✍️</h3>
@@ -1538,6 +1560,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
           <textarea value={newPromise} onChange={(e) => setNewPromise(e.target.value)} placeholder="Write a tiny promise, compliment, or memory here..." className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-pink-300 bg-white/50 resize-none font-serif text-lg" rows="3" />
           <button type="submit" className="w-full mt-4 bg-[#8B1235] text-white py-4 rounded-xl font-bold hover:bg-[#6A0D28] transition-all hover:shadow-lg shadow-sm flex items-center justify-center gap-2">Drop Note into Jar <ChevronDown size={18} /></button>
         </form>
+        
         {promises.length > 0 && (
           <div className="mt-8 pt-8 border-t border-gray-200 space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Manage All Notes</p>
@@ -1553,6 +1576,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
           </div>
         )}
       </div>
+
       <AnimatePresence>
         {drawnPromise && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
@@ -1567,7 +1591,6 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
     </div>
   );
 };
-
 // ==========================================
 // 13. FREEFORM MOOD BOARD 📌
 // ==========================================
