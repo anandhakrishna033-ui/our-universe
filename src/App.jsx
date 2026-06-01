@@ -773,57 +773,104 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 // ==========================================
 // 6. ALL MEMORIES PAGE
 // ==========================================
-const Memories = ({ memories, deleteMemory }) => {
-  const [layout, setLayout] = useState('grid'); // 'grid' or 'story'
+const Memories = ({ memories, deleteMemory, editMemory }) => {
+  const [selectedMemory, setSelectedMemory] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', description: '' });
+
+  const openMemory = (m) => {
+    setSelectedMemory(m);
+    setEditForm({ title: m.title, description: m.description });
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = () => {
+    editMemory(selectedMemory.firestoreId, editForm);
+    setSelectedMemory({ ...selectedMemory, ...editForm });
+    setIsEditing(false);
+  };
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">All Memories 💭</h1>
-        <div className="flex bg-white/60 backdrop-blur-md p-1 rounded-xl shadow-sm border border-white">
-          <button onClick={() => setLayout('grid')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${layout === 'grid' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Grid View</button>
-          <button onClick={() => setLayout('story')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${layout === 'story' ? 'bg-[#8B1235] text-white shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Story View</button>
-        </div>
-      </div>
+      <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800 mb-8">All Memories 💭</h1>
       
       {memories.length === 0 ? (
         <p className="text-gray-500 text-center py-10 bg-white/50 backdrop-blur-sm rounded-3xl border border-white">No memories yet. Add your first one!</p>
       ) : (
-        <motion.div layout className={layout === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-12 max-w-2xl mx-auto"}>
+        <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           <AnimatePresence>
-            {memories.map((m, idx) => (
-              <motion.div 
-                key={m.firestoreId || m.id} layout
-                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.5, delay: idx * 0.05 }}
-                className={`bg-white/80 backdrop-blur-md rounded-3xl shadow-sm border border-white relative group flex flex-col ${layout === 'grid' ? 'p-6 hover:scale-[1.02] transition-transform' : 'p-8 md:p-10'}`}
-              >
-                <button onClick={() => deleteMemory(m.firestoreId || m.id)} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-20">
-                  <Trash2 size={16} />
-                </button>
-                
-                {m.images && m.images.length > 0 ? (
-                  <div className={`grid gap-2 mb-6 ${m.images.length === 1 ? 'grid-cols-1' : m.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
-                    {m.images.map((imgBase64, i) => (
-                      <img key={i} src={imgBase64} alt={`Memory ${i}`} className={`w-full object-cover rounded-2xl shadow-sm ${m.images.length === 1 ? 'h-64 md:h-80' : 'h-40 md:h-48'}`} />
-                    ))}
+            {memories.map((m, idx) => {
+              const coverImg = (m.images && m.images.length > 0) ? m.images[0] : m.img;
+              const randomRotation = (idx % 2 === 0 ? 1 : -1) * ((idx % 3) + 1); // Slight random tilt
+              
+              return (
+                <motion.div 
+                  key={m.firestoreId || m.id} layout
+                  initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ scale: 1.05, rotate: randomRotation, zIndex: 10 }}
+                  onClick={() => openMemory(m)}
+                  className="bg-white p-3 pb-12 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative cursor-pointer group"
+                >
+                  <button onClick={(e) => { e.stopPropagation(); deleteMemory(m.firestoreId || m.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-20">
+                    <Trash2 size={16} />
+                  </button>
+                  <div className="w-full aspect-square bg-gray-100 overflow-hidden shadow-inner border border-black/5">
+                    {coverImg ? <img src={coverImg} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>}
                   </div>
-                ) : m.img ? (
-                  <div className="grid gap-2 mb-6 grid-cols-1">
-                     <img src={m.img} alt="Memory" className="w-full object-cover rounded-2xl shadow-sm h-64 md:h-80" />
+                  <div className="absolute bottom-0 left-0 w-full h-12 flex items-center justify-center px-4">
+                    <p className="font-serif italic text-gray-800 text-sm font-bold truncate">{m.title}</p>
                   </div>
-                ) : null}
-                
-                <h3 className={`${layout === 'story' ? 'text-3xl' : 'text-2xl'} font-bold text-gray-800 font-serif mb-1`}>{m.title}</h3>
-                <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-3">{m.date}</p>
-                {m.location && <p className="text-sm text-gray-500 mb-4 flex items-center gap-1 font-medium"><MapPin size={14} className="text-blue-400" /> {m.location}</p>}
-                {m.description && <p className={`text-gray-600 leading-relaxed flex-1 ${layout === 'story' ? 'text-lg' : 'text-sm mb-4'}`}>{m.description}</p>}
-                {m.voiceNote && <AudioPlayer src={m.voiceNote} />}
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </motion.div>
       )}
+
+      {/* FULL SCREEN READING MODAL */}
+      <AnimatePresence>
+        {selectedMemory && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto" onClick={() => setSelectedMemory(null)}>
+            <motion.div 
+              initial={{ scale: 0.8, y: 50, rotate: -2 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 50 }} 
+              transition={{ type: "spring", bounce: 0.4 }}
+              className="bg-[#FCF8F9] p-6 md:p-10 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto border-[10px] border-white" 
+              onClick={e => e.stopPropagation()}
+            >
+              <button onClick={() => setSelectedMemory(null)} className="absolute -top-4 -right-4 bg-white text-gray-800 p-3 rounded-full shadow-xl hover:bg-gray-100 z-50"><X size={24}/></button>
+              
+              {!isEditing ? (
+                <>
+                  <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 bg-gray-100 text-gray-600 px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition">Edit Note</button>
+                  <p className="text-rose-500 font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                  <h2 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-6 leading-tight">{selectedMemory.title}</h2>
+                  
+                  {selectedMemory.images && selectedMemory.images.length > 0 && (
+                     <div className={`grid gap-3 mb-8 ${selectedMemory.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                       {selectedMemory.images.map((img, i) => <img key={i} src={img} className="w-full object-cover rounded-xl shadow-md h-64 border-4 border-white" />)}
+                     </div>
+                  )}
+
+                  <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-relaxed whitespace-pre-wrap bg-white/50 p-6 rounded-2xl border border-pink-100 shadow-inner">
+                    {selectedMemory.description || "No story written for this moment yet."}
+                  </div>
+                  {selectedMemory.voiceNote && <div className="mt-6"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-serif font-bold text-[#8B1235]">Edit Memory</h3>
+                  <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-bold text-xl outline-none focus:border-rose-400" />
+                  <textarea rows="8" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-serif text-lg outline-none focus:border-rose-400" />
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button onClick={() => setIsEditing(false)} className="px-6 py-3 font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancel</button>
+                    <button onClick={handleSaveEdit} className="px-6 py-3 font-bold bg-[#8B1235] text-white rounded-xl shadow-md hover:bg-[#6A0D28]">Save Changes</button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1223,47 +1270,139 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
 // ==========================================
 // 11. OUR BUCKET LIST 📝
 // ==========================================
-const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
+const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }) => {
   const [newGoal, setNewGoal] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("✈️ Travel");
+  const [filter, setFilter] = useState("All");
   const { width, height } = useWindowSize();
   const [showConfetti, setShowConfetti] = useState(false);
+  
+  // Photo Proof State
+  const [completingGoalId, setCompletingGoalId] = useState(null);
+
+  const categories = ["✈️ Travel", "🍕 Food", "🪂 Crazy", "🛋️ Cozy", "💕 Romance"];
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newGoal.trim()) return;
-    addGoal({ title: newGoal, completed: false });
+    addGoal({ 
+      title: newGoal, 
+      completed: false, 
+      category: selectedCategory,
+      authorEmail: currentUser?.email || "Unknown" 
+    });
     setNewGoal("");
   };
 
-  const handleToggle = (id, isCompleted) => {
-    toggleGoal(id, !isCompleted);
-    if (!isCompleted) {
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !completingGoalId) return;
+    
+    try {
+      const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
+      const compressed = await imageCompression(file, options);
+      const base64 = await fileToBase64(compressed);
+      
+      toggleGoal(completingGoalId, true, base64); // Pass image to backend
+      setCompletingGoalId(null);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000); 
+    } catch (err) {
+      alert("Failed to upload photo proof.");
     }
   };
+
+  const handleToggle = (id, isCompleted) => {
+    if (!isCompleted) {
+      // If marking as complete, ask for a photo!
+      setCompletingGoalId(id);
+    } else {
+      // If un-checking, just toggle it normally
+      toggleGoal(id, false);
+    }
+  };
+
+  const filteredList = filter === "All" ? bucketList : bucketList.filter(g => g.category === filter);
 
   return (
     <div className="max-w-4xl mx-auto pb-10">
       {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
+      
+      {/* Photo Proof Modal */}
+      <AnimatePresence>
+        {completingGoalId && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+              <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4"><ImageIcon size={32} /></div>
+              <h3 className="text-2xl font-bold font-serif text-gray-800 mb-2">Goal Completed! 🎉</h3>
+              <p className="text-gray-500 mb-6">Attach a photo of this moment to immortalize it as a polaroid.</p>
+              
+              <label className="block w-full bg-[#8B1235] text-white py-3 rounded-xl font-bold cursor-pointer hover:bg-[#6A0D28] transition shadow-md mb-3">
+                Upload Photo Proof
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              </label>
+              <button onClick={() => { toggleGoal(completingGoalId, true); setCompletingGoalId(null); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 4000); }} className="block w-full py-3 text-gray-500 font-bold bg-gray-100 rounded-xl hover:bg-gray-200 transition">
+                Skip Photo
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Our Bucket List ✈️</h1>
       
-      <form onSubmit={handleSubmit} className="mb-8 flex gap-3">
-        <input type="text" value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="e.g. Visit Japan, Bake a cake..." className="flex-1 p-4 rounded-2xl border border-gray-200 outline-none focus:border-[#8B1235] shadow-sm bg-white/80" />
-        <button type="submit" className="bg-[#8B1235] text-white px-6 py-4 rounded-2xl font-bold hover:bg-[#6A0D28] transition shadow-sm"><Plus size={24} /></button>
+      {/* Filter Row */}
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
+        <button onClick={() => setFilter("All")} className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${filter === "All" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-100"}`}>All</button>
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setFilter(cat)} className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors shadow-sm ${filter === cat ? "bg-[#8B1235] text-white" : "bg-white text-gray-600 hover:bg-rose-50"}`}>{cat}</button>
+        ))}
+      </div>
+
+      <form onSubmit={handleSubmit} className="mb-8 bg-white/60 backdrop-blur-md p-4 rounded-3xl border border-white shadow-sm flex flex-col gap-4">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {categories.map(cat => (
+            <button type="button" key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition ${selectedCategory === cat ? "bg-rose-100 text-rose-700 border border-rose-200" : "bg-gray-50 text-gray-500"}`}>{cat}</button>
+          ))}
+        </div>
+        <div className="flex gap-3">
+          <input type="text" value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="What's our next adventure?" className="flex-1 p-4 rounded-2xl border border-gray-200 outline-none focus:border-[#8B1235] shadow-inner bg-white" />
+          <button type="submit" className="bg-[#8B1235] text-white px-6 py-4 rounded-2xl font-bold hover:bg-[#6A0D28] transition shadow-md"><Plus size={24} /></button>
+        </div>
       </form>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AnimatePresence>
-          {bucketList.map(goal => (
-            <motion.div key={goal.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} className={`flex items-center justify-between p-5 rounded-2xl border shadow-sm transition-all ${goal.completed ? 'bg-green-50 border-green-100 opacity-70' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
-              <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleToggle(goal.id, goal.completed)}>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${goal.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
-                  {goal.completed && <Check size={14} className="text-white" />}
+          {filteredList.map(goal => (
+            <motion.div key={goal.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${goal.completed ? 'bg-[#FCF8F9] border-rose-100' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
+              
+              {/* If it has a photo proof, show it like a polaroid header */}
+              {goal.completed && goal.proofImage && (
+                <div className="w-full h-40 bg-gray-200 relative">
+                  <img src={goal.proofImage} className="w-full h-full object-cover filter contrast-110" alt="Proof" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 </div>
-                <span className={`text-lg font-medium transition-all ${goal.completed ? 'line-through text-green-700' : 'text-gray-800'}`}>{goal.title}</span>
+              )}
+
+              <div className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleToggle(goal.id, goal.completed)}>
+                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${goal.completed ? 'bg-green-500 border-green-500 shadow-md' : 'border-gray-300 bg-gray-50'}`}>
+                    {goal.completed && <Check size={16} className="text-white" />}
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500 block mb-0.5">{goal.category}</span>
+                    <span className={`text-lg font-serif font-bold transition-all block leading-tight ${goal.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{goal.title}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <button onClick={() => deleteGoal(goal.id)} className="text-gray-300 hover:text-red-500 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16} /></button>
+                  {goal.authorEmail && (
+                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px] font-bold uppercase border border-blue-200" title={`Added by ${goal.authorEmail}`}>
+                      {goal.authorEmail.charAt(0)}
+                    </div>
+                  )}
+                </div>
               </div>
-              <button onClick={() => deleteGoal(goal.id)} className="text-gray-400 hover:text-red-500 p-2"><Trash2 size={18} /></button>
             </motion.div>
           ))}
         </AnimatePresence>
@@ -1271,7 +1410,6 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal }) => {
     </div>
   );
 };
-
 // ==========================================
 // 12. THE DUAL PROMISE JARS 🫙🫙
 // ==========================================
@@ -1330,25 +1468,37 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
     setDrawnPromise(jarPromises[randomIdx]);
   };
 
-  const JarVisual = ({ name, setName, jarPromises, onDraw, color }) => (
-    <div className="flex flex-col items-center justify-center bg-white/40 p-6 md:p-8 rounded-3xl border border-white/50 shadow-sm relative w-full group">
+   const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
+    <div className="flex flex-col items-center justify-center p-6 md:p-8 relative w-full group">
       <input 
         type="text" 
         value={name} 
         onChange={(e) => setName(e.target.value)} 
-        className="text-xl md:text-2xl font-serif font-bold text-[#8B1235] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-pink-200 mb-6 w-full transition-colors"
+        className="text-xl md:text-2xl font-serif font-bold text-[#8B1235] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-pink-200 mb-6 w-full transition-colors z-10"
         placeholder="Name this jar..."
       />
-      <div onClick={() => onDraw(jarPromises)} className={`w-40 h-56 border-4 border-gray-300 ${color} rounded-b-[2.5rem] rounded-t-xl relative cursor-pointer hover:scale-105 transition-transform shadow-inner flex flex-col justify-end overflow-hidden pb-3`}>
-        <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20"></div>
-        <div className="flex justify-center w-full h-[90%] px-2 relative z-10 overflow-hidden">
+      {/* THE FROSTED GLASS JAR */}
+      <div onClick={() => onDraw(jarPromises)} className="w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)]">
+        
+        {/* THE CORK LID */}
+        <div className="absolute top-0 w-full h-8 bg-gradient-to-r from-amber-800 via-amber-600 to-amber-900 border-b-4 border-amber-900/80 shadow-[0_5px_10px_rgba(0,0,0,0.3)] z-20 flex items-center justify-center">
+           <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-2"></div>
+           <div className="w-full h-[2px] bg-amber-900/30 opacity-50 absolute top-5"></div>
+        </div>
+        
+        {/* GLASS HIGHLIGHT GLARE */}
+        <div className="absolute top-0 left-[10%] w-3 h-full bg-gradient-to-b from-white/60 to-transparent rounded-full transform -skew-x-12 z-20 pointer-events-none"></div>
+
+        {/* THE FALLING NOTES */}
+        <div className="flex justify-center w-full h-[90%] px-4 relative z-10 overflow-hidden">
           <AnimatePresence>
             {jarPromises.map((p, i) => {
-              // Creating deterministic random layouts based on item index/id so they stack perfectly
               const seed = p.id ? p.id.charCodeAt(0) + i : i;
-              const pseudoRandomX = Math.sin(seed) * 45; 
-              const pseudoRandomY = -(i * 2.5) - Math.abs(Math.cos(seed) * 15); 
+              const pseudoRandomX = Math.sin(seed) * 50; 
+              const pseudoRandomY = -(i * 4) - Math.abs(Math.cos(seed) * 15); 
               const pseudoRandomRot = Math.sin(seed * 2) * 60; 
+              const colors = ['bg-pink-100', 'bg-rose-100', 'bg-white', 'bg-red-50'];
+              const noteColor = colors[seed % colors.length];
 
               return (
                 <motion.div 
@@ -1356,21 +1506,21 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
                   initial={{ y: -300, opacity: 0, x: pseudoRandomX, rotate: pseudoRandomRot - 90 }}
                   animate={{ y: pseudoRandomY, opacity: 0.95, x: pseudoRandomX, rotate: pseudoRandomRot }}
                   transition={{ type: "spring", bounce: 0.6, duration: 1.5, delay: 0.1 }}
-                  className="w-8 h-8 bg-pink-100 shadow-md border border-pink-200 absolute bottom-2"
+                  className={`w-10 h-10 ${noteColor} shadow-md border border-black/5 absolute bottom-2 flex items-center justify-center rounded-sm`}
                   style={{ zIndex: i }}
-                ></motion.div>
+                >
+                  <div className="w-6 h-6 border border-pink-200/50 rounded-sm opacity-50"></div>
+                </motion.div>
               );
             })}
           </AnimatePresence>
         </div>
-        {jarPromises.length === 0 && <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 font-medium z-10 text-sm">Empty</p>}
       </div>
-      <p className="mt-6 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-pink-500 transition-colors" onClick={() => onDraw(jarPromises)}>
-        Tap jar to draw
+      <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-rose-500 transition-colors bg-white/50 px-4 py-2 rounded-full" onClick={() => onDraw(jarPromises)}>
+        Tap jar to open 
       </p>
     </div>
   );
-
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800 text-center md:text-left">The Promise Jars 🫙</h1>
@@ -1891,7 +2041,19 @@ function App() {
   const triggerDeleteQuote = (id) => setConfirmModal({ isOpen: true, id, type: 'quote', title: 'Delete Quote?', message: 'Are you sure you want to delete this quote from your universe?' });
   const triggerDeleteGoal = (id) => setConfirmModal({ isOpen: true, id, type: 'goal', title: 'Delete Goal?', message: 'Are you sure you want to remove this goal from your bucket list?' });
   const triggerDeletePromise = (id) => setConfirmModal({ isOpen: true, id, type: 'promise', title: 'Delete Note?', message: 'Are you sure you want to permanently remove this sweet note?' });
+const editMemory = async (id, updatedFields) => {
+    try {
+      await updateDoc(doc(db, "memories", id), updatedFields);
+      setMemories(prev => prev.map(m => m.firestoreId === id ? { ...m, ...updatedFields } : m));
+    } catch (err) { console.error(err); }
+  };
 
+  const editLetter = async (id, updatedFields) => {
+    try {
+      await updateDoc(doc(db, "letters", id), updatedFields);
+      setLetters(prev => prev.map(l => l.firestoreId === id ? { ...l, ...updatedFields } : l));
+    } catch (err) { console.error(err); }
+  };
   // --- GLOBAL DELETION EXECUTOR ---
   const handleConfirmAction = async () => {
     const { type, id } = confirmModal;
@@ -1951,10 +2113,12 @@ function App() {
     } catch (err) { console.error(err); }
   };
   
-  const toggleGoal = async (id, completed) => {
+ const toggleGoal = async (id, completed, proofImage = null) => {
     try {
-      await updateDoc(doc(db, "bucketlist", id), { completed });
-      setBucketList(prev => prev.map(g => g.id === id ? { ...g, completed } : g));
+      const updateData = { completed };
+      if (proofImage) updateData.proofImage = proofImage;
+      await updateDoc(doc(db, "bucketlist", id), updateData);
+      setBucketList(prev => prev.map(g => g.id === id ? { ...g, ...updateData } : g));
     } catch (err) { console.error(err); }
   };
   
