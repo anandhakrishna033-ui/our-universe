@@ -9,7 +9,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import emailjs from '@emailjs/browser'; 
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
-
+import Cropper from 'react-easy-crop';
 // --- FIREBASE IMPORTS ---
 import { db, storage, auth } from './firebase'; 
 import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
@@ -1191,24 +1191,33 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
                   whileHover={{ scale: 1.02, rotate: randomRotation, zIndex: 10 }} 
                   onClick={() => openLetter(letter)}
-                  className="bg-white p-4 pb-12 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative cursor-pointer group flex flex-col h-72 overflow-hidden"
+                  className={`p-4 pb-12 rounded-sm shadow-xl hover:shadow-2xl border relative cursor-pointer group flex flex-col h-72 overflow-hidden ${
+                    letter.layout === 'image-background' ? 'border-transparent text-white' : 'bg-white border-gray-200 text-gray-800'
+                  }`}
                 >
                   <button onClick={(e) => { e.stopPropagation(); deleteLetter(letter.firestoreId || letter.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-50">
                     <Trash2 size={16} />
                   </button>
 
+                  {/* RESTORED: Image Preview for Full Background in Grid View */}
+                  {letter.layout === 'image-background' && letter.img && (
+                    <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${letter.img})` }}>
+                      <div className="absolute inset-0 bg-black/60"></div>
+                    </div>
+                  )}
+
                   <div className="relative z-10 flex flex-col flex-1">
-                    <div className="mb-2 border-b border-gray-200 pb-2">
-                      <h3 className="text-xl font-bold mb-1 text-gray-800 truncate">{letter.title}</h3>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400">{letter.date}</p>
+                    <div className={`mb-2 border-b pb-2 ${letter.layout === 'image-background' ? 'border-white/30' : 'border-gray-200'}`}>
+                      <h3 className={`text-xl font-bold mb-1 truncate ${letter.layout === 'image-background' ? 'text-white' : 'text-gray-800'}`}>{letter.title}</h3>
+                      <p className={`text-[10px] uppercase tracking-wider ${letter.layout === 'image-background' ? 'text-gray-300' : 'text-gray-400'}`}>{letter.date}</p>
                     </div>
                     
-                    {/* RESTORED: Image Preview in the Grid View */}
+                    {/* Image Preview for Top/Bottom Layouts */}
                     {letter.img && letter.layout !== 'image-background' && (
                        <img src={letter.img} className="w-full h-24 object-cover rounded-xl mb-3 shadow-sm border border-gray-100" alt="Letter Attachment" />
                     )}
 
-                    <div className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-500 ${letter.font} overflow-hidden`}>
+                    <div className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed overflow-hidden ${letter.font} ${letter.layout === 'image-background' ? 'text-gray-200' : 'text-gray-500'}`}>
                       {letter.content.substring(0, 100)}...
                     </div>
                   </div>
@@ -1222,7 +1231,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
       {/* FULL SCREEN READING MODAL FOR LETTERS */}
       <AnimatePresence>
         {selectedLetter && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto" onClick={() => setSelectedLetter(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto" onClick={() => setSelectedLetter(null)}>
             <motion.div 
               initial={{ scale: 0.8, y: 50, rotate: 2 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 50 }} 
               transition={{ type: "spring", bounce: 0.4 }}
@@ -1280,25 +1289,74 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ title: '', content: '', font: 'font-serif', img: '', layout: 'image-top', unlockDate: '' });
   const [isSaving, setIsSaving] = useState(false);
-  const symbols = ['♡', '✨', '🌙', '🌸', '🦋', '💌', '♾️', '💍', '🥺', '❤️'];
+  
+  // --- Cropper States ---
+  const [rawImage, setRawImage] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
+  const symbols = ['♡', '✨', '🌙', '🌸', '🦋', '💌', '♾️', '💍', '🥺', '❤️'];
   const handleAddSymbol = (sym) => setFormData({ ...formData, content: formData.content + sym });
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      try {
-        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
-        const compressedFile = await imageCompression(file, options);
-        const base64String = await fileToBase64(compressedFile);
-        setFormData({ ...formData, img: base64String }); 
-      } catch (error) { 
-        showAlert("Image Too Large", "Failed to process image. Try a slightly smaller picture."); 
-      }
+      setRawImage(URL.createObjectURL(file)); // Opens the Cropper UI instantly
     }
   };
 
   const removeImage = () => setFormData({ ...formData, img: '' });
+
+  // Captures coordinates as the user drags/zooms
+  const onCropComplete = (croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  // Generates the final cropped image to save
+  const confirmCrop = async () => {
+    try {
+      setIsSaving(true);
+      const image = new Image();
+      image.src = rawImage;
+      await new Promise(res => image.onload = res);
+
+      // Create a native HTML canvas to physically slice the image
+      const canvas = document.createElement('canvas');
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+      const ctx = canvas.getContext('2d');
+
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height
+      );
+
+      // Compress the sliced image
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
+        const compressedFile = await imageCompression(file, options);
+        const base64String = await fileToBase64(compressedFile);
+
+        setFormData({ ...formData, img: base64String });
+        setRawImage(null); // Closes modal
+        setIsSaving(false);
+      }, 'image/jpeg', 0.95);
+      
+    } catch (error) {
+      setIsSaving(false);
+      if (showAlert) showAlert("Crop Error", "Failed to crop image.");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1320,6 +1378,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           <label className="block text-sm font-bold text-gray-700 mb-1">Heading / Subject</label>
           <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
         </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Letter Font</label>
@@ -1357,7 +1416,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           ) : (
             <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-sm group">
               <img src={formData.img} alt="Preview" className="w-full h-full object-cover" />
-              <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md"><Trash2 size={18} /></button>
+              <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md transition-all"><Trash2 size={18} /></button>
             </div>
           )}
         </div>
@@ -1375,6 +1434,41 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           {isSaving ? "Sealing envelope... 💌" : "Seal & Save Letter 💌"}
         </button>
       </form>
+
+      {/* --- CROP MODAL --- */}
+      <AnimatePresence>
+        {rawImage && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <h3 className="text-white text-xl font-bold mb-4 font-serif">Frame Your Photo ✂️</h3>
+            
+            <div className="relative w-full max-w-2xl h-[50vh] bg-black rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20">
+              <Cropper
+                image={rawImage}
+                crop={crop}
+                zoom={zoom}
+                // Automatically sizes the crop box depending on if it's a background or inline!
+                aspect={formData.layout === 'image-background' ? 3 / 4 : 16 / 9}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="mt-6 w-full max-w-md flex items-center gap-4">
+               <span className="text-white text-sm"><ImageIcon size={16}/></span>
+               <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="w-full accent-[var(--color-primary)]" />
+               <span className="text-white text-sm"><ImageIcon size={24}/></span>
+            </div>
+            
+            <div className="mt-8 flex gap-4">
+              <button type="button" onClick={() => setRawImage(null)} className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full font-bold transition-colors">Cancel</button>
+              <button type="button" onClick={confirmCrop} disabled={isSaving} className="px-6 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-full font-bold transition-colors shadow-md flex items-center gap-2">
+                {isSaving ? "Cropping..." : <><Check size={18} /> Apply Crop</>}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
