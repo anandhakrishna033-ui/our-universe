@@ -10,7 +10,6 @@ import emailjs from '@emailjs/browser';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 
-
 // --- FIREBASE IMPORTS ---
 import { db, storage, auth } from './firebase'; 
 import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
@@ -47,6 +46,74 @@ const lovelyHeartMarker = new L.DivIcon({
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
+
+
+// ==========================================
+// CUSTOM UI MODALS (Replaces default alerts)
+// ==========================================
+const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
+  const [caption, setCaption] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(caption);
+    setCaption(""); // Reset for next time
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl">
+            <h3 className="text-xl font-serif font-bold text-[#8B1235] mb-2">
+              {fileCount > 1 ? `Uploading ${fileCount} Photos` : "Add a Caption"}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">Give your memory a beautiful short caption.</p>
+            
+            <form onSubmit={handleSubmit}>
+              <input 
+                autoFocus
+                type="text" 
+                value={caption} 
+                onChange={(e) => setCaption(e.target.value)} 
+                placeholder="e.g. A beautiful moment..." 
+                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-gray-50 mb-6"
+              />
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 bg-[#8B1235] text-white font-bold rounded-xl shadow-md hover:bg-[#6A0D28] transition-colors">Save Photos</button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={32} />
+            </div>
+            <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">{title}</h3>
+            <p className="text-gray-500 mb-8">{message}</p>
+            
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 py-3 text-gray-600 font-bold bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">Cancel</button>
+              <button onClick={onConfirm} className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl shadow-md hover:bg-red-600 transition-colors">Yes, Delete</button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 
 // ==========================================
 // 1. BULLETPROOF AUDIO PLAYER
@@ -552,6 +619,10 @@ const CreateMemory = ({ onAddMemory }) => {
 // ==========================================
 const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPhoto }) => {
   const [isUploading, setIsUploading] = useState(false);
+  
+  // NEW STATE FOR THE MODAL
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [isCaptionModalOpen, setIsCaptionModalOpen] = useState(false);
 
   const combinedPhotos = [
     ...galleryPhotos.map(p => ({ ...p, source: 'gallery' })),
@@ -566,16 +637,23 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
   const rotations = [-3, 2, -1, 4, -2, 3]; 
 
-  const handleMultiUpload = async (e) => {
+  // 1. Just catch the files and open the modal
+  const handleMultiUploadClick = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
+    setPendingFiles(files);
+    setIsCaptionModalOpen(true);
+    e.target.value = null; // Reset the input
+  };
+
+  // 2. Process the upload AFTER the modal is submitted
+  const processUpload = async (customCaption) => {
+    setIsCaptionModalOpen(false); // Close the modal
     setIsUploading(true);
 
-    const batchHeading = files.length > 1 
-      ? prompt(`Uploading ${files.length} photos. Give them a shared caption (or leave blank):`) 
-      : prompt("Give this memory a short caption:");
+    const finalCaption = customCaption.trim() !== "" ? customCaption : "A beautiful moment";
 
-    for (const file of files) {
+    for (const file of pendingFiles) {
       try {
         const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
@@ -583,18 +661,28 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
         
         await onAddPhotos({ 
           imgUrl: base64String, 
-          heading: batchHeading || "A beautiful moment", 
+          heading: finalCaption, 
           timestamp: new Date().toISOString()
         });
       } catch (error) {
         console.error("Upload failed for a photo:", error);
       }
     }
+    
     setIsUploading(false);
+    setPendingFiles([]); // Clear the queue
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
+    <div className="max-w-6xl mx-auto pb-10 relative">
+      {/* ADD THE NEW CAPTION MODAL HERE */}
+      <CaptionModal 
+        isOpen={isCaptionModalOpen} 
+        fileCount={pendingFiles.length}
+        onClose={() => { setIsCaptionModalOpen(false); setPendingFiles([]); }} 
+        onSubmit={processUpload} 
+      />
+
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-800">Our Gallery 📷</h1>
@@ -606,7 +694,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           ) : (
             <><Plus size={20} /> Add Photos</>
           )}
-          <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiUpload} disabled={isUploading} />
+          <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiUploadClick} disabled={isUploading} />
         </label>
       </div>
 
@@ -1604,7 +1692,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote }) 
             </button>
           </div>
         </motion.div>
-        
 
         {/* --- WHISPERS OF THE UNIVERSE (ROTATING QUOTES) --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
@@ -1685,6 +1772,9 @@ function App() {
   const [boardItems, setBoardItems] = useState([]);
   
   const [loading, setLoading] = useState(false);
+  
+  // NEW STATE: DELETION MODAL
+  const [deletePrompt, setDeletePrompt] = useState({ isOpen: false, id: null });
 
  // --- 1. FETCH FROM FIREBASE (FILTERED BY UNIVERSE ID) ---
   useEffect(() => {
@@ -1721,6 +1811,7 @@ function App() {
     
     fetchData();
   }, [isAuthenticated, activeUniverse]);
+
   // --- 2. DATABASE ACTIONS (STAMPED WITH UNIVERSE ID) ---
   const addMemory = async (newMemoryData) => {
     try {
@@ -1756,12 +1847,22 @@ function App() {
     }
   };
 
-  const deleteMemory = async (firestoreId) => {
-    if (!firestoreId || !window.confirm("Are you sure you want to delete this memory?")) return;
+  // --- NEW MEMORY DELETION LOGIC ---
+  const triggerDeleteMemory = (firestoreId) => {
+    setDeletePrompt({ isOpen: true, id: firestoreId });
+  };
+
+  const confirmDeleteMemory = async () => {
+    const firestoreId = deletePrompt.id;
+    if (!firestoreId) return;
+    
     try {
       await deleteDoc(doc(db, "memories", firestoreId));
       setMemories(prev => prev.filter(m => m.firestoreId !== firestoreId));
-    } catch (err) { console.error("Error deleting memory: ", err); }
+      setDeletePrompt({ isOpen: false, id: null }); // Close the modal
+    } catch (err) { 
+      console.error("Error deleting memory: ", err); 
+    }
   };
 
   const addLetter = async (newLetterData) => {
@@ -1888,7 +1989,8 @@ function App() {
     <BrowserRouter>
       <DashboardLayout theme={theme}>
         <Routes>
-          <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={deleteMemory} />} />
+          {/* UPDATED: Passing triggerDeleteMemory */}
+          <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} />} />
           <Route path="/timeline" element={<Timeline memories={memories} />} />
           <Route path="/places" element={<LovelyMap memories={memories} />} />
           <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} />} />
@@ -1897,7 +1999,9 @@ function App() {
           
           <Route path="/letters" element={<Letters letters={letters} deleteLetter={deleteLetter} />} />
           <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} />} />
-          <Route path="/memories" element={<Memories memories={memories} deleteMemory={deleteMemory} />} />
+          
+          {/* UPDATED: Passing triggerDeleteMemory */}
+          <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} />} />
           
           <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={deleteGoal} />} />
           
@@ -1913,6 +2017,15 @@ function App() {
           } />
         </Routes>
       </DashboardLayout>
+
+      {/* NEW: The Global Delete Confirmation Modal */}
+      <DeleteConfirmModal 
+        isOpen={deletePrompt.isOpen}
+        onClose={() => setDeletePrompt({ isOpen: false, id: null })}
+        onConfirm={confirmDeleteMemory}
+        title="Delete Memory?"
+        message="Are you sure you want to permanently delete this memory from your universe? This cannot be undone."
+      />
     </BrowserRouter>
   );
 }
