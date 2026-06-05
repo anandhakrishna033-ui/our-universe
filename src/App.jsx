@@ -85,6 +85,45 @@ const lovelyHeartMarker = new L.DivIcon({
 // ==========================================
 // CUSTOM UI MODALS
 // ==========================================
+const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
+  const [caption, setCaption] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(caption);
+    setCaption(""); 
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl">
+            <h3 className="text-xl font-serif font-bold text-[var(--color-primary)] mb-2">
+              {fileCount > 1 ? `Uploading ${fileCount} Photos` : "Add a Caption"}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">Give your memory a beautiful short caption.</p>
+            
+            <form onSubmit={handleSubmit}>
+              <input 
+                autoFocus
+                type="text" 
+                value={caption} 
+                onChange={(e) => setCaption(e.target.value)} 
+                placeholder="e.g. A beautiful moment..." 
+                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-gray-50 mb-6 text-gray-800"
+              />
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 bg-[var(--color-primary)] text-white font-bold rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">Save Photos</button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   return (
     <AnimatePresence>
