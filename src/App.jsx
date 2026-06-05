@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle, Grip, Home, ListTodo, Archive, Settings } from 'lucide-react';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -460,11 +460,22 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
                     className="bg-white p-2.5 pb-6 rounded-sm shadow-md border border-gray-100 relative group cursor-pointer"
                     onClick={() => navigate('/memories')}
                   >
-                    <button onClick={(e) => { e.stopPropagation(); deleteMemory(m.firestoreId || m.id); }} className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10" title="Delete Memory">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); deleteMemory(m.firestoreId || m.id); }} 
+                      className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+                      title="Delete Memory"
+                    >
                       <Trash2 size={16} />
                     </button>
                     <div className="w-full aspect-square bg-gray-100 mb-3 overflow-hidden rounded-sm relative">
-                      {coverImg ? <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} src={coverImg} alt={m.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>}
+                      {coverImg ? (
+                        <motion.img 
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+                          src={coverImg} alt={m.title} className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>
+                      )}
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium text-gray-800 font-serif truncate">{m.title}</p>
@@ -498,6 +509,7 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
   const handleMultiImageUpload = async (e) => {
     const files = Array.from(e.target.files).slice(0, 4);
     if (!files.length) return;
+
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setImgPreviews(prev => [...prev, ...newPreviews].slice(0, 4));
 
@@ -508,7 +520,9 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
       try {
         const compressed = await imageCompression(file, options);
         compressedFiles.push(compressed);
-      } catch (err) { compressedFiles.push(file); }
+      } catch (err) {
+        compressedFiles.push(file);
+      }
     }
     setImgFiles(prev => [...prev, ...compressedFiles].slice(0, 4));
   };
@@ -610,7 +624,7 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
 };
 
 // ==========================================
-// 5. BEAUTIFUL POLAROID GALLERY 📷 (With Crop & Lightbox)
+// 5. BEAUTIFUL POLAROID GALLERY 📷
 // ==========================================
 const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPhoto }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -665,7 +679,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
-        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
 
@@ -675,7 +689,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           timestamp: new Date().toISOString()
         });
 
-        // Move to next file in queue
         const remainingFiles = pendingFiles.slice(1);
         if (remainingFiles.length > 0) {
           setPendingFiles(remainingFiles);
@@ -684,7 +697,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           setZoom(1);
           setIsUploading(false);
         } else {
-          // Finished
           setPendingFiles([]);
           setCurrentCropFile(null);
           setCaption("");
@@ -714,8 +726,8 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-800">Our Gallery 📷</h1>
           <p className="text-gray-500 mt-2 text-sm md:text-base">A collection of our favorite moments and memories.</p>
         </div>
-        <label className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md font-medium flex items-center gap-2">
-          {isUploading ? <><span className="animate-pulse">Uploading...</span></> : <><Plus size={20} /> Add Photos</>}
+        <label className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md font-medium flex items-center gap-2 w-full md:w-auto justify-center">
+          {isUploading ? <><span className="animate-pulse">Uploading Photos...</span></> : <><Plus size={20} /> Add Photos</>}
           <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiUploadClick} disabled={isUploading} />
         </label>
       </div>
@@ -833,7 +845,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 };
 
 // ==========================================
-// 6. ALL MEMORIES PAGE (With Slider, Fancy UI & Edits)
+// 6. ALL MEMORIES PAGE
 // ==========================================
 const Memories = ({ memories, deleteMemory, editMemory }) => {
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -1441,7 +1453,9 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
-    if (file) setRawImage(URL.createObjectURL(file)); 
+    if (file) {
+      setRawImage(URL.createObjectURL(file)); 
+    }
   };
 
   const removeImage = () => setFormData({ ...formData, img: '' });
@@ -1522,7 +1536,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-bold text-rose-600 mb-1">Time Capsule Lock</label>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Time Capsule Lock</label>
             <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
           </div>
         </div>
@@ -1538,7 +1552,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
               <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
             </label>
           ) : (
-            <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-md border-4 border-white group">
+            <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-sm border-4 border-white group">
               <img src={formData.img} alt="Preview" className="w-full h-full object-cover" />
               <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md transition-all"><Trash2 size={18} /></button>
             </div>
@@ -1608,6 +1622,7 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
   const [filter, setFilter] = useState("All");
   const { width, height } = useWindowSize();
   const [showConfetti, setShowConfetti] = useState(false);
+  
   const [completingGoalId, setCompletingGoalId] = useState(null);
 
   const categories = ["✈️ Travel", "🍕 Food", "🪂 Crazy", "🛋️ Cozy", "💕 Romance"];
@@ -1627,15 +1642,19 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !completingGoalId) return;
+    
     try {
       const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
       const compressed = await imageCompression(file, options);
       const base64 = await fileToBase64(compressed);
+      
       toggleGoal(completingGoalId, true, base64);
       setCompletingGoalId(null);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000); 
-    } catch (err) { alert("Failed to upload photo proof."); }
+    } catch (err) {
+      alert("Failed to upload photo proof.");
+    }
   };
 
   const handleToggle = (id, isCompleted) => {
@@ -1654,11 +1673,12 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
       
       <AnimatePresence>
         {completingGoalId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
               <div className="w-16 h-16 bg-gray-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4"><ImageIcon size={32} /></div>
               <h3 className="text-2xl font-bold font-serif text-gray-800 mb-2">Goal Completed! 🎉</h3>
               <p className="text-gray-500 mb-6">Attach a photo of this moment to immortalize it as a polaroid.</p>
+              
               <label className="block w-full bg-[var(--color-primary)] text-white py-3 rounded-xl font-bold cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md mb-3">
                 Upload Photo Proof
                 <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
@@ -1696,12 +1716,14 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
         <AnimatePresence>
           {filteredList.map(goal => (
             <motion.div key={goal.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${goal.completed ? 'bg-[var(--color-bg)] border-white' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
+              
               {goal.completed && goal.proofImage && (
                 <div className="w-full h-40 bg-gray-200 relative">
                   <img src={goal.proofImage} className="w-full h-full object-cover filter contrast-110" alt="Proof" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 </div>
               )}
+
               <div className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleToggle(goal.id, goal.completed)}>
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${goal.completed ? 'bg-green-500 border-green-500 shadow-md' : 'border-gray-300 bg-gray-50'}`}>
@@ -1734,7 +1756,14 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
 // ==========================================
 const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
   <div className="flex flex-col items-center justify-center p-6 md:p-8 relative w-full group">
-    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="text-xl md:text-2xl font-serif font-bold text-[var(--color-primary)] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-gray-200 mb-6 w-full transition-colors z-10" placeholder="Name this jar..." />
+    <input 
+      type="text" 
+      value={name} 
+      onChange={(e) => setName(e.target.value)} 
+      className="text-xl md:text-2xl font-serif font-bold text-[var(--color-primary)] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-gray-200 mb-6 w-full transition-colors z-10"
+      placeholder="Name this jar..."
+    />
+    
     <div onClick={() => onDraw(jarPromises)} className={`w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)]`}>
       <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20 shadow-sm"></div>
       <div className="absolute top-0 left-[30%] w-3 h-full bg-gradient-to-b from-white/60 to-transparent rounded-full transform -skew-x-12 z-20 pointer-events-none"></div>
@@ -1753,7 +1782,12 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
               <motion.div 
                 key={p.id || i}
                 initial={{ y: -250, opacity: 0, x: 0, rotate: 0 }}
-                animate={{ y: pseudoRandomY, opacity: 0.95, x: [0, pseudoRandomX * -0.6, pseudoRandomX * 1.4, pseudoRandomX * 0.3, pseudoRandomX], rotate: [0, 45, -35, 20, pseudoRandomRot] }}
+                animate={{ 
+                  y: pseudoRandomY, 
+                  opacity: 0.95, 
+                  x: [0, pseudoRandomX * -0.6, pseudoRandomX * 1.4, pseudoRandomX * 0.3, pseudoRandomX],
+                  rotate: [0, 45, -35, 20, pseudoRandomRot]
+                }}
                 transition={{ duration: 3.2, ease: "easeInOut" }}
                 className={`w-10 h-10 ${noteColor} shadow-md border border-black/5 absolute bottom-2 flex items-center justify-center rounded-sm`}
                 style={{ zIndex: i }}
@@ -1765,6 +1799,7 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
         </AnimatePresence>
       </div>
     </div>
+    
     <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-[var(--color-primary)] transition-colors bg-white/50 px-4 py-2 rounded-full shadow-sm" onClick={() => onDraw(jarPromises)}>
       Tap jar to open 
     </p>
@@ -1775,6 +1810,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const [newPromise, setNewPromise] = useState('');
   const [targetJar, setTargetJar] = useState('jar1'); 
   const [drawnPromise, setDrawnPromise] = useState(null);
+
   const [jar1Name, setJar1Name] = useState(() => localStorage.getItem('jar1Name') || "My Jar");
   const [jar2Name, setJar2Name] = useState(() => localStorage.getItem('jar2Name') || "Her Jar");
 
@@ -1803,7 +1839,9 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
       playTone(1046.50, 0);   
       playTone(1318.51, 0.1); 
       playTone(1567.98, 0.2); 
-    } catch (err) { console.log("Audio blocked."); }
+    } catch (err) {
+      console.log("Audio blocked.");
+    }
   };
 
   const handleSubmit = (e) => {
@@ -1862,7 +1900,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
       </div>
       <AnimatePresence>
         {drawnPromise && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDrawnPromise(null)}>
             <motion.div initial={{ scale: 0.5, y: 100, rotate: -10 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 20 }} transition={{ type: "spring", bounce: 0.4 }} className="bg-[var(--color-bg)] p-10 max-w-md w-full rounded-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-16 h-5 bg-yellow-200/60 rotate-2 shadow-sm"></div>
               <button onClick={() => setDrawnPromise(null)} className="absolute top-2 right-3 text-gray-400 hover:text-[var(--color-primary)]"><X size={20}/></button>
@@ -2072,7 +2110,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
 
       <AnimatePresence>
         {showDrawPad && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setShowDrawPad(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setShowDrawPad(false)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
                 <div>
@@ -2192,11 +2230,11 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Your Email</label>
-              <input type="email" value={email1} onChange={(e) => setEmail1(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50" placeholder="you@example.com" />
+              <input type="email" value={email1} onChange={(e) => setEmail1(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" placeholder="you@example.com" />
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Partner's Email</label>
-              <input type="email" value={email2} onChange={(e) => setEmail2(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-400 bg-white/50" placeholder="partner@example.com" />
+              <input type="email" value={email2} onChange={(e) => setEmail2(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" placeholder="partner@example.com" />
             </div>
             <button onClick={handleSaveEmails} className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors w-full md:w-auto flex items-center justify-center gap-2 shadow-sm">
               <Check size={18} /> Save Notification Emails
@@ -2419,6 +2457,7 @@ function App() {
     }
   };
 
+
   const addLetter = async (newLetterData) => {
     try {
       const finalLetter = { ...newLetterData, createdAt: new Date().toISOString(), universeId: activeUniverse }; 
@@ -2511,23 +2550,38 @@ function App() {
     <BrowserRouter>
       <GlobalThemeStyles />
       <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500">
+        
         <DashboardLayout theme={theme}>
           <Routes>
             <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} theme={theme} />} />
             <Route path="/timeline" element={<Timeline memories={memories} />} />
             <Route path="/places" element={<LovelyMap memories={memories} />} />
             <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
+            
             <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
+            
             <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} editLetter={editLetter} />} />
             <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
+            
             <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} editMemory={editMemory} />} />
+            
             <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} currentUser={currentUser} />} />
+            
             <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
             <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
-            <Route path="/settings" element={<SettingsPage theme={theme} setTheme={setTheme} activeUniverse={activeUniverse} quotes={quotes} deleteQuote={triggerDeleteQuote} showAlert={showAlert} />} />
+
+            <Route path="/settings" element={
+              <SettingsPage 
+                theme={theme} setTheme={setTheme}
+                activeUniverse={activeUniverse}
+                quotes={quotes} deleteQuote={triggerDeleteQuote}
+                showAlert={showAlert}
+              />
+            } />
           </Routes>
         </DashboardLayout>
 
+        {/* GLOBAL MODALS */}
         <DeleteConfirmModal 
           isOpen={confirmModal.isOpen}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
