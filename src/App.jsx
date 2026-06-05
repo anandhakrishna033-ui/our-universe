@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle } from 'lucide-react';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle, Grip, Home, ListTodo, Archive, Settings } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -10,6 +10,7 @@ import emailjs from '@emailjs/browser';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import Cropper from 'react-easy-crop';
+
 // --- FIREBASE IMPORTS ---
 import { db, storage, auth } from './firebase'; 
 import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
@@ -63,7 +64,6 @@ const fileToBase64 = (fileOrBlob) => new Promise((resolve, reject) => {
   reader.readAsDataURL(fileOrBlob);
 });
 
-// Custom glowing heart icon for your map pins
 const heartIcon = new L.DivIcon({
   html: `<div style="font-size: 28px; color: var(--color-heart); filter: drop-shadow(0px 0px 8px var(--color-heart));">❤️</div>`,
   className: 'custom-heart-icon',
@@ -72,7 +72,6 @@ const heartIcon = new L.DivIcon({
   popupAnchor: [0, -28],
 });
 
-// The Custom Pulsing Heart Marker for the LovelyMap
 const lovelyHeartMarker = new L.DivIcon({
   className: 'bg-transparent',
   html: `<div class="relative flex h-8 w-8 items-center justify-center">
@@ -83,62 +82,20 @@ const lovelyHeartMarker = new L.DivIcon({
   iconAnchor: [16, 16],
 });
 
-
 // ==========================================
-// CUSTOM UI MODALS (Replaces default alerts)
+// CUSTOM UI MODALS
 // ==========================================
-const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
-  const [caption, setCaption] = useState("");
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(caption);
-    setCaption(""); 
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl">
-            <h3 className="text-xl font-serif font-bold text-[var(--color-primary)] mb-2">
-              {fileCount > 1 ? `Uploading ${fileCount} Photos` : "Add a Caption"}
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">Give your memory a beautiful short caption.</p>
-            
-            <form onSubmit={handleSubmit}>
-              <input 
-                autoFocus
-                type="text" 
-                value={caption} 
-                onChange={(e) => setCaption(e.target.value)} 
-                placeholder="e.g. A beautiful moment..." 
-                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-gray-50 mb-6"
-              />
-              <div className="flex justify-end gap-3">
-                <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" className="px-5 py-2.5 bg-[var(--color-primary)] text-white font-bold rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">Save Photos</button>
-              </div>
-            </form>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl text-center">
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={32} />
             </div>
             <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">{title}</h3>
             <p className="text-gray-500 mb-8">{message}</p>
-            
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 py-3 text-gray-600 font-bold bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">Cancel</button>
               <button onClick={onConfirm} className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl shadow-md hover:bg-red-600 transition-colors">Yes, Delete</button>
@@ -154,7 +111,7 @@ const AlertModal = ({ isOpen, onClose, title, message }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl text-center">
             <div className="w-16 h-16 bg-pink-50 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4">
               <Sparkles size={32} />
@@ -169,7 +126,6 @@ const AlertModal = ({ isOpen, onClose, title, message }) => {
   );
 };
 
-
 // ==========================================
 // 1. BULLETPROOF AUDIO PLAYER
 // ==========================================
@@ -183,23 +139,18 @@ const AudioPlayer = ({ src }) => {
   useEffect(() => {
     if (!src) return;
     if (src.startsWith('data:')) {
-      fetch(src)
-        .then(res => res.blob())
-        .then(blob => {
-          const objectUrl = URL.createObjectURL(blob);
-          setPlayableUrl(objectUrl);
-        })
-        .catch(err => {
-          console.error("Audio conversion failed:", err);
-          setPlayableUrl(src); 
-        });
+      fetch(src).then(res => res.blob()).then(blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        setPlayableUrl(objectUrl);
+      }).catch(err => {
+        console.error("Audio conversion failed:", err);
+        setPlayableUrl(src); 
+      });
     } else {
       setPlayableUrl(src);
     }
     return () => {
-      if (playableUrl && playableUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(playableUrl);
-      }
+      if (playableUrl && playableUrl.startsWith('blob:')) URL.revokeObjectURL(playableUrl);
     };
   }, [src]);
 
@@ -208,10 +159,7 @@ const AudioPlayer = ({ src }) => {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(e => {
-        console.error("Audio playback failed:", e);
-        setError("Browser blocked audio. Check silent mode.");
-      });
+      audioRef.current.play().catch(e => setError("Browser blocked audio. Check silent mode."));
     }
     setIsPlaying(!isPlaying);
   };
@@ -225,23 +173,12 @@ const AudioPlayer = ({ src }) => {
   return (
     <div>
       <div className="flex items-center gap-3 bg-white/50 p-3 rounded-2xl border border-white/50 shadow-sm mt-3">
-        <audio 
-          ref={audioRef} 
-          src={playableUrl} 
-          onTimeUpdate={handleTimeUpdate}
-          onEnded={() => setIsPlaying(false)}
-          className="hidden" 
-          preload="auto"
-        />
+        <audio ref={audioRef} src={playableUrl} onTimeUpdate={handleTimeUpdate} onEnded={() => setIsPlaying(false)} className="hidden" preload="auto" />
         <button type="button" onClick={togglePlay} disabled={!playableUrl} className="w-10 h-10 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-full hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm shrink-0 disabled:opacity-50">
           {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
         <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-          <motion.div 
-            className="h-full bg-[var(--color-primary)]" 
-            style={{ width: `${progress}%` }}
-            layout
-          ></motion.div>
+          <motion.div className="h-full bg-[var(--color-primary)]" style={{ width: `${progress}%` }} layout></motion.div>
         </div>
         <Volume2 size={16} className="text-gray-400 shrink-0" />
       </div>
@@ -251,31 +188,25 @@ const AudioPlayer = ({ src }) => {
 };
 
 // ==========================================
-// 2. TRUE SECURE GATEWAY (Firebase Auth + Universe + PIN)
+// 2. TRUE SECURE GATEWAY
 // ==========================================
 const AuthGateway = ({ onUnlock }) => {
-  const [authStep, setAuthStep] = useState('LOADING'); // LOADING, AUTH, UNIVERSE_SETUP, PIN_SETUP, PIN_ENTRY
+  const [authStep, setAuthStep] = useState('LOADING'); 
   const [isLoginMode, setIsLoginMode] = useState(true);
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [joinCode, setJoinCode] = useState('');
-  
   const [user, setUser] = useState(null);
   const [universeId, setUniverseId] = useState(null);
-  
   const [pin, setPin] = useState('');
   const [savedPin, setSavedPin] = useState(() => localStorage.getItem('personalPin'));
-  
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Monitor Firebase Auth State
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // Check if user has a Universe assigned in the database
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (userDoc.exists()) {
           setUniverseId(userDoc.data().universeId);
@@ -308,8 +239,6 @@ const AuthGateway = ({ onUnlock }) => {
     try {
       const assignedId = mode === 'CREATE' ? `UNIVERSE-${Math.floor(Math.random() * 1000000)}` : joinCode.trim();
       if (mode === 'JOIN' && !assignedId) throw new Error("Please enter a Universe Code.");
-      
-      // Save their universe ID to their user profile
       await setDoc(doc(db, "users", user.uid), { email: user.email, universeId: assignedId });
       setUniverseId(assignedId);
       setAuthStep(savedPin ? 'PIN_ENTRY' : 'PIN_SETUP');
@@ -337,19 +266,15 @@ const AuthGateway = ({ onUnlock }) => {
   return (
     <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
       <div className="absolute top-[-30%] left-[-30%] w-[500px] h-[500px] bg-pink-200/50 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
-      
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/60 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-xl border border-white/50 max-w-md w-full relative z-10 text-center">
         <div className="w-16 h-16 bg-rose-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
           {authStep === 'AUTH' ? <Shield size={32} /> : authStep === 'UNIVERSE_SETUP' ? <Sparkles size={32} /> : <Lock size={32} />}
         </div>
-        
         <h1 className="text-3xl font-serif text-[var(--color-primary)] mb-2">
           {authStep === 'AUTH' ? "Our Universe" : authStep === 'UNIVERSE_SETUP' ? "Initialize Universe" : "App Locked"}
         </h1>
-        
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl mb-4 text-sm font-bold animate-bounce">{error}</div>}
 
-        {/* STEP 1: FIREBASE EMAIL/PASSWORD */}
         {authStep === 'AUTH' && (
           <form onSubmit={handleAuthSubmit} className="space-y-4 mt-6">
             <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[var(--color-primary)] text-gray-800 shadow-inner" />
@@ -363,7 +288,6 @@ const AuthGateway = ({ onUnlock }) => {
           </form>
         )}
 
-        {/* STEP 2: CREATE OR JOIN UNIVERSE */}
         {authStep === 'UNIVERSE_SETUP' && (
           <div className="space-y-6 mt-6">
             <p className="text-sm text-gray-500 mb-4">You need a shared space to store memories.</p>
@@ -381,7 +305,6 @@ const AuthGateway = ({ onUnlock }) => {
           </div>
         )}
 
-        {/* STEP 3 & 4: PERSONAL DEVICE PIN */}
         {(authStep === 'PIN_SETUP' || authStep === 'PIN_ENTRY') && (
           <form onSubmit={handlePinSubmit} className="space-y-4 mt-6">
             <p className="text-sm text-gray-500 mb-4">{authStep === 'PIN_SETUP' ? "Create a personal 4-digit PIN for this device." : "Enter your PIN to unlock."}</p>
@@ -398,7 +321,7 @@ const AuthGateway = ({ onUnlock }) => {
 };
 
 // ==========================================
-// 3. MAIN PAGES (Dashboard & Quotes)
+// 3. MAIN PAGES (Dashboard)
 // ==========================================
 const RotatingQuotes = ({ quotes }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -407,25 +330,29 @@ const RotatingQuotes = ({ quotes }) => {
     if (!quotes || quotes.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % quotes.length);
-    }, 6000);
+    }, 7000); 
     return () => clearInterval(interval);
   }, [quotes]);
 
   if (!quotes || quotes.length === 0) return null;
 
   return (
-    <div className="h-24 flex items-center justify-center overflow-hidden mb-6">
+    <div className="relative h-32 md:h-40 flex items-center justify-center overflow-hidden mb-6 md:mb-10 px-4">
+      <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] text-8xl md:text-[10rem] font-serif text-[var(--color-primary)] pointer-events-none -translate-y-4">
+        " "
+      </div>
       <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
-          initial={{ opacity: 0, y: 15, filter: "blur(4px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -15, filter: "blur(4px)" }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-          className="text-2xl md:text-3xl font-serif italic text-gray-800 text-center px-4"
-          style={{ fontFamily: "'Playfair Display', serif" }}
+          initial={{ opacity: 0, scale: 0.95, y: 15, filter: "blur(10px)" }}
+          animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, scale: 1.05, y: -15, filter: "blur(10px)" }}
+          transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }} 
+          className="text-2xl md:text-4xl font-serif text-gray-800 text-center leading-relaxed relative z-10"
         >
-          "{quotes[currentIndex]?.text}"
+          <span className="text-[var(--color-primary)] opacity-40 mr-2 font-serif text-3xl">"</span>
+          {quotes[currentIndex]?.text}
+          <span className="text-[var(--color-primary)] opacity-40 ml-2 font-serif text-3xl">"</span>
         </motion.div>
       </AnimatePresence>
     </div>
@@ -458,47 +385,61 @@ const LiveClockCard = () => {
 const Home = ({ memories, quotes, deleteMemory, theme }) => {
   const recentMemories = memories.slice(0, 4); 
   const navigate = useNavigate();
-  const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.15 } } };
+  const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.1 } } };
+  const itemVariants = { hidden: { opacity: 0, y: 20, filter: "blur(4px)" }, show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { type: "spring", stiffness: 300, damping: 24 } } };
   
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <RotatingQuotes quotes={quotes} />
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/40 backdrop-blur-md rounded-3xl md:rounded-[2rem] p-6 md:p-10 mb-6 md:mb-8 relative overflow-hidden shadow-sm border border-white/50">
-        <div className="relative z-10 max-w-xl">
-          <p className="text-[var(--color-primary)] font-medium mb-1 md:mb-2 text-sm md:text-base flex items-center gap-2">
+      
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="bg-white/40 backdrop-blur-md rounded-3xl md:rounded-[2rem] p-6 md:p-10 mb-6 md:mb-8 relative overflow-hidden shadow-sm border border-white/50">
+        <div className="relative z-10 max-w-2xl">
+          <motion.p variants={itemVariants} className="text-[var(--color-primary)] font-bold tracking-widest uppercase mb-3 text-xs md:text-sm flex items-center gap-2">
             <Sparkles size={16} /> 
-            {theme === 'lavender' ? "Welcome to our lavender dream" : 
-             theme === 'beach' ? "Welcome to our paradise" :
-             theme === 'sunset' ? "Welcome to our golden hour" :
-             "Welcome back to our universe"}
-          </p>
-          <h1 className="text-3xl md:text-5xl font-serif text-gray-800 leading-tight mb-4">
-            "I will be there for you <span className="text-[var(--color-primary)] italic font-light">always</span>."
-          </h1>
-          <p className="text-gray-600 mb-6 md:mb-8 text-sm md:text-base leading-relaxed">Every photo, every letter, every little moment we share is kept safe right here.</p>
-          <button onClick={() => navigate('/create-memory')} className="bg-[var(--color-primary)] text-white px-5 md:px-6 py-2.5 md:py-3 rounded-full font-medium hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 text-sm md:text-base shadow-md hover:shadow-lg">
-            <Plus size={18} /> Add New Memory
-          </button>
+            {theme === 'lavender' ? "Welcome to our lavender dream" : theme === 'beach' ? "Welcome to our paradise" : theme === 'sunset' ? "Welcome to our golden hour" : "Welcome back to our universe"}
+          </motion.p>
+          <motion.h1 variants={itemVariants} className="text-4xl md:text-6xl font-serif text-gray-800 leading-tight mb-4">
+            "I will be there for you <span className="text-[var(--color-primary)] italic font-light relative inline-block">
+              always
+              <motion.span animate={{ opacity: [0.3, 1, 0.3], scaleX: [0.9, 1, 0.9] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }} className="absolute -bottom-1 left-0 w-full h-[2px] md:h-[3px] bg-[var(--color-primary)] rounded-full origin-center" />
+            </span>."
+          </motion.h1>
+          <motion.p variants={itemVariants} className="text-gray-600 mb-8 md:mb-10 text-base md:text-lg leading-relaxed">
+            Every photo, every letter, every little moment we share is kept safe right here.
+          </motion.p>
+          
+          <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3 md:gap-4">
+            <button onClick={() => navigate('/create-memory')} className="bg-[var(--color-primary)] text-white px-6 py-3 md:py-3.5 rounded-full font-bold hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 shadow-md hover:shadow-xl hover:-translate-y-1">
+              <Plus size={20} /> Add Memory
+            </button>
+            <button onClick={() => navigate('/create-letter')} className="bg-white text-[var(--color-primary)] px-5 py-3 md:py-3.5 rounded-full font-bold hover:bg-[var(--color-bg-alt)] transition-all flex items-center gap-2 shadow-sm border border-[var(--color-primary)]/10 hover:shadow-md hover:-translate-y-1">
+              <PenTool size={18} /> Write Letter
+            </button>
+            <button onClick={() => navigate('/promise-jar')} className="bg-white text-gray-600 px-5 py-3 md:py-3.5 rounded-full font-bold hover:bg-gray-50 transition-all flex items-center gap-2 shadow-sm border border-gray-200 hover:shadow-md hover:-translate-y-1">
+              <Heart size={18} className="text-[var(--color-heart)]" /> Open Jar
+            </button>
+          </motion.div>
         </div>
+        <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-[var(--color-primary)] opacity-5 rounded-full blur-[80px] pointer-events-none"></div>
       </motion.div>
 
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4 hover:scale-[1.02] transition-transform">
           <div className="w-12 h-12 rounded-xl bg-rose-50 text-[var(--color-heart)] flex items-center justify-center shrink-0"><Heart size={24} /></div>
           <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.length}</h3><p className="text-sm text-gray-600 mt-1">Total Memories</p></div>
         </div>
-        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
+        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4 hover:scale-[1.02] transition-transform">
           <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0"><ImageIcon size={24} /></div>
           <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.filter(m => (m.images && m.images.length > 0) || m.img).length}</h3><p className="text-sm text-gray-600 mt-1">Photos</p></div>
         </div>
-        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4">
+        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4 hover:scale-[1.02] transition-transform">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"><MapPin size={24} /></div>
           <div><h3 className="text-2xl font-bold text-gray-800 leading-none">{memories.filter(m => m.location).length}</h3><p className="text-sm text-gray-600 mt-1">Places Visited</p></div>
         </div>
         <LiveClockCard />
       </motion.div>
 
-      <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white">
         <h2 className="text-xl font-serif font-bold text-gray-800 mb-6">Our Latest Moments</h2>
         {memories.length === 0 ? (
            <p className="text-gray-500 text-center py-10">No memories yet. Add your first one!</p>
@@ -516,28 +457,18 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
                     transition={{ duration: 0.4, type: "spring" }}
                     whileHover={{ scale: 1.05 }} 
                     key={m.firestoreId || m.id} 
-                    className="bg-white p-2.5 pb-6 rounded-sm shadow-md border border-gray-100 relative group"
+                    className="bg-white p-2.5 pb-6 rounded-sm shadow-md border border-gray-100 relative group cursor-pointer"
+                    onClick={() => navigate('/memories')}
                   >
-                    <button 
-                      onClick={() => deleteMemory(m.firestoreId || m.id)} 
-                      className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
-                      title="Delete Memory"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); deleteMemory(m.firestoreId || m.id); }} className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10" title="Delete Memory">
                       <Trash2 size={16} />
                     </button>
                     <div className="w-full aspect-square bg-gray-100 mb-3 overflow-hidden rounded-sm relative">
-                      {coverImg ? (
-                        <motion.img 
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
-                          src={coverImg} alt={m.title} className="w-full h-full object-cover" 
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>
-                      )}
+                      {coverImg ? <motion.img initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} src={coverImg} alt={m.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>}
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium text-gray-800 font-serif truncate">{m.title}</p>
-                      <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">{m.date}</p>
+                      <p className="text-[10px] text-[var(--color-primary)] font-bold mt-1 uppercase tracking-wider">{m.date}</p>
                     </div>
                   </motion.div>
                 );
@@ -545,7 +476,7 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
             </AnimatePresence>
           </motion.div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -567,7 +498,6 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
   const handleMultiImageUpload = async (e) => {
     const files = Array.from(e.target.files).slice(0, 4);
     if (!files.length) return;
-
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setImgPreviews(prev => [...prev, ...newPreviews].slice(0, 4));
 
@@ -578,9 +508,7 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
       try {
         const compressed = await imageCompression(file, options);
         compressedFiles.push(compressed);
-      } catch (err) {
-        compressedFiles.push(file);
-      }
+      } catch (err) { compressedFiles.push(file); }
     }
     setImgFiles(prev => [...prev, ...compressedFiles].slice(0, 4));
   };
@@ -609,9 +537,7 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
       };
       mediaRecorderRef.current.start(); 
       setIsRecording(true);
-    } catch (err) { 
-      showAlert("Mic Access Denied", "Microphone access denied. Please check your browser permissions."); 
-    }
+    } catch (err) { showAlert("Mic Access Denied", "Microphone access denied. Please check your browser permissions."); }
   };
 
   const stopRecording = () => { mediaRecorderRef.current.stop(); setIsRecording(false); };
@@ -684,14 +610,19 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
 };
 
 // ==========================================
-// 5. BEAUTIFUL POLAROID GALLERY 📷
+// 5. BEAUTIFUL POLAROID GALLERY 📷 (With Crop & Lightbox)
 // ==========================================
 const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPhoto }) => {
   const [isUploading, setIsUploading] = useState(false);
-  
-  // NEW STATE FOR THE MODAL
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+
+  // Crop Queue State
   const [pendingFiles, setPendingFiles] = useState([]);
-  const [isCaptionModalOpen, setIsCaptionModalOpen] = useState(false);
+  const [currentCropFile, setCurrentCropFile] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [caption, setCaption] = useState("");
 
   const combinedPhotos = [
     ...galleryPhotos.map(p => ({ ...p, source: 'gallery' })),
@@ -706,62 +637,85 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
   const rotations = [-3, 2, -1, 4, -2, 3]; 
 
-  // 1. Just catch the files and open the modal
   const handleMultiUploadClick = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setPendingFiles(files);
-    setIsCaptionModalOpen(true);
-    e.target.value = null; // Reset the input
+    setCurrentCropFile(URL.createObjectURL(files[0]));
+    e.target.value = null; 
   };
 
-  // 2. Process the upload AFTER the modal is submitted
-  const processUpload = async (customCaption) => {
-    setIsCaptionModalOpen(false); // Close the modal
-    setIsUploading(true);
+  const onCropComplete = (croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
 
-    const finalCaption = customCaption.trim() !== "" ? customCaption : "A beautiful moment";
+  const processNextInQueue = async () => {
+    try {
+      setIsUploading(true);
+      const image = new Image();
+      image.src = currentCropFile;
+      await new Promise(res => image.onload = res);
 
-    for (const file of pendingFiles) {
-      try {
-        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
+      const canvas = document.createElement('canvas');
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
-        
+
         await onAddPhotos({ 
           imgUrl: base64String, 
-          heading: finalCaption, 
+          heading: caption.trim() !== "" ? caption : "A beautiful moment", 
           timestamp: new Date().toISOString()
         });
-      } catch (error) {
-        console.error("Upload failed for a photo:", error);
-      }
+
+        // Move to next file in queue
+        const remainingFiles = pendingFiles.slice(1);
+        if (remainingFiles.length > 0) {
+          setPendingFiles(remainingFiles);
+          setCurrentCropFile(URL.createObjectURL(remainingFiles[0]));
+          setCaption("");
+          setZoom(1);
+          setIsUploading(false);
+        } else {
+          // Finished
+          setPendingFiles([]);
+          setCurrentCropFile(null);
+          setCaption("");
+          setIsUploading(false);
+        }
+      }, 'image/jpeg', 0.95);
+    } catch (error) {
+      console.error("Upload failed for a photo:", error);
+      setIsUploading(false);
+      setCurrentCropFile(null);
     }
-    
-    setIsUploading(false);
-    setPendingFiles([]); // Clear the queue
   };
+
+  const cancelUpload = () => {
+    setPendingFiles([]);
+    setCurrentCropFile(null);
+    setCaption("");
+  };
+
+  const slideNext = (e) => { e.stopPropagation(); setLightboxIndex((prev) => (prev + 1) % combinedPhotos.length); };
+  const slidePrev = (e) => { e.stopPropagation(); setLightboxIndex((prev) => (prev - 1 + combinedPhotos.length) % combinedPhotos.length); };
 
   return (
     <div className="max-w-6xl mx-auto pb-10 relative">
-      <CaptionModal 
-        isOpen={isCaptionModalOpen} 
-        fileCount={pendingFiles.length}
-        onClose={() => { setIsCaptionModalOpen(false); setPendingFiles([]); }} 
-        onSubmit={processUpload} 
-      />
-
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-800">Our Gallery 📷</h1>
           <p className="text-gray-500 mt-2 text-sm md:text-base">A collection of our favorite moments and memories.</p>
         </div>
-        <label className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md font-medium flex items-center gap-2 w-full md:w-auto justify-center">
-          {isUploading ? (
-            <><span className="animate-pulse">Uploading Photos...</span></>
-          ) : (
-            <><Plus size={20} /> Add Photos</>
-          )}
+        <label className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md font-medium flex items-center gap-2">
+          {isUploading ? <><span className="animate-pulse">Uploading...</span></> : <><Plus size={20} /> Add Photos</>}
           <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiUploadClick} disabled={isUploading} />
         </label>
       </div>
@@ -784,6 +738,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                   exit={{ opacity: 0, scale: 0.8, filter: 'blur(5px)' }}
                   transition={{ duration: 0.4 }}
                   whileHover={{ scale: 1.05, rotate: 0, zIndex: 10, transition: { duration: 0.2 } }}
+                  onClick={() => setLightboxIndex(index)}
                   className="bg-white p-3 pb-12 md:p-4 md:pb-16 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative group cursor-pointer"
                 >
                   <div className="w-full aspect-square bg-gray-200 overflow-hidden shadow-inner border border-black/5">
@@ -793,11 +748,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                     <p className="font-serif italic text-gray-800 text-sm md:text-base font-medium truncate text-center w-full">{photo.heading}</p>
                   </div>
                   {photo.source === 'gallery' && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); deleteGalleryPhoto(photo.id); }}
-                      className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-20"
-                      title="Delete Photo"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); deleteGalleryPhoto(photo.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-20">
                       <Trash2 size={16} />
                     </button>
                   )}
@@ -810,29 +761,119 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           </AnimatePresence>
         </motion.div>
       )}
+
+      {/* --- GALLERY CROP & CAPTION MODAL --- */}
+      <AnimatePresence>
+        {currentCropFile && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <h3 className="text-white text-xl font-bold mb-2 font-serif text-center">
+              {pendingFiles.length > 1 ? `Frame Photo (${pendingFiles.length} left) ✂️` : "Frame Photo ✂️"}
+            </h3>
+            <p className="text-gray-400 text-xs mb-4 text-center">Pinch or drag to crop perfectly.</p>
+            
+            <div className="relative w-full max-w-lg h-[45vh] bg-black rounded-xl overflow-hidden shadow-2xl border border-white/20">
+              <Cropper
+                image={currentCropFile}
+                crop={crop}
+                zoom={zoom}
+                aspect={1} // Polaroid square aspect ratio
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="mt-4 w-full max-w-lg flex flex-col gap-4">
+              <div className="flex items-center gap-4 bg-white/10 p-3 rounded-full backdrop-blur-md">
+                 <span className="text-white text-sm pl-2"><ImageIcon size={16}/></span>
+                 <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="w-full accent-rose-400" />
+                 <span className="text-white text-sm pr-2"><ImageIcon size={24}/></span>
+              </div>
+              <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Add a short caption..." className="w-full p-4 rounded-xl border border-transparent outline-none focus:border-[var(--color-primary)] bg-white shadow-md text-center font-serif text-lg" />
+              
+              <div className="flex gap-4 mt-2">
+                <button type="button" onClick={cancelUpload} className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-colors shadow-lg">Cancel</button>
+                <button type="button" onClick={processNextInQueue} disabled={isUploading} className="flex-1 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-xl font-bold transition-colors shadow-lg flex items-center justify-center gap-2">
+                  {isUploading ? "Cropping..." : <><Check size={18} /> {pendingFiles.length > 1 ? "Next Photo" : "Save Photo"}</>}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* LIGHTBOX SLIDER */}
+      <AnimatePresence>
+        {lightboxIndex !== null && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md" onClick={() => setLightboxIndex(null)}>
+            <button onClick={() => setLightboxIndex(null)} className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors z-50 p-2"><X size={32} /></button>
+            <button onClick={slidePrev} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-4 z-50"><ChevronDown size={48} className="rotate-90" /></button>
+            <button onClick={slideNext} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-4 z-50"><ChevronUp size={48} className="rotate-90" /></button>
+
+            <motion.div 
+              key={lightboxIndex}
+              initial={{ opacity: 0, x: 100, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -100, scale: 0.9 }}
+              transition={{ type: "spring", bounce: 0.3 }}
+              className="flex flex-col items-center max-w-4xl w-full px-12"
+              onClick={e => e.stopPropagation()}
+            >
+              <img src={combinedPhotos[lightboxIndex].imgUrl} className="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl border-4 border-white/10" alt="Fullscreen" />
+              <div className="mt-6 text-center">
+                <h3 className="text-3xl font-serif italic text-white mb-2">{combinedPhotos[lightboxIndex].heading}</h3>
+                {combinedPhotos[lightboxIndex].source === 'memory' && <span className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-bold uppercase tracking-wider">From Memory</span>}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 // ==========================================
-// 6. ALL MEMORIES PAGE
+// 6. ALL MEMORIES PAGE (With Slider, Fancy UI & Edits)
 // ==========================================
 const Memories = ({ memories, deleteMemory, editMemory }) => {
-  const [selectedMemory, setSelectedMemory] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(-1);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', description: '' });
+  const [editForm, setEditForm] = useState({ title: '', description: '', location: '', borderStyle: 'border-white' });
 
-  const openMemory = (m) => {
-    setSelectedMemory(m);
-    setEditForm({ title: m.title, description: m.description });
+  const openMemory = (idx) => {
+    setCurrentIndex(idx);
+    const m = memories[idx];
+    setEditForm({ title: m.title, description: m.description || '', location: m.location || '', borderStyle: m.borderStyle || 'border-white' });
     setIsEditing(false);
+  };
+
+  const closeMemory = () => { setCurrentIndex(-1); setIsEditing(false); };
+
+  const slideNext = (e) => { 
+    e.stopPropagation(); 
+    const nextIdx = (currentIndex + 1) % memories.length;
+    openMemory(nextIdx);
+  };
+  const slidePrev = (e) => { 
+    e.stopPropagation(); 
+    const prevIdx = (currentIndex - 1 + memories.length) % memories.length;
+    openMemory(prevIdx);
   };
 
   const handleSaveEdit = () => {
+    const selectedMemory = memories[currentIndex];
     editMemory(selectedMemory.firestoreId, editForm);
-    setSelectedMemory({ ...selectedMemory, ...editForm });
     setIsEditing(false);
   };
+
+  const borderOptions = [
+    { label: "Classic White", value: "border-white" },
+    { label: "Golden Frame", value: "border-yellow-400" },
+    { label: "Soft Pink", value: "border-pink-200" },
+    { label: "No Border", value: "border-transparent" }
+  ];
+
+  const selectedMemory = currentIndex >= 0 ? memories[currentIndex] : null;
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
@@ -845,20 +886,20 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
           <AnimatePresence>
             {memories.map((m, idx) => {
               const coverImg = (m.images && m.images.length > 0) ? m.images[0] : m.img;
-              const randomRotation = (idx % 2 === 0 ? 1 : -1) * ((idx % 3) + 1); // Slight random tilt
+              const randomRotation = (idx % 2 === 0 ? 1 : -1) * ((idx % 3) + 1);
               
               return (
                 <motion.div 
                   key={m.firestoreId || m.id} layout
                   initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
                   whileHover={{ scale: 1.05, rotate: randomRotation, zIndex: 10 }}
-                  onClick={() => openMemory(m)}
-                  className="bg-white p-3 pb-12 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative cursor-pointer group"
+                  onClick={() => openMemory(idx)}
+                  className={`bg-white p-3 pb-12 rounded-sm shadow-xl hover:shadow-2xl border-4 ${m.borderStyle || 'border-white'} relative cursor-pointer group`}
                 >
                   <button onClick={(e) => { e.stopPropagation(); deleteMemory(m.firestoreId || m.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-20">
                     <Trash2 size={16} />
                   </button>
-                  <div className="w-full aspect-square bg-gray-100 overflow-hidden shadow-inner border border-black/5">
+                  <div className="w-full aspect-square bg-gray-100 overflow-hidden shadow-inner">
                     {coverImg ? <img src={coverImg} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon /></div>}
                   </div>
                   <div className="absolute bottom-0 left-0 w-full h-12 flex items-center justify-center px-4">
@@ -871,43 +912,108 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
         </motion.div>
       )}
 
-      {/* FULL SCREEN READING MODAL */}
+      {/* FULL SCREEN READING SLIDER MODAL */}
       <AnimatePresence>
         {selectedMemory && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto" onClick={() => setSelectedMemory(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden" onClick={closeMemory}>
+            
+            {!isEditing && memories.length > 1 && (
+              <>
+                <button onClick={slidePrev} className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-2 md:p-4 z-50 transition-transform hover:scale-110"><ChevronDown size={48} className="rotate-90" /></button>
+                <button onClick={slideNext} className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-2 md:p-4 z-50 transition-transform hover:scale-110"><ChevronUp size={48} className="rotate-90" /></button>
+              </>
+            )}
+
+            <button onClick={closeMemory} className="absolute top-6 right-6 text-white/50 hover:text-white p-3 rounded-full z-50"><X size={32}/></button>
+
             <motion.div 
-              initial={{ scale: 0.8, y: 50, rotate: -2 }} animate={{ scale: 1, y: 0, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, y: 50 }} 
-              transition={{ type: "spring", bounce: 0.4 }}
-              className="bg-[var(--color-bg)] p-6 md:p-10 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto border-[10px] border-white" 
+              key={currentIndex}
+              initial={{ scale: 0.9, x: 100, opacity: 0 }} 
+              animate={{ scale: 1, x: 0, opacity: 1 }} 
+              exit={{ scale: 0.9, x: -100, opacity: 0 }} 
+              transition={{ type: "spring", bounce: 0.3 }}
+              className={`bg-[var(--color-bg)] w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl relative border-[8px] ${selectedMemory.borderStyle || 'border-white'} flex flex-col`} 
               onClick={e => e.stopPropagation()}
             >
-              <button onClick={() => setSelectedMemory(null)} className="absolute -top-4 -right-4 bg-white text-gray-800 p-3 rounded-full shadow-xl hover:bg-gray-100 z-50"><X size={24}/></button>
-              
               {!isEditing ? (
                 <>
-                  <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 bg-gray-100 text-gray-600 px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition">Edit Note</button>
-                  <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
-                  <h2 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-6 leading-tight">{selectedMemory.title}</h2>
-                  
-                  {selectedMemory.images && selectedMemory.images.length > 0 && (
-                     <div className={`grid gap-3 mb-8 ${selectedMemory.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                       {selectedMemory.images.map((img, i) => <img key={i} src={img} className="w-full object-cover rounded-xl shadow-md h-64 border-4 border-white" />)}
-                     </div>
-                  )}
-
-                  <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-relaxed whitespace-pre-wrap bg-white/50 p-6 rounded-2xl border border-gray-100 shadow-inner">
-                    {selectedMemory.description || "No story written for this moment yet."}
+                  <div className="relative">
+                    {selectedMemory.images && selectedMemory.images.length > 0 ? (
+                      <div className="w-full h-72 md:h-96 relative">
+                        <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Memory Cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-bg)] via-transparent to-transparent"></div>
+                      </div>
+                    ) : (
+                      <div className="h-32 bg-[var(--color-primary)] opacity-10"></div>
+                    )}
+                    <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-2 rounded-full font-bold text-sm hover:bg-white shadow-sm transition">Edit Settings</button>
                   </div>
-                  {selectedMemory.voiceNote && <div className="mt-6"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
+
+                  <div className="px-8 md:px-12 pb-12 -mt-16 relative z-10">
+                    <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white">
+                      <div className="flex flex-col items-center text-center mb-8 border-b border-gray-100 pb-8">
+                        <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date}</p>
+                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 leading-tight mb-4">{selectedMemory.title}</h2>
+                        {selectedMemory.location && (
+                          <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+                            <MapPin size={14} className="text-[var(--color-primary)]" /> {selectedMemory.location}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-loose whitespace-pre-wrap px-4">
+                        {selectedMemory.description || <span className="italic text-gray-400">No story written for this moment yet. Click Edit to add one.</span>}
+                      </div>
+
+                      {selectedMemory.images && selectedMemory.images.length > 1 && (
+                        <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-gray-100">
+                          {selectedMemory.images.slice(1).map((img, i) => <img key={i} src={img} className="w-full h-48 object-cover rounded-xl shadow-sm border border-gray-200" />)}
+                        </div>
+                      )}
+
+                      {selectedMemory.voiceNote && <div className="mt-8"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
+                    </div>
+                  </div>
                 </>
               ) : (
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Memory</h3>
-                  <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-bold text-xl outline-none focus:border-[var(--color-primary)]" />
-                  <textarea rows="8" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-300 font-serif text-lg outline-none focus:border-[var(--color-primary)]" />
-                  <div className="flex justify-end gap-3 pt-4">
+                <div className="p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b pb-4">
+                    <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Memory Details</h3>
+                    <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-800"><X size={24}/></button>
+                  </div>
+                  
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Title</label>
+                    <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-bold text-xl outline-none focus:border-[var(--color-primary)] bg-white/50" />
+                  </div>
+                  
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Location</label>
+                    <div className="flex relative">
+                      <MapPin size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input type="text" value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} className="w-full p-4 pl-12 rounded-xl border border-gray-200 text-lg outline-none focus:border-[var(--color-primary)] bg-white/50" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Aesthetic Border Frame</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {borderOptions.map(b => (
+                        <button key={b.value} onClick={() => setEditForm({...editForm, borderStyle: b.value})} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition ${editForm.borderStyle === b.value ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-50'}`}>
+                          {b.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Our Story</label>
+                    <textarea rows="8" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-serif text-lg outline-none focus:border-[var(--color-primary)] bg-white/50" />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-6 border-t">
                     <button onClick={() => setIsEditing(false)} className="px-6 py-3 font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancel</button>
-                    <button onClick={handleSaveEdit} className="px-6 py-3 font-bold bg-[var(--color-primary)] text-white rounded-xl shadow-md hover:bg-[var(--color-primary-hover)]">Save Changes</button>
+                    <button onClick={handleSaveEdit} className="px-8 py-3 font-bold bg-[var(--color-primary)] text-white rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-transform hover:scale-105">Save Changes</button>
                   </div>
                 </div>
               )}
@@ -1096,6 +1202,7 @@ const LovelyMap = ({ memories }) => {
     </div>
   );
 };
+
 // ==========================================
 // 8. TIME CAPSULE & LOVE LETTERS 💌
 // ==========================================
@@ -1158,7 +1265,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
     <div className="max-w-6xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Love Letters 💌</h1>
-        <button onClick={() => navigate('/create-letter')} className="bg-[#8B1235] text-white px-6 py-3 rounded-full font-medium hover:bg-[#6A0D28] transition-all flex items-center gap-2 shadow-md">
+        <button onClick={() => navigate('/create-letter')} className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full font-medium hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 shadow-md">
           <PenTool size={18} /> Write a Letter
         </button>
       </div>
@@ -1198,7 +1305,6 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                       : 'bg-[#FFFAF0] border-[8px] border-white outline outline-1 outline-gray-200 text-gray-800'
                   }`}
                 >
-                  {/* Subtle inner romantic border for non-background letters */}
                   {letter.layout !== 'image-background' && (
                     <div className="absolute inset-2 border border-rose-200/50 rounded-sm pointer-events-none z-10"></div>
                   )}
@@ -1207,7 +1313,6 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                     <Trash2 size={16} />
                   </button>
 
-                  {/* RESTORED & FIXED: Full Background Preview */}
                   {letter.layout === 'image-background' && letter.img && (
                     <div className="absolute inset-0 z-0">
                       <img src={letter.img} alt="Background" className="w-full h-full object-cover" />
@@ -1223,7 +1328,6 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                       <div className={`w-10 h-px mx-auto ${letter.layout === 'image-background' ? 'bg-white/40' : 'bg-rose-200'}`}></div>
                     </div>
                     
-                    {/* Image Preview for Top/Bottom Layouts */}
                     {letter.img && letter.layout !== 'image-background' && (
                        <img src={letter.img} className="w-full h-28 object-cover rounded-md mb-4 shadow-sm border border-gray-200" alt="Letter Attachment" />
                     )}
@@ -1249,7 +1353,6 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm overflow-y-auto" 
             onClick={() => setSelectedLetter(null)}
           >
-            {/* Elegant 3D Unfolding Animation */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 30, rotateX: 15 }} 
               animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }} 
@@ -1262,14 +1365,12 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
               }`} 
               onClick={e => e.stopPropagation()}
             >
-              {/* Inner Decorative Border */}
               {selectedLetter.layout !== 'image-background' && (
                 <div className="absolute inset-3 border-[1.5px] border-rose-200/60 rounded-sm pointer-events-none z-10"></div>
               )}
 
               <button onClick={() => setSelectedLetter(null)} className="absolute top-4 right-4 bg-white/90 text-gray-800 p-2.5 rounded-full shadow-md hover:bg-gray-100 z-50 transition-transform hover:scale-110"><X size={20}/></button>
               
-              {/* Full Background Mode Layout */}
               {selectedLetter.layout === 'image-background' && selectedLetter.img && (
                 <div className="absolute inset-0 z-0">
                   <img src={selectedLetter.img} alt="Background" className="w-full h-full object-cover" />
@@ -1330,7 +1431,6 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
   const [formData, setFormData] = useState({ title: '', content: '', font: 'font-serif', img: '', layout: 'image-top', unlockDate: '' });
   const [isSaving, setIsSaving] = useState(false);
   
-  // --- Cropper States ---
   const [rawImage, setRawImage] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -1341,19 +1441,15 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setRawImage(URL.createObjectURL(file)); // Opens the Cropper UI instantly
-    }
+    if (file) setRawImage(URL.createObjectURL(file)); 
   };
 
   const removeImage = () => setFormData({ ...formData, img: '' });
 
-  // Captures coordinates as the user drags/zooms
   const onCropComplete = (croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
 
-  // Generates the final cropped image to save
   const confirmCrop = async () => {
     try {
       setIsSaving(true);
@@ -1361,25 +1457,13 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       image.src = rawImage;
       await new Promise(res => image.onload = res);
 
-      // Create a native HTML canvas to physically slice the image
       const canvas = document.createElement('canvas');
       canvas.width = croppedAreaPixels.width;
       canvas.height = croppedAreaPixels.height;
       const ctx = canvas.getContext('2d');
 
-      ctx.drawImage(
-        image,
-        croppedAreaPixels.x,
-        croppedAreaPixels.y,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height,
-        0,
-        0,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height
-      );
+      ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height);
 
-      // Compress the sliced image
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
@@ -1388,7 +1472,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
         const base64String = await fileToBase64(compressedFile);
 
         setFormData({ ...formData, img: base64String });
-        setRawImage(null); // Closes modal
+        setRawImage(null); 
         setIsSaving(false);
       }, 'image/jpeg', 0.95);
       
@@ -1416,13 +1500,13 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       <form onSubmit={handleSubmit} className="bg-white/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-sm border border-white space-y-6">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">Heading / Subject</label>
-          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50" />
+          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Letter Font</label>
-            <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
+            <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
               <option value="font-serif">Elegant Serif (Classic)</option>
               <option value="font-sans">Clean Sans (Modern)</option>
               <option value="font-mono">Typewriter (Vintage)</option>
@@ -1431,15 +1515,15 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Image Layout</label>
-            <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 cursor-pointer">
+            <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
               <option value="image-top">Image at the Top</option>
               <option value="image-bottom">Image at the Bottom</option>
               <option value="image-background">Full Background Image</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Time Capsule Lock</label>
-            <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50" />
+            <label className="block text-sm font-bold text-rose-600 mb-1">Time Capsule Lock</label>
+            <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
           </div>
         </div>
 
@@ -1449,7 +1533,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
             <label className="flex flex-col items-center justify-center w-full h-32 md:h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white/50 hover:bg-white/80 cursor-pointer transition-colors">
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-500"><span className="font-semibold text-[#8B1235]">Tap to upload</span></p>
+                <p className="text-sm text-gray-500"><span className="font-semibold text-[var(--color-primary)]">Tap to upload</span></p>
               </div>
               <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
             </label>
@@ -1468,9 +1552,9 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
               {symbols.map(sym => <button key={sym} type="button" onClick={() => handleAddSymbol(sym)} className="hover:bg-white p-1 rounded transition-colors text-sm shrink-0">{sym}</button>)}
             </div>
           </div>
-          <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[#8B1235] bg-white/50 resize-none ${formData.font}`} />
+          <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 resize-none ${formData.font}`} />
         </div>
-        <button type="submit" disabled={isSaving} className="w-full bg-[#8B1235] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[#6A0D28] shadow-md transition-colors">
+        <button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[var(--color-primary-hover)] shadow-md transition-colors">
           {isSaving ? "Sealing envelope... 💌" : "Seal & Save Letter 💌"}
         </button>
       </form>
@@ -1489,7 +1573,6 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
                 image={rawImage}
                 crop={crop}
                 zoom={zoom}
-                // Automatically locks to 9:16 (Tall) for Backgrounds, or 4:3 (Wide) for inline pictures!
                 aspect={formData.layout === 'image-background' ? 9 / 16 : 4 / 3}
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
@@ -1505,7 +1588,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
             
             <div className="mt-8 flex gap-4">
               <button type="button" onClick={() => setRawImage(null)} className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-full font-bold transition-colors shadow-lg">Cancel</button>
-              <button type="button" onClick={confirmCrop} disabled={isSaving} className="px-6 py-3 bg-[#8B1235] hover:bg-[#6A0D28] text-white rounded-full font-bold transition-colors shadow-lg flex items-center gap-2 border border-rose-400/30">
+              <button type="button" onClick={confirmCrop} disabled={isSaving} className="px-6 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-full font-bold transition-colors shadow-lg flex items-center gap-2 border border-rose-400/30">
                 {isSaving ? "Cropping..." : <><Check size={18} /> Apply Crop</>}
               </button>
             </div>
@@ -1514,7 +1597,9 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       </AnimatePresence>
     </div>
   );
-};// ==========================================
+};
+
+// ==========================================
 // 11. OUR BUCKET LIST 📝
 // ==========================================
 const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }) => {
@@ -1523,8 +1608,6 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
   const [filter, setFilter] = useState("All");
   const { width, height } = useWindowSize();
   const [showConfetti, setShowConfetti] = useState(false);
-  
-  // Photo Proof State
   const [completingGoalId, setCompletingGoalId] = useState(null);
 
   const categories = ["✈️ Travel", "🍕 Food", "🪂 Crazy", "🛋️ Cozy", "💕 Romance"];
@@ -1544,19 +1627,15 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !completingGoalId) return;
-    
     try {
       const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
       const compressed = await imageCompression(file, options);
       const base64 = await fileToBase64(compressed);
-      
       toggleGoal(completingGoalId, true, base64);
       setCompletingGoalId(null);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000); 
-    } catch (err) {
-      alert("Failed to upload photo proof.");
-    }
+    } catch (err) { alert("Failed to upload photo proof."); }
   };
 
   const handleToggle = (id, isCompleted) => {
@@ -1580,7 +1659,6 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
               <div className="w-16 h-16 bg-gray-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4"><ImageIcon size={32} /></div>
               <h3 className="text-2xl font-bold font-serif text-gray-800 mb-2">Goal Completed! 🎉</h3>
               <p className="text-gray-500 mb-6">Attach a photo of this moment to immortalize it as a polaroid.</p>
-              
               <label className="block w-full bg-[var(--color-primary)] text-white py-3 rounded-xl font-bold cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md mb-3">
                 Upload Photo Proof
                 <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
@@ -1618,14 +1696,12 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
         <AnimatePresence>
           {filteredList.map(goal => (
             <motion.div key={goal.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${goal.completed ? 'bg-[var(--color-bg)] border-white' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
-              
               {goal.completed && goal.proofImage && (
                 <div className="w-full h-40 bg-gray-200 relative">
                   <img src={goal.proofImage} className="w-full h-full object-cover filter contrast-110" alt="Proof" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 </div>
               )}
-
               <div className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleToggle(goal.id, goal.completed)}>
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${goal.completed ? 'bg-green-500 border-green-500 shadow-md' : 'border-gray-300 bg-gray-50'}`}>
@@ -1656,17 +1732,9 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
 // ==========================================
 // 12. THE DUAL PROMISE JARS 🫙🫙
 // ==========================================
-
 const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
   <div className="flex flex-col items-center justify-center p-6 md:p-8 relative w-full group">
-    <input 
-      type="text" 
-      value={name} 
-      onChange={(e) => setName(e.target.value)} 
-      className="text-xl md:text-2xl font-serif font-bold text-[var(--color-primary)] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-gray-200 mb-6 w-full transition-colors z-10"
-      placeholder="Name this jar..."
-    />
-    
+    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="text-xl md:text-2xl font-serif font-bold text-[var(--color-primary)] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-gray-200 mb-6 w-full transition-colors z-10" placeholder="Name this jar..." />
     <div onClick={() => onDraw(jarPromises)} className={`w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)]`}>
       <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20 shadow-sm"></div>
       <div className="absolute top-0 left-[30%] w-3 h-full bg-gradient-to-b from-white/60 to-transparent rounded-full transform -skew-x-12 z-20 pointer-events-none"></div>
@@ -1685,12 +1753,7 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
               <motion.div 
                 key={p.id || i}
                 initial={{ y: -250, opacity: 0, x: 0, rotate: 0 }}
-                animate={{ 
-                  y: pseudoRandomY, 
-                  opacity: 0.95, 
-                  x: [0, pseudoRandomX * -0.6, pseudoRandomX * 1.4, pseudoRandomX * 0.3, pseudoRandomX],
-                  rotate: [0, 45, -35, 20, pseudoRandomRot]
-                }}
+                animate={{ y: pseudoRandomY, opacity: 0.95, x: [0, pseudoRandomX * -0.6, pseudoRandomX * 1.4, pseudoRandomX * 0.3, pseudoRandomX], rotate: [0, 45, -35, 20, pseudoRandomRot] }}
                 transition={{ duration: 3.2, ease: "easeInOut" }}
                 className={`w-10 h-10 ${noteColor} shadow-md border border-black/5 absolute bottom-2 flex items-center justify-center rounded-sm`}
                 style={{ zIndex: i }}
@@ -1702,7 +1765,6 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
         </AnimatePresence>
       </div>
     </div>
-    
     <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-[var(--color-primary)] transition-colors bg-white/50 px-4 py-2 rounded-full shadow-sm" onClick={() => onDraw(jarPromises)}>
       Tap jar to open 
     </p>
@@ -1713,7 +1775,6 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const [newPromise, setNewPromise] = useState('');
   const [targetJar, setTargetJar] = useState('jar1'); 
   const [drawnPromise, setDrawnPromise] = useState(null);
-
   const [jar1Name, setJar1Name] = useState(() => localStorage.getItem('jar1Name') || "My Jar");
   const [jar2Name, setJar2Name] = useState(() => localStorage.getItem('jar2Name') || "Her Jar");
 
@@ -1742,9 +1803,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
       playTone(1046.50, 0);   
       playTone(1318.51, 0.1); 
       playTone(1567.98, 0.2); 
-    } catch (err) {
-      console.log("Audio blocked.");
-    }
+    } catch (err) { console.log("Audio blocked."); }
   };
 
   const handleSubmit = (e) => {
@@ -1826,6 +1885,9 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
   const [editingId, setEditingId] = useState(null);
   const [showDrawPad, setShowDrawPad] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
+  
+  const [isEditMode, setIsEditMode] = useState(true);
+  const [zoom, setZoom] = useState(1);
   const canvasRef = useRef(null);
 
   const colors = [
@@ -1874,7 +1936,6 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
       ctx.clearRect(0, 0, canvas.width, canvas.height); 
       ctx.lineCap = "round";
       ctx.lineWidth = 4;
-      // Drawing color inherits theme primary color logically
       ctx.strokeStyle = "#8B1235"; 
     }
   }, [showDrawPad]);
@@ -1918,74 +1979,94 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 shrink-0 relative z-40">
         <div>
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Mood Board 📌</h1>
-          <p className="text-gray-500 mt-1 text-sm md:text-base">Double-click any item to Crop & Resize. Drag to move.</p>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">
+            {isEditMode ? "Edit Mode ON: Drag to move, double tap to resize." : "Locked Mode: Scroll freely to view your board."}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-xl p-3 rounded-2xl shadow-sm border border-white">
-          <form onSubmit={handleAddText} className="flex flex-wrap items-center gap-2 border-r border-gray-200 pr-3">
-            <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type note..." className="px-3 py-2 rounded-xl text-sm border outline-none focus:border-[var(--color-primary)] w-28 md:w-36 bg-white/50" />
-            <div className="flex gap-1">
-              {colors.map(c => (
-                <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-5 h-5 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110 shadow-md' : c.border} transition-transform`}></button>
-              ))}
-            </div>
-            <select value={noteFont} onChange={e => setNoteFont(e.target.value)} className="px-2 py-1 text-xs border rounded-lg outline-none bg-white text-gray-600 font-medium cursor-pointer">
-              {fonts.map(f => <option key={f.label} value={f.css}>{f.label}</option>)}
-            </select>
-            <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition shadow-sm"><StickyNote size={18}/></button>
-          </form>
-          <label className="bg-gray-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-gray-200 transition cursor-pointer flex items-center gap-2 font-bold text-sm shadow-sm">
-            <ImageIcon size={18} /> Pic
-            <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
-          </label>
-          <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-bold text-sm shadow-sm">
-            <PenTool size={18} /> Ink
-          </button>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+            <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="p-1 hover:bg-gray-100 rounded">-</button>
+            <span className="text-xs font-bold w-8 text-center">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-1 hover:bg-gray-100 rounded">+</button>
+            <div className="w-px h-4 bg-gray-200 mx-1"></div>
+            <button 
+              onClick={() => { setIsEditMode(!isEditMode); setEditingId(null); }} 
+              className={`flex items-center gap-1 px-3 py-1 text-sm font-bold rounded-lg transition-colors ${isEditMode ? 'bg-rose-100 text-rose-600' : 'bg-green-100 text-green-600'}`}
+            >
+              {isEditMode ? <Lock size={14} className="opacity-50" /> : <Lock size={14} />} 
+              {isEditMode ? "Lock Board" : "Unlock to Edit"}
+            </button>
+          </div>
+
+          <div className={`flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-xl p-3 rounded-2xl shadow-sm border border-white transition-opacity ${!isEditMode && 'opacity-50 pointer-events-none'}`}>
+            <form onSubmit={handleAddText} className="flex flex-wrap items-center gap-2 border-r border-gray-200 pr-3">
+              <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type note..." className="px-3 py-2 rounded-xl text-sm border outline-none focus:border-[var(--color-primary)] w-28 md:w-36 bg-white/50" />
+              <div className="flex gap-1">
+                {colors.map(c => (
+                  <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-5 h-5 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110 shadow-md' : c.border} transition-transform`}></button>
+                ))}
+              </div>
+              <select value={noteFont} onChange={e => setNoteFont(e.target.value)} className="px-2 py-1 text-xs border rounded-lg outline-none bg-white text-gray-600 font-medium cursor-pointer">
+                {fonts.map(f => <option key={f.label} value={f.css}>{f.label}</option>)}
+              </select>
+              <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition shadow-sm"><StickyNote size={18}/></button>
+            </form>
+            <label className="bg-gray-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-gray-200 transition cursor-pointer flex items-center gap-2 font-bold text-sm shadow-sm">
+              <ImageIcon size={18} /> Pic
+              <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
+            </label>
+            <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-bold text-sm shadow-sm">
+              <PenTool size={18} /> Ink
+            </button>
+          </div>
         </div>
       </div>
 
       <div id="board-viewport" className="flex-1 bg-white/40 backdrop-blur-sm rounded-3xl border border-white relative overflow-auto shadow-inner custom-scrollbar" onClick={() => setEditingId(null)}>
-        <div className="w-[3000px] h-[3000px] relative" style={{ backgroundImage: 'radial-gradient(#d1d5db 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
+        <div className="w-[4000px] h-[4000px] relative transition-transform origin-top-left" style={{ transform: `scale(${zoom})`, backgroundImage: 'radial-gradient(#d1d5db 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
           {boardItems.map(item => {
-            const isEditing = editingId === item.id;
+            const isEditing = editingId === item.id && isEditMode;
             return (
               <motion.div
-                key={item.id} drag={!isEditing} dragMomentum={false}
-                onDragEnd={(e, info) => updateBoardItem(item.id, { x: item.x + info.offset.x, y: item.y + info.offset.y })}
+                key={item.id} drag={isEditMode && !isEditing} dragMomentum={false}
+                onDragEnd={(e, info) => updateBoardItem(item.id, { x: item.x + info.offset.x / zoom, y: item.y + info.offset.y / zoom })}
                 initial={{ x: item.x, y: item.y }}
-                onDoubleClick={(e) => { e.stopPropagation(); setEditingId(item.id); }}
-                className={`absolute group transition-shadow ${isEditing ? 'z-50 shadow-2xl scale-105' : 'cursor-grab active:cursor-grabbing shadow-sm hover:shadow-lg z-10'}`}
+                onDoubleClick={(e) => { e.stopPropagation(); if(isEditMode) setEditingId(item.id); }}
+                className={`absolute group transition-shadow ${isEditing ? 'z-50 shadow-2xl scale-105' : 'shadow-sm hover:shadow-lg z-10'} ${isEditMode ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-auto'}`}
                 style={{ touchAction: "none" }}
               >
-                <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className={`absolute -top-4 -right-4 bg-white text-red-500 p-2 rounded-full shadow-lg transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} z-20`}><Trash2 size={16}/></button>
+                {isEditMode && (
+                  <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className={`absolute -top-4 -right-4 bg-white text-red-500 p-2 rounded-full shadow-lg transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} z-20`}><Trash2 size={16}/></button>
+                )}
                 {isEditing && (
                   <div className="absolute -inset-3 border-2 border-blue-500 border-dashed rounded-xl pointer-events-none z-30 flex items-end justify-center pb-2">
-                    <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Drag bottom right to crop</span>
+                    <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Drag bottom right to resize</span>
                   </div>
                 )}
                 
                 {item.type === 'text' && (
-                  <div className={`${item.color || 'bg-yellow-200'} p-5 shadow-inner border border-black/5 transform rotate-1 overflow-hidden relative`} style={{ fontFamily: item.font || "'Comic Sans MS', cursive", width: item.w || 200, height: item.h || 200, resize: isEditing ? 'both' : 'none' }} onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
+                  <div className={`${item.color || 'bg-yellow-200'} p-5 shadow-inner border border-black/5 transform rotate-1 overflow-hidden relative`} style={{ fontFamily: item.font || "'Comic Sans MS', cursive", width: item.w || 200, height: item.h || 200, resize: isEditing ? 'both' : 'none' }} onPointerUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
                     <p className="text-gray-800 text-lg md:text-xl leading-relaxed whitespace-pre-wrap">{item.content}</p>
                   </div>
                 )}
 
                 {item.type === 'image' && (
                   <div className="bg-white p-2 pb-10 shadow-sm transform -rotate-1 relative">
-                    <div style={{ width: item.w || 250, height: item.h || 250, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }} onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
+                    <div style={{ width: item.w || 250, height: item.h || 250, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }} onPointerUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
                       <img src={item.content} className="w-full h-full object-cover pointer-events-none rounded-sm border border-gray-100" />
                     </div>
                   </div>
                 )}
 
                 {item.type === 'drawing' && (
-                  <div className="relative" style={{ width: item.w || 300, height: item.h || 300, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }} onMouseUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
+                  <div className="relative" style={{ width: item.w || 300, height: item.h || 300, resize: isEditing ? 'both' : 'none', overflow: 'hidden' }} onPointerUp={(e) => isEditing && updateBoardItem(item.id, { w: e.target.offsetWidth, h: e.target.offsetHeight })}>
                     <img src={item.content} className="w-full h-full object-contain pointer-events-none drop-shadow-sm" />
                   </div>
                 )}
               </motion.div>
             );
           })}
-          {boardItems.length === 0 && <div className="absolute top-[10%] left-[10%] text-gray-400 font-medium text-xl">Double tap any item to edit. Click background to save.</div>}
         </div>
       </div>
 
@@ -2011,7 +2092,6 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
           </motion.div>
         )}
       </AnimatePresence>
-      {editingId && <div className="absolute inset-0 bg-black/5 z-20 pointer-events-none rounded-3xl transition-opacity"></div>}
     </div>
   );
 };
@@ -2089,7 +2169,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6 md:space-y-8">
         
-        {/* --- UNIVERSE CODE SHARING --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><Lock size={20} /></div>
@@ -2103,7 +2182,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
           </div>
         </motion.div>
 
-        {/* --- EMAIL NOTIFICATIONS --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><Mail size={20} /></div>
@@ -2126,7 +2204,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
           </div>
         </motion.div>
 
-        {/* --- WHISPERS OF THE UNIVERSE (ROTATING QUOTES) --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
            <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-gray-100 text-[var(--color-primary)] rounded-xl"><PenTool size={20} /></div>
@@ -2158,7 +2235,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
           )}
         </motion.div>
 
-        {/* --- APPEARANCE & THEMES --- */}
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><Palette size={20} /></div>
@@ -2199,12 +2275,10 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'light');
   
-  // SECURE AUTH STATES
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeUniverse, setActiveUniverse] = useState(null);
   
-  // Data States
   const [memories, setMemories] = useState([]);
   const [letters, setLetters] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -2215,22 +2289,18 @@ function App() {
   
   const [loading, setLoading] = useState(false);
   
-  // CENTRALIZED MODAL STATES
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '' });
 
   const showAlert = (title, message) => setAlertState({ isOpen: true, title, message });
 
-  // --- THEME EFFECT ---
   useEffect(() => {
     localStorage.setItem('appTheme', theme);
     document.body.setAttribute('data-theme', theme);
     document.body.style.backgroundColor = 'var(--color-bg)';
   }, [theme]);
 
- // --- 1. FETCH FROM FIREBASE (FILTERED BY UNIVERSE ID) ---
   useEffect(() => {
-    // THIS IS THE GUARD CLAUSE
     if (!isAuthenticated || !activeUniverse) {
       setLoading(false);
       return;
@@ -2264,7 +2334,6 @@ function App() {
     fetchData();
   }, [isAuthenticated, activeUniverse]);
 
-  // --- 2. DATABASE ACTIONS (STAMPED WITH UNIVERSE ID) ---
   const addMemory = async (newMemoryData) => {
     try {
       const imagesBase64 = [];
@@ -2299,7 +2368,6 @@ function App() {
     }
   };
 
-  // --- GLOBAL DELETION TRIGGERS ---
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
   const triggerDeleteLetter = (id) => setConfirmModal({ isOpen: true, id, type: 'letter', title: 'Delete Letter?', message: 'Are you sure you want to permanently delete this letter?' });
   const triggerDeleteGalleryPhoto = (id) => setConfirmModal({ isOpen: true, id, type: 'gallery', title: 'Remove Photo?', message: 'Are you sure you want to remove this beautiful photo from the gallery?' });
@@ -2321,7 +2389,6 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  // --- GLOBAL DELETION EXECUTOR ---
   const handleConfirmAction = async () => {
     const { type, id } = confirmModal;
     if (!id) return;
@@ -2351,7 +2418,6 @@ function App() {
       console.error("Error deleting item: ", err); 
     }
   };
-
 
   const addLetter = async (newLetterData) => {
     try {
@@ -2451,31 +2517,17 @@ function App() {
             <Route path="/timeline" element={<Timeline memories={memories} />} />
             <Route path="/places" element={<LovelyMap memories={memories} />} />
             <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
-            
             <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
-            
             <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} editLetter={editLetter} />} />
             <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
-            
             <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} editMemory={editMemory} />} />
-            
             <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} currentUser={currentUser} />} />
-            
             <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
             <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
-
-            <Route path="/settings" element={
-              <SettingsPage 
-                theme={theme} setTheme={setTheme}
-                activeUniverse={activeUniverse}
-                quotes={quotes} deleteQuote={triggerDeleteQuote}
-                showAlert={showAlert}
-              />
-            } />
+            <Route path="/settings" element={<SettingsPage theme={theme} setTheme={setTheme} activeUniverse={activeUniverse} quotes={quotes} deleteQuote={triggerDeleteQuote} showAlert={showAlert} />} />
           </Routes>
         </DashboardLayout>
 
-        {/* GLOBAL MODALS */}
         <DeleteConfirmModal 
           isOpen={confirmModal.isOpen}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
