@@ -630,13 +630,9 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
   const [isUploading, setIsUploading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
-  // Crop Queue State
+  // RESTORED: Simple Bulk Upload State
   const [pendingFiles, setPendingFiles] = useState([]);
-  const [currentCropFile, setCurrentCropFile] = useState(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [caption, setCaption] = useState("");
+  const [isCaptionModalOpen, setIsCaptionModalOpen] = useState(false);
 
   const combinedPhotos = [
     ...galleryPhotos.map(p => ({ ...p, source: 'gallery' })),
@@ -651,69 +647,40 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
   const rotations = [-3, 2, -1, 4, -2, 3]; 
 
+  // 1. Catch files and open the Caption modal
   const handleMultiUploadClick = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setPendingFiles(files);
-    setCurrentCropFile(URL.createObjectURL(files[0]));
-    e.target.value = null; 
+    setIsCaptionModalOpen(true);
+    e.target.value = null; // Reset input
   };
 
-  const onCropComplete = (croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  };
+  // 2. Process the upload keeping the FULL original image shape
+  const processUpload = async (customCaption) => {
+    setIsCaptionModalOpen(false); 
+    setIsUploading(true);
 
-  const processNextInQueue = async () => {
-    try {
-      setIsUploading(true);
-      const image = new Image();
-      image.src = currentCropFile;
-      await new Promise(res => image.onload = res);
+    const finalCaption = customCaption.trim() !== "" ? customCaption : "A beautiful moment";
 
-      const canvas = document.createElement('canvas');
-      canvas.width = croppedAreaPixels.width;
-      canvas.height = croppedAreaPixels.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height);
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+    for (const file of pendingFiles) {
+      try {
         const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
-
+        
         await onAddPhotos({ 
           imgUrl: base64String, 
-          heading: caption.trim() !== "" ? caption : "A beautiful moment", 
+          heading: finalCaption, 
           timestamp: new Date().toISOString()
         });
-
-        const remainingFiles = pendingFiles.slice(1);
-        if (remainingFiles.length > 0) {
-          setPendingFiles(remainingFiles);
-          setCurrentCropFile(URL.createObjectURL(remainingFiles[0]));
-          setCaption("");
-          setZoom(1);
-          setIsUploading(false);
-        } else {
-          setPendingFiles([]);
-          setCurrentCropFile(null);
-          setCaption("");
-          setIsUploading(false);
-        }
-      }, 'image/jpeg', 0.95);
-    } catch (error) {
-      console.error("Upload failed for a photo:", error);
-      setIsUploading(false);
-      setCurrentCropFile(null);
+      } catch (error) {
+        console.error("Upload failed for a photo:", error);
+      }
     }
-  };
-
-  const cancelUpload = () => {
-    setPendingFiles([]);
-    setCurrentCropFile(null);
-    setCaption("");
+    
+    setIsUploading(false);
+    setPendingFiles([]); 
   };
 
   const slideNext = (e) => { e.stopPropagation(); setLightboxIndex((prev) => (prev + 1) % combinedPhotos.length); };
@@ -721,6 +688,14 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
   return (
     <div className="max-w-6xl mx-auto pb-10 relative">
+      {/* Restored the simple caption modal! */}
+      <CaptionModal 
+        isOpen={isCaptionModalOpen} 
+        fileCount={pendingFiles.length}
+        onClose={() => { setIsCaptionModalOpen(false); setPendingFiles([]); }} 
+        onSubmit={processUpload} 
+      />
+
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-800">Our Gallery 📷</h1>
@@ -753,6 +728,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                   onClick={() => setLightboxIndex(index)}
                   className="bg-white p-3 pb-12 md:p-4 md:pb-16 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative group cursor-pointer"
                 >
+                  {/* object-cover ensures the image fills the polaroid square perfectly without squishing */}
                   <div className="w-full aspect-square bg-gray-200 overflow-hidden shadow-inner border border-black/5">
                     <img src={photo.imgUrl} className="w-full h-full object-cover" alt={photo.heading} />
                   </div>
@@ -774,46 +750,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
         </motion.div>
       )}
 
-      {/* --- GALLERY CROP & CAPTION MODAL --- */}
-      <AnimatePresence>
-        {currentCropFile && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-            <h3 className="text-white text-xl font-bold mb-2 font-serif text-center">
-              {pendingFiles.length > 1 ? `Frame Photo (${pendingFiles.length} left) ✂️` : "Frame Photo ✂️"}
-            </h3>
-            <p className="text-gray-400 text-xs mb-4 text-center">Pinch or drag to crop perfectly.</p>
-            
-            <div className="relative w-full max-w-lg h-[45vh] bg-black rounded-xl overflow-hidden shadow-2xl border border-white/20">
-              <Cropper
-                image={currentCropFile}
-                crop={crop}
-                zoom={zoom}
-                aspect={1} // Polaroid square aspect ratio
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
-            </div>
-            
-            <div className="mt-4 w-full max-w-lg flex flex-col gap-4">
-              <div className="flex items-center gap-4 bg-white/10 p-3 rounded-full backdrop-blur-md">
-                 <span className="text-white text-sm pl-2"><ImageIcon size={16}/></span>
-                 <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="w-full accent-rose-400" />
-                 <span className="text-white text-sm pr-2"><ImageIcon size={24}/></span>
-              </div>
-              <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Add a short caption..." className="w-full p-4 rounded-xl border border-transparent outline-none focus:border-[var(--color-primary)] bg-white shadow-md text-center font-serif text-lg" />
-              
-              <div className="flex gap-4 mt-2">
-                <button type="button" onClick={cancelUpload} className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-colors shadow-lg">Cancel</button>
-                <button type="button" onClick={processNextInQueue} disabled={isUploading} className="flex-1 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-xl font-bold transition-colors shadow-lg flex items-center justify-center gap-2">
-                  {isUploading ? "Cropping..." : <><Check size={18} /> {pendingFiles.length > 1 ? "Next Photo" : "Save Photo"}</>}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* LIGHTBOX SLIDER */}
       <AnimatePresence>
         {lightboxIndex !== null && (
@@ -831,6 +767,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
               className="flex flex-col items-center max-w-4xl w-full px-12"
               onClick={e => e.stopPropagation()}
             >
+              {/* object-contain ensures you see the FULL image without any clipping in the lightbox */}
               <img src={combinedPhotos[lightboxIndex].imgUrl} className="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl border-4 border-white/10" alt="Fullscreen" />
               <div className="mt-6 text-center">
                 <h3 className="text-3xl font-serif italic text-white mb-2">{combinedPhotos[lightboxIndex].heading}</h3>
@@ -843,7 +780,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
     </div>
   );
 };
-
 // ==========================================
 // 6. ALL MEMORIES PAGE
 // ==========================================
