@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle, Home as HomeIcon, Grip, ListTodo, Archive, Settings } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import DashboardLayout from './components/layout/DashboardLayout.jsx';
@@ -124,6 +124,7 @@ const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
     </AnimatePresence>
   );
 };
+
 const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   return (
     <AnimatePresence>
@@ -227,7 +228,7 @@ const AudioPlayer = ({ src }) => {
 };
 
 // ==========================================
-// 2. TRUE SECURE GATEWAY
+// 2. TRUE SECURE GATEWAY (Fixed Refresh Bug)
 // ==========================================
 const AuthGateway = ({ onUnlock }) => {
   const [authStep, setAuthStep] = useState('LOADING'); 
@@ -248,8 +249,14 @@ const AuthGateway = ({ onUnlock }) => {
         setUser(currentUser);
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (userDoc.exists()) {
-          setUniverseId(userDoc.data().universeId);
-          setAuthStep(savedPin ? 'PIN_ENTRY' : 'PIN_SETUP');
+          const uId = userDoc.data().universeId;
+          setUniverseId(uId);
+          
+          if (sessionStorage.getItem('sessionUnlocked') === 'true') {
+            onUnlock(currentUser, uId);
+          } else {
+            setAuthStep(savedPin ? 'PIN_ENTRY' : 'PIN_SETUP');
+          }
         } else {
           setAuthStep('UNIVERSE_SETUP');
         }
@@ -260,7 +267,7 @@ const AuthGateway = ({ onUnlock }) => {
       }
     });
     return () => unsubscribe();
-  }, [savedPin]);
+  }, [savedPin, onUnlock]);
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -291,14 +298,23 @@ const AuthGateway = ({ onUnlock }) => {
       if (pin.length < 4) return setError("PIN must be at least 4 digits.");
       localStorage.setItem('personalPin', pin);
       setSavedPin(pin);
+      sessionStorage.setItem('sessionUnlocked', 'true');
       onUnlock(user, universeId);
     } else if (authStep === 'PIN_ENTRY') {
-      if (pin === savedPin) onUnlock(user, universeId);
-      else { setError("Incorrect PIN."); setPin(''); }
+      if (pin === savedPin) {
+        sessionStorage.setItem('sessionUnlocked', 'true');
+        onUnlock(user, universeId);
+      } else { 
+        setError("Incorrect PIN."); setPin(''); 
+      }
     }
   };
 
-  const handleLogout = () => { signOut(auth); setPin(''); };
+  const handleLogout = () => { 
+    signOut(auth); 
+    setPin(''); 
+    sessionStorage.removeItem('sessionUnlocked'); 
+  };
 
   if (authStep === 'LOADING') return <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center font-serif text-[var(--color-primary)] text-xl animate-pulse">Loading Gateway...</div>;
 
@@ -358,6 +374,45 @@ const AuthGateway = ({ onUnlock }) => {
     </div>
   );
 };
+
+// ==========================================
+// PROFESSIONAL & PLAY STORE COMPLIANT PAGES
+// ==========================================
+const AboutPage = () => (
+  <div className="max-w-3xl mx-auto pb-10">
+    <h1 className="text-4xl font-serif font-bold text-gray-800 mb-8">About Our Universe ✨</h1>
+    <div className="bg-white/80 backdrop-blur-md p-8 md:p-12 rounded-[2rem] shadow-sm border border-white text-gray-700 leading-relaxed font-serif text-lg space-y-6">
+      <p><strong>Our Universe</strong> was created as a private, secure, and deeply personal sanctuary for two people to catalog their lives together.</p>
+      <p>In a world of public social media feeds and fleeting digital moments, we built a vault. A place where every polaroid, every love letter, and every dropped pin on the map belongs entirely to us.</p>
+      <p>Built with React, Framer Motion, and Firebase, this application ensures our data is encrypted, secure, and locked behind a physical device PIN. Features include collaborative Promise Jars, an infinite Mood Board, cinematic Journey Maps, and Time-Locked Letters.</p>
+      <p className="text-sm text-gray-400 mt-8 pt-8 border-t border-gray-200">Version 1.0.0 | Created for Love.</p>
+    </div>
+  </div>
+);
+
+const PrivacyPolicy = () => (
+  <div className="max-w-3xl mx-auto pb-10">
+    <h1 className="text-4xl font-serif font-bold text-gray-800 mb-8">Privacy & Security Policy 🔒</h1>
+    <div className="bg-white/80 backdrop-blur-md p-8 md:p-12 rounded-[2rem] shadow-sm border border-white text-gray-700 space-y-6 leading-relaxed">
+      <p>Your privacy and data security are the fundamental pillars of Our Universe. We strictly adhere to global privacy standards (including Google Play Store and App Store requirements).</p>
+      
+      <h3 className="text-xl font-bold text-[var(--color-primary)]">1. Data Collection & Usage</h3>
+      <p>We only collect the data you explicitly provide: emails for authentication/notifications, text for memories, and uploaded media. This data is used <strong>exclusively</strong> to provide the core functionality of the app. We do not sell, rent, or share your data with any third parties.</p>
+      
+      <h3 className="text-xl font-bold text-[var(--color-primary)]">2. Encryption & Storage</h3>
+      <p>All memories, photos, and letters are stored in a secure Google Firebase Firestore database. Your data is restricted strictly to your authenticated `Universe ID`. Media files are compressed securely on your device before transmission.</p>
+      
+      <h3 className="text-xl font-bold text-[var(--color-primary)]">3. Local Device Lock</h3>
+      <p>To prevent unauthorized physical access, a 4-digit PIN is stored locally on your device via `localStorage` and `sessionStorage`. This PIN never leaves your device.</p>
+      
+      <h3 className="text-xl font-bold text-[var(--color-primary)]">4. Location & Tracking</h3>
+      <p><strong>Zero Background Tracking:</strong> We do not track your location in the background. Location data is only requested momentarily when you explicitly click "Use My Current Location" on the interactive map, and is only saved to the specific memory you attach it to.</p>
+
+      <h3 className="text-xl font-bold text-[var(--color-primary)]">5. Data Deletion</h3>
+      <p>You have full control over your data. Deleting a memory, photo, or note within the app permanently deletes it from the Firebase backend servers.</p>
+    </div>
+  </div>
+);
 
 // ==========================================
 // 3. MAIN PAGES (Dashboard)
@@ -532,18 +587,43 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
 };
 
 // ==========================================
-// 4. MEMORY CREATION
+// 4. MEMORY CREATION (With Interactive Map Picker)
 // ==========================================
 const CreateMemory = ({ onAddMemory, showAlert }) => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ title: '', date: '', location: '', description: '' });
+  const [formData, setFormData] = useState({ title: '', date: '', location: '', description: '', lat: null, lng: null });
   const [imgFiles, setImgFiles] = useState([]);
   const [imgPreviews, setImgPreviews] = useState([]);
   const [voiceBlob, setVoiceBlob] = useState(null);
   const [voicePreview, setVoicePreview] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  const [mapCenter, setMapCenter] = useState([51.505, -0.09]); 
   const mediaRecorderRef = useRef(null);
+
+  const LocationPickerMarker = () => {
+    useMapEvents({
+      click(e) {
+        setFormData({ ...formData, lat: e.latlng.lat, lng: e.latlng.lng });
+      },
+    });
+    return formData.lat && formData.lng ? (
+      <Marker position={[formData.lat, formData.lng]} icon={lovelyHeartMarker} />
+    ) : null;
+  };
+
+  const handleGetCurrentLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        setMapCenter([latitude, longitude]);
+        setFormData({ ...formData, lat: latitude, lng: longitude });
+      }, () => {
+        showAlert("Location Error", "Could not get your current location. Please check your browser permissions.");
+      });
+    }
+  };
 
   const handleMultiImageUpload = async (e) => {
     const files = Array.from(e.target.files).slice(0, 4);
@@ -559,9 +639,7 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
       try {
         const compressed = await imageCompression(file, options);
         compressedFiles.push(compressed);
-      } catch (err) {
-        compressedFiles.push(file);
-      }
+      } catch (err) { compressedFiles.push(file); }
     }
     setImgFiles(prev => [...prev, ...compressedFiles].slice(0, 4));
   };
@@ -605,56 +683,92 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
-      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8">Add a Memory ✨</h1>
-      <form onSubmit={handleSubmit} className="bg-white/70 backdrop-blur-xl p-8 rounded-3xl shadow-sm border border-white space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="e.g. The night we met" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+    <div className="max-w-3xl mx-auto pb-10">
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Add a Memory ✨</h1>
+      <form onSubmit={handleSubmit} className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-sm border border-white space-y-8">
+        
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input type="text" onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="dd/mm/yyyy" />
+            <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider mb-2">Title</label>
+            <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 text-xl font-serif font-bold" placeholder="e.g. The night we met" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-            <input type="text" onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="e.g. Central Park" />
+            <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider mb-2">Date</label>
+            <input type="text" onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" placeholder="dd/mm/yyyy" />
           </div>
         </div>
         
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Upload Photos (Max 4)</label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
-            {imgPreviews.map((preview, idx) => (
-              <div key={idx} className="relative aspect-square group">
-                <img src={preview} className="h-full w-full object-cover rounded-xl shadow-sm"/>
-                <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-md opacity-80 hover:opacity-100"><Trash2 size={14}/></button>
-              </div>
-            ))}
-            {imgPreviews.length < 4 && (
-              <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl hover:bg-white/50 cursor-pointer transition">
-                <Plus className="text-gray-400 mb-1" />
-                <span className="text-xs text-gray-500 font-medium">Add Photo</span>
-                <input type="file" accept="image/*" multiple onChange={handleMultiImageUpload} className="hidden" />
-              </label>
-            )}
+        <div className="bg-white/50 p-4 md:p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider">Pin Exact Location</label>
+            <button type="button" onClick={handleGetCurrentLocation} className="text-xs font-bold bg-[var(--color-bg-alt)] text-[var(--color-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-primary)] hover:text-white transition flex items-center gap-1">
+              <MapPin size={14} /> Use My Current Location
+            </button>
+          </div>
+          <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 mb-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white" placeholder="Custom location name (e.g., The little cafe where we met)" />
+          
+          <div className="w-full h-48 md:h-64 rounded-xl overflow-hidden border-2 border-[var(--color-primary)]/20 relative z-0">
+            <MapContainer center={mapCenter} zoom={3} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+              <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png" />
+              <LocationPickerMarker />
+            </MapContainer>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full text-xs font-bold text-gray-600 shadow-md pointer-events-none z-[1000]">
+              Tap anywhere on map to drop pin
+            </div>
           </div>
         </div>
+        
+        <div className="grid md:grid-cols-2 gap-8 pt-4 border-t border-gray-100">
+          <div>
+            <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider mb-3">Photos (Max 4)</label>
+            <div className="grid grid-cols-2 gap-3">
+              {imgPreviews.map((preview, idx) => (
+                <div key={idx} className="relative aspect-square group">
+                  <img src={preview} className="h-full w-full object-cover rounded-xl shadow-sm border border-gray-200"/>
+                  <button type="button" onClick={() => removeImage(idx)} className="absolute top-2 right-2 bg-white/90 text-red-500 rounded-full p-1.5 shadow-md hover:scale-110 transition"><Trash2 size={16}/></button>
+                </div>
+              ))}
+              {imgPreviews.length < 4 && (
+                <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-[var(--color-primary)]/30 rounded-xl hover:bg-[var(--color-bg-alt)] cursor-pointer transition bg-white/30 text-[var(--color-primary)]">
+                  <Plus size={24} className="mb-2 opacity-70" />
+                  <span className="text-xs font-bold uppercase tracking-wider opacity-70">Add Photo</span>
+                  <input type="file" accept="image/*" multiple onChange={handleMultiImageUpload} className="hidden" />
+                </label>
+              )}
+            </div>
+          </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Voice Note</label>
-          {!isRecording && !voicePreview && <button type="button" onClick={startRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-pink-100 text-[var(--color-primary)] hover:bg-pink-200"><Mic size={18}/> Record Voice</button>}
-          {isRecording && <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-red-500 text-white shadow-md animate-pulse"><StopCircle size={18}/> Stop Recording</button>}
-          {voicePreview && <div className="text-sm text-green-600 font-bold flex items-center gap-2 mt-2 bg-green-50 w-max px-4 py-2 rounded-full border border-green-200"><Check size={16}/> Voice note ready!</div>}
+          <div>
+            <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider mb-3">Voice Note</label>
+            <div className="bg-white/50 p-6 rounded-2xl border border-gray-200 flex flex-col items-center justify-center text-center h-full min-h-[150px]">
+              {!isRecording && !voicePreview && (
+                <button type="button" onClick={startRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-[var(--color-bg-alt)] text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition shadow-sm">
+                  <Mic size={18}/> Record Audio
+                </button>
+              )}
+              {isRecording && (
+                <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-6 py-3 rounded-full font-bold bg-red-500 text-white shadow-md animate-pulse">
+                  <StopCircle size={18}/> Stop Recording
+                </button>
+              )}
+              {voicePreview && (
+                <div className="w-full">
+                  <div className="text-sm text-green-600 font-bold flex items-center justify-center gap-2 mb-3 bg-green-50 px-4 py-2 rounded-full border border-green-200">
+                    <Check size={16}/> Audio Saved!
+                  </div>
+                  <button type="button" onClick={() => setVoicePreview('')} className="text-xs text-red-400 font-bold hover:underline">Remove</button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Our Story</label>
-          <textarea rows="4" onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)]" placeholder="Write what happened..."></textarea>
+          <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider mb-2">Our Story</label>
+          <textarea rows="6" onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-5 rounded-2xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 text-lg font-serif leading-relaxed" placeholder="Write what happened..."></textarea>
         </div>
         
-        <button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-colors shadow-md hover:shadow-lg">
+        <button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] text-white py-5 rounded-2xl font-bold text-xl disabled:opacity-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1">
           {isSaving ? "Safely embedding to Database... ✨" : "Save Private Memory"}
         </button>
       </form>
@@ -668,8 +782,6 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
 const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPhoto }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
-
-  // RESTORED: Simple Bulk Upload State
   const [pendingFiles, setPendingFiles] = useState([]);
   const [isCaptionModalOpen, setIsCaptionModalOpen] = useState(false);
 
@@ -686,16 +798,14 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
   const rotations = [-3, 2, -1, 4, -2, 3]; 
 
-  // 1. Catch files and open the Caption modal
   const handleMultiUploadClick = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setPendingFiles(files);
     setIsCaptionModalOpen(true);
-    e.target.value = null; // Reset input
+    e.target.value = null; 
   };
 
-  // 2. Process the upload keeping the FULL original image shape
   const processUpload = async (customCaption) => {
     setIsCaptionModalOpen(false); 
     setIsUploading(true);
@@ -713,9 +823,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
           heading: finalCaption, 
           timestamp: new Date().toISOString()
         });
-      } catch (error) {
-        console.error("Upload failed for a photo:", error);
-      }
+      } catch (error) { console.error("Upload failed for a photo:", error); }
     }
     
     setIsUploading(false);
@@ -727,13 +835,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
   return (
     <div className="max-w-6xl mx-auto pb-10 relative">
-      {/* Restored the simple caption modal! */}
-      <CaptionModal 
-        isOpen={isCaptionModalOpen} 
-        fileCount={pendingFiles.length}
-        onClose={() => { setIsCaptionModalOpen(false); setPendingFiles([]); }} 
-        onSubmit={processUpload} 
-      />
+      <CaptionModal isOpen={isCaptionModalOpen} fileCount={pendingFiles.length} onClose={() => { setIsCaptionModalOpen(false); setPendingFiles([]); }} onSubmit={processUpload} />
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
         <div>
@@ -767,7 +869,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
                   onClick={() => setLightboxIndex(index)}
                   className="bg-white p-3 pb-12 md:p-4 md:pb-16 rounded-sm shadow-xl hover:shadow-2xl border border-gray-200 relative group cursor-pointer"
                 >
-                  {/* object-cover ensures the image fills the polaroid square perfectly without squishing */}
                   <div className="w-full aspect-square bg-gray-200 overflow-hidden shadow-inner border border-black/5">
                     <img src={photo.imgUrl} className="w-full h-full object-cover" alt={photo.heading} />
                   </div>
@@ -806,7 +907,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
               className="flex flex-col items-center max-w-4xl w-full px-12"
               onClick={e => e.stopPropagation()}
             >
-              {/* object-contain ensures you see the FULL image without any clipping in the lightbox */}
               <img src={combinedPhotos[lightboxIndex].imgUrl} className="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl border-4 border-white/10" alt="Fullscreen" />
               <div className="mt-6 text-center">
                 <h3 className="text-3xl font-serif italic text-white mb-2">{combinedPhotos[lightboxIndex].heading}</h3>
@@ -819,18 +919,25 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
     </div>
   );
 };
+
 // ==========================================
 // 6. ALL MEMORIES PAGE
 // ==========================================
 const Memories = ({ memories, deleteMemory, editMemory }) => {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', description: '', location: '', borderStyle: 'border-white' });
+  const [editForm, setEditForm] = useState({ title: '', description: '', location: '', borderStyle: 'border-white', layoutStyle: 'classic' });
 
   const openMemory = (idx) => {
     setCurrentIndex(idx);
     const m = memories[idx];
-    setEditForm({ title: m.title, description: m.description || '', location: m.location || '', borderStyle: m.borderStyle || 'border-white' });
+    setEditForm({ 
+      title: m.title, 
+      description: m.description || '', 
+      location: m.location || '', 
+      borderStyle: m.borderStyle || 'border-white',
+      layoutStyle: m.layoutStyle || 'classic'
+    });
     setIsEditing(false);
   };
 
@@ -841,6 +948,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
     const nextIdx = (currentIndex + 1) % memories.length;
     openMemory(nextIdx);
   };
+  
   const slidePrev = (e) => { 
     e.stopPropagation(); 
     const prevIdx = (currentIndex - 1 + memories.length) % memories.length;
@@ -854,10 +962,23 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
   };
 
   const borderOptions = [
-    { label: "Classic White", value: "border-white" },
-    { label: "Golden Frame", value: "border-yellow-400" },
-    { label: "Soft Pink", value: "border-pink-200" },
-    { label: "No Border", value: "border-transparent" }
+    { label: "White", value: "border-white", hex: "bg-white" },
+    { label: "Gold", value: "border-yellow-400", hex: "bg-yellow-400" },
+    { label: "Pink", value: "border-pink-200", hex: "bg-pink-200" },
+    { label: "None", value: "border-transparent", hex: "bg-gray-200" },
+    { label: "Maroon", value: "border-[#8B1235]", hex: "bg-[#8B1235]" },
+    { label: "Lavender", value: "border-[#7E57C2]", hex: "bg-[#7E57C2]" },
+    { label: "Ocean", value: "border-cyan-500", hex: "bg-cyan-500" },
+    { label: "Leather", value: "border-amber-800", hex: "bg-amber-800" },
+    { label: "Midnight", value: "border-gray-900", hex: "bg-gray-900" }
+  ];
+
+  const layoutOptions = [
+    { label: "Classic Polaroid", value: "classic" },
+    { label: "Cinematic Glass", value: "cinematic" },
+    { label: "Split Storybook", value: "split" },
+    { label: "Vintage Journal", value: "journal" },
+    { label: "Messy Scrapbook", value: "scrapbook" }
   ];
 
   const selectedMemory = currentIndex >= 0 ? memories[currentIndex] : null;
@@ -911,7 +1032,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
               </>
             )}
 
-            <button onClick={closeMemory} className="absolute top-6 right-6 text-white/50 hover:text-white p-3 rounded-full z-50"><X size={32}/></button>
+            <button onClick={closeMemory} className="absolute top-6 right-6 bg-black/20 text-white hover:bg-black/50 p-3 rounded-full z-50 backdrop-blur-sm transition"><X size={32}/></button>
 
             <motion.div 
               key={currentIndex}
@@ -919,74 +1040,180 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
               animate={{ scale: 1, x: 0, opacity: 1 }} 
               exit={{ scale: 0.9, x: -100, opacity: 0 }} 
               transition={{ type: "spring", bounce: 0.3 }}
-              className={`bg-[var(--color-bg)] w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl relative border-[8px] ${selectedMemory.borderStyle || 'border-white'} flex flex-col`} 
+              className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl relative border-[8px] ${selectedMemory.borderStyle || 'border-white'} flex flex-col ${
+                selectedMemory.layoutStyle === 'journal' ? 'bg-[#FFF9E6]' : 
+                selectedMemory.layoutStyle === 'cinematic' ? 'bg-black' : 'bg-[var(--color-bg)]'
+              }`} 
               onClick={e => e.stopPropagation()}
             >
               {!isEditing ? (
-                <>
-                  <div className="relative">
-                    {selectedMemory.images && selectedMemory.images.length > 0 ? (
-                      <div className="w-full h-72 md:h-96 relative">
-                        <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Memory Cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-bg)] via-transparent to-transparent"></div>
-                      </div>
-                    ) : (
-                      <div className="h-32 bg-[var(--color-primary)] opacity-10"></div>
-                    )}
-                    <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-2 rounded-full font-bold text-sm hover:bg-white shadow-sm transition">Edit Settings</button>
-                  </div>
+                <div className="relative min-h-[60vh] flex flex-col">
+                  <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 bg-white/30 backdrop-blur-md text-gray-900 px-4 py-2 rounded-full font-bold text-sm hover:bg-white shadow-sm transition z-50">Edit Style</button>
 
-                  <div className="px-8 md:px-12 pb-12 -mt-16 relative z-10">
-                    <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white">
-                      <div className="flex flex-col items-center text-center mb-8 border-b border-gray-100 pb-8">
-                        <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date}</p>
-                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 leading-tight mb-4">{selectedMemory.title}</h2>
-                        {selectedMemory.location && (
-                          <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-                            <MapPin size={14} className="text-[var(--color-primary)]" /> {selectedMemory.location}
-                          </span>
-                        )}
+                  {/* LAYOUT 1: CLASSIC POLAROID */}
+                  {(!selectedMemory.layoutStyle || selectedMemory.layoutStyle === 'classic') && (
+                    <>
+                      <div className="relative">
+                        {selectedMemory.images && selectedMemory.images.length > 0 ? (
+                          <div className="w-full h-72 md:h-96 relative">
+                            <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Memory Cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-bg)] via-transparent to-transparent"></div>
+                          </div>
+                        ) : <div className="h-32 bg-[var(--color-primary)] opacity-10"></div>}
                       </div>
-
-                      <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-loose whitespace-pre-wrap px-4">
-                        {selectedMemory.description || <span className="italic text-gray-400">No story written for this moment yet. Click Edit to add one.</span>}
+                      <div className="px-8 md:px-12 pb-12 -mt-16 relative z-10">
+                        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white">
+                          <div className="flex flex-col items-center text-center mb-8 border-b border-gray-100 pb-8">
+                            <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date}</p>
+                            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 leading-tight mb-4">{selectedMemory.title}</h2>
+                            {selectedMemory.location && (
+                              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium"><MapPin size={14} className="text-[var(--color-primary)]" /> {selectedMemory.location}</span>
+                            )}
+                          </div>
+                          <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-loose whitespace-pre-wrap px-4">
+                            {selectedMemory.description || <span className="italic text-gray-400">No story written for this moment yet. Click Edit to add one.</span>}
+                          </div>
+                          {selectedMemory.images && selectedMemory.images.length > 1 && (
+                            <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-gray-100">
+                              {selectedMemory.images.slice(1).map((img, i) => <img key={i} src={img} className="w-full h-48 object-cover rounded-xl shadow-sm border border-gray-200" />)}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                    </>
+                  )}
 
-                      {selectedMemory.images && selectedMemory.images.length > 1 && (
-                        <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-gray-100">
-                          {selectedMemory.images.slice(1).map((img, i) => <img key={i} src={img} className="w-full h-48 object-cover rounded-xl shadow-sm border border-gray-200" />)}
+                  {/* LAYOUT 2: CINEMATIC GLASS */}
+                  {selectedMemory.layoutStyle === 'cinematic' && (
+                    <div className="relative min-h-[80vh] flex flex-col justify-end p-8 md:p-12 overflow-hidden">
+                       {selectedMemory.images && selectedMemory.images.length > 0 && (
+                         <div className="absolute inset-0 z-0">
+                           <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Background" />
+                           <div className="absolute inset-0 bg-black/40 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
+                         </div>
+                       )}
+                       <div className="relative z-10 bg-black/30 backdrop-blur-md border border-white/20 p-8 rounded-3xl text-white shadow-2xl">
+                          <p className="text-rose-300 font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                          <h2 className="text-4xl md:text-6xl font-serif font-bold leading-tight mb-6">{selectedMemory.title}</h2>
+                          <div className="whitespace-pre-wrap text-lg md:text-xl text-gray-200 font-serif leading-relaxed">
+                            {selectedMemory.description || <span className="italic opacity-60">No story written.</span>}
+                          </div>
+                       </div>
+                    </div>
+                  )}
+
+                  {/* LAYOUT 3: SPLIT STORYBOOK */}
+                  {selectedMemory.layoutStyle === 'split' && (
+                    <div className="flex flex-col md:flex-row min-h-[60vh]">
+                      <div className="w-full md:w-1/2 min-h-[300px] relative bg-gray-100 border-r border-gray-200">
+                        {selectedMemory.images && selectedMemory.images.length > 0 ? (
+                          <img src={selectedMemory.images[0]} className="absolute inset-0 w-full h-full object-cover" />
+                        ) : <div className="absolute inset-0 flex items-center justify-center"><ImageIcon size={48} className="text-gray-300"/></div>}
+                      </div>
+                      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center bg-white">
+                        <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date}</p>
+                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 leading-tight mb-4">{selectedMemory.title}</h2>
+                        {selectedMemory.location && <p className="text-sm text-gray-500 mb-6 flex items-center gap-1"><MapPin size={14} className="text-blue-400" /> {selectedMemory.location}</p>}
+                        <div className="whitespace-pre-wrap text-lg text-gray-700 font-serif leading-loose">
+                           {selectedMemory.description || <span className="italic text-gray-400">No story written.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* LAYOUT 4: VINTAGE JOURNAL */}
+                  {selectedMemory.layoutStyle === 'journal' && (
+                    <div className="p-8 md:p-14 relative" style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, rgba(0,0,0,0.05) 31px, rgba(0,0,0,0.05) 32px)'}}>
+                      <div className="text-center mb-10">
+                        <h2 className="text-4xl md:text-5xl font-serif italic text-gray-800 mb-4">{selectedMemory.title}</h2>
+                        <p className="text-gray-500 font-serif font-bold uppercase tracking-widest text-sm border-y border-gray-300 py-2 inline-block px-8">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                      </div>
+                      <div className="whitespace-pre-wrap text-xl leading-[32px] text-gray-800 mb-10 px-4 md:px-8" style={{ fontFamily: "'Georgia', serif" }}>
+                        {selectedMemory.description || <span className="italic text-gray-400">Dear journal...</span>}
+                      </div>
+                      {selectedMemory.images && selectedMemory.images.length > 0 && (
+                        <div className="flex flex-wrap justify-center gap-4 px-4">
+                           {selectedMemory.images.map((img, i) => (
+                             <div key={i} className="p-2 bg-white shadow-md border border-gray-200 transform rotate-1 hover:scale-105 transition">
+                               <img src={img} className="max-h-64 object-cover" />
+                             </div>
+                           ))}
                         </div>
                       )}
-
-                      {selectedMemory.voiceNote && <div className="mt-8"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
                     </div>
-                  </div>
-                </>
+                  )}
+
+                  {/* LAYOUT 5: MESSY SCRAPBOOK */}
+                  {selectedMemory.layoutStyle === 'scrapbook' && (
+                    <div className="p-8 md:p-12 bg-gray-50 relative overflow-hidden min-h-[70vh]">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+                      <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+                      
+                      <div className="flex flex-wrap justify-center gap-4 mb-12 relative z-10 pt-8">
+                        {selectedMemory.images && selectedMemory.images.length > 0 ? (
+                           selectedMemory.images.map((img, i) => {
+                             const tilt = (i % 2 === 0 ? 1 : -1) * ((i * 3) + 4);
+                             return (
+                               <div key={i} className="relative p-3 bg-white shadow-xl border border-gray-200" style={{ transform: `rotate(${tilt}deg)` }}>
+                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-white/60 backdrop-blur-sm border border-white/40 shadow-sm rotate-3"></div>
+                                 <img src={img} className="w-48 h-48 md:w-64 md:h-64 object-cover" />
+                               </div>
+                             )
+                           })
+                        ) : <div className="p-10 border-4 border-dashed border-gray-300 rounded-xl text-gray-400 font-bold rotate-2">Needs Photos!</div>}
+                      </div>
+                      
+                      <div className="relative z-10 bg-white/60 backdrop-blur-md p-8 rounded-2xl shadow-sm border border-white max-w-2xl mx-auto">
+                        <h2 className="text-3xl font-bold text-[#8B1235] mb-2">{selectedMemory.title}</h2>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-6">{selectedMemory.date} | {selectedMemory.location}</p>
+                        <div className="whitespace-pre-wrap text-xl leading-relaxed text-gray-700" style={{ fontFamily: "'Comic Sans MS', cursive" }}>
+                          {selectedMemory.description || "Jot down some notes..."}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* GLOBAL AUDIO PLAYER AT BOTTOM */}
+                  {selectedMemory.voiceNote && <div className="p-8 border-t border-black/5 bg-white/50"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
+                </div>
               ) : (
-                <div className="p-8 space-y-6">
+                <div className="p-8 space-y-8 bg-white/95 backdrop-blur-md">
                   <div className="flex items-center justify-between border-b pb-4">
-                    <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Memory Details</h3>
+                    <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Memory Styling</h3>
                     <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-800"><X size={24}/></button>
                   </div>
                   
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Title</label>
-                    <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-bold text-xl outline-none focus:border-[var(--color-primary)] bg-white/50" />
-                  </div>
-                  
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Location</label>
-                    <div className="flex relative">
-                      <MapPin size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input type="text" value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} className="w-full p-4 pl-12 rounded-xl border border-gray-200 text-lg outline-none focus:border-[var(--color-primary)] bg-white/50" />
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Title</label>
+                      <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-bold text-xl outline-none focus:border-[var(--color-primary)] bg-gray-50" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Location</label>
+                      <div className="flex relative">
+                        <MapPin size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="text" value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} className="w-full p-4 pl-12 rounded-xl border border-gray-200 text-lg outline-none focus:border-[var(--color-primary)] bg-gray-50" />
+                      </div>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Aesthetic Border Frame</label>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
+                    <label className="text-xs font-bold text-[var(--color-primary)] uppercase tracking-wider block mb-2">1. Choose Layout Style</label>
+                    <div className="flex flex-wrap gap-2 pb-2">
+                      {layoutOptions.map(l => (
+                        <button key={l.value} onClick={() => setEditForm({...editForm, layoutStyle: l.value})} className={`px-4 py-2.5 rounded-xl text-sm font-bold border-2 transition ${editForm.layoutStyle === l.value ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-md' : 'border-gray-200 text-gray-600 bg-white hover:bg-gray-50'}`}>
+                          {l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[var(--color-primary)] uppercase tracking-wider block mb-2">2. Choose Outer Border Color</label>
+                    <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar">
                       {borderOptions.map(b => (
-                        <button key={b.value} onClick={() => setEditForm({...editForm, borderStyle: b.value})} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition ${editForm.borderStyle === b.value ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-50'}`}>
+                        <button key={b.value} onClick={() => setEditForm({...editForm, borderStyle: b.value})} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border-2 transition whitespace-nowrap ${editForm.borderStyle === b.value ? 'border-[var(--color-primary)] bg-gray-50 shadow-md' : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-50'}`}>
+                          <span className={`w-4 h-4 rounded-full border border-gray-300 shadow-sm ${b.hex}`}></span>
                           {b.label}
                         </button>
                       ))}
@@ -995,7 +1222,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
 
                   <div>
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Our Story</label>
-                    <textarea rows="8" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-serif text-lg outline-none focus:border-[var(--color-primary)] bg-white/50" />
+                    <textarea rows="6" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-serif text-lg outline-none focus:border-[var(--color-primary)] bg-gray-50" />
                   </div>
 
                   <div className="flex justify-end gap-3 pt-6 border-t">
@@ -1133,58 +1360,143 @@ const Timeline = ({ memories }) => {
   );
 };
 
-const LovelyMap = ({ memories }) => {
+// Helper component to control map flying animations
+const MapController = ({ selectedMarker }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (selectedMarker && selectedMarker.lat && selectedMarker.lng) {
+      map.flyTo([selectedMarker.lat, selectedMarker.lng], 12, {
+        duration: 2.5, 
+        easeLinearity: 0.25
+      });
+    }
+  }, [selectedMarker, map]);
+  return null;
+};
+
+const LovelyMap = ({ memories, theme }) => {
   const [markers, setMarkers] = useState([]);
+  const [selectedMarker, setSelectedMarker] = useState(null);
+
+  // Dynamic Tile URLs based on your Aesthetic Theme
+  const mapTiles = {
+    lavender: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    beach: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+    sunset: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+    light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+  };
   
   useEffect(() => {
     const fetchCoordinates = async () => {
       const placesWithCoords = [];
-      const places = memories.filter(m => m.location);
+      const places = memories
+        .filter(m => m.location)
+        .sort((a, b) => new Date(a.id) - new Date(b.id)); 
+
       for (const place of places) {
+        if (place.lat && place.lng) {
+          placesWithCoords.push({ ...place, lat: place.lat, lng: place.lng });
+          continue;
+        }
         await new Promise(resolve => setTimeout(resolve, 600));
         try {
           const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place.location)}&format=json&limit=1`);
           const data = await response.json();
           if (data && data.length > 0) {
-            placesWithCoords.push({ ...place, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+            placesWithCoords.push({ 
+              ...place, 
+              lat: parseFloat(data[0].lat), 
+              lng: parseFloat(data[0].lon) 
+            });
           }
-        } catch (error) { console.error("Error finding coordinates for:", place.location); }
+        } catch (error) { 
+          console.error("Error finding coordinates for:", place.location); 
+        }
       }
       setMarkers(placesWithCoords);
     };
     fetchCoordinates();
   }, [memories]);
 
-  const center = markers.length > 0 ? [markers[0].lat, markers[0].lng] : [8.5241, 76.9366];
+  const journeyPath = markers.map(m => [m.lat, m.lng]);
+  const defaultCenter = markers.length > 0 ? [markers[0].lat, markers[0].lng] : [8.5241, 76.9366];
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">The Map of Us 🌍</h1>
-        <p className="text-sm font-medium bg-white text-[var(--color-primary)] border border-gray-200 px-4 py-2 rounded-full shadow-sm">
-          {markers.length} {markers.length === 1 ? 'Pin' : 'Pins'} Dropped
+    <div className="max-w-7xl mx-auto pb-10 flex flex-col h-full">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">The Map of Us 🌍</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Everywhere we've been, connected together.</p>
+        </div>
+        <p className="text-sm font-medium bg-white text-[var(--color-primary)] border border-gray-200 px-4 py-2 rounded-full shadow-sm flex items-center gap-2">
+          <MapPin size={16} /> {markers.length} {markers.length === 1 ? 'Pin' : 'Pins'}
         </p>
       </div>
-      <div className="bg-white/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] shadow-sm border border-white/40">
-        <div className="w-full h-[500px] md:h-[650px] rounded-2xl overflow-hidden shadow-inner border-4 border-white relative z-0">
-          <MapContainer center={center} zoom={7} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png" />
-            {markers.map((marker, idx) => {
-              const coverImg = (marker.images && marker.images.length > 0) ? marker.images[0] : marker.img;
-              return (
-                <Marker key={idx} position={[marker.lat, marker.lng]} icon={lovelyHeartMarker}>
-                  <Popup className="custom-popup border-0 shadow-lg rounded-xl">
-                    <div className="p-1 text-center min-w-[150px]">
-                      {coverImg && <img src={coverImg} alt={marker.title} className="w-full h-28 object-cover rounded-lg mb-3 shadow-md" />}
-                      <h3 className="font-bold font-serif text-[var(--color-primary)] text-lg leading-tight">{marker.title}</h3>
-                      <p className="text-xs font-semibold text-gray-600 mt-1 uppercase tracking-wider">{marker.location}</p>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* INTERACTIVE STORY MODE SIDEBAR */}
+        <div className="w-full lg:w-1/3 flex flex-col bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm rounded-[2rem] overflow-hidden max-h-[400px] lg:max-h-[650px]">
+          <div className="p-6 border-b border-gray-100 bg-white/80">
+            <h3 className="font-serif font-bold text-xl text-[var(--color-primary)] flex items-center gap-2">
+              <Sparkles size={20} /> Our Adventures
+            </h3>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+            {markers.length === 0 ? (
+              <div className="text-center text-gray-400 py-10 text-sm font-medium">Adding locations to your memories will drop pins here.</div>
+            ) : (
+              markers.map((marker, idx) => (
+                <div 
+                  key={idx}
+                  onMouseEnter={() => setSelectedMarker(marker)} 
+                  onTouchStart={() => setSelectedMarker(marker)}
+                  onClick={() => setSelectedMarker(marker)}
+                  className={`w-full text-left p-4 rounded-2xl transition-all border cursor-pointer ${selectedMarker?.id === marker.id ? 'bg-[var(--color-primary)] border-[var(--color-primary)] shadow-md text-white scale-[1.02] origin-left' : 'bg-white border-transparent hover:border-gray-200 hover:bg-gray-50 shadow-sm'}`}
+                >
+                  <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${selectedMarker?.id === marker.id ? 'text-white/70' : 'text-[var(--color-primary)]'}`}>
+                    Step {idx + 1}
+                  </p>
+                  <h4 className="font-serif font-bold text-lg leading-tight mb-1 truncate">{marker.title}</h4>
+                  <p className={`text-xs font-medium flex items-center gap-1 ${selectedMarker?.id === marker.id ? 'text-white/90' : 'text-gray-500'}`}>
+                    <MapPin size={12} /> {marker.location}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
+
+        {/* THE MAP */}
+        <div className="w-full lg:w-2/3 bg-white/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] shadow-sm border border-white/40">
+          <div className="w-full h-[400px] md:h-[650px] rounded-2xl overflow-hidden shadow-inner border-4 border-white relative z-0">
+            <MapContainer center={defaultCenter} zoom={4} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+              <TileLayer url={mapTiles[theme] || mapTiles.light} />
+              
+              <MapController selectedMarker={selectedMarker} />
+
+              {journeyPath.length > 1 && (
+                <Polyline positions={journeyPath} pathOptions={{ color: 'var(--color-primary)', weight: 3, dashArray: '10, 10', opacity: 0.6 }} />
+              )}
+
+              {markers.map((marker, idx) => {
+                const coverImg = (marker.images && marker.images.length > 0) ? marker.images[0] : marker.img;
+                return (
+                  <Marker key={idx} position={[marker.lat, marker.lng]} icon={lovelyHeartMarker}>
+                    <Popup className="custom-popup border-0 shadow-lg rounded-xl">
+                      <div className="p-1 text-center min-w-[150px]">
+                        {coverImg && <img src={coverImg} alt={marker.title} className="w-full h-28 object-cover rounded-lg mb-3 shadow-md border border-gray-100" />}
+                        <h3 className="font-bold font-serif text-[var(--color-primary)] text-lg leading-tight">{marker.title}</h3>
+                        <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-wider border-t pt-2">{marker.date}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -1785,6 +2097,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const [newPromise, setNewPromise] = useState('');
   const [targetJar, setTargetJar] = useState('jar1'); 
   const [drawnPromise, setDrawnPromise] = useState(null);
+  const [drawnIds, setDrawnIds] = useState([]);
 
   const [jar1Name, setJar1Name] = useState(() => localStorage.getItem('jar1Name') || "My Jar");
   const [jar2Name, setJar2Name] = useState(() => localStorage.getItem('jar2Name') || "Her Jar");
@@ -1814,9 +2127,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
       playTone(1046.50, 0);   
       playTone(1318.51, 0.1); 
       playTone(1567.98, 0.2); 
-    } catch (err) {
-      console.log("Audio blocked.");
-    }
+    } catch (err) { console.log("Audio blocked."); }
   };
 
   const handleSubmit = (e) => {
@@ -1831,11 +2142,22 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const jar2Promises = promises.filter(p => p.target === 'jar2');
 
   const drawRandomPromise = (jarPromises) => {
+    const availablePromises = jarPromises.filter(p => !drawnIds.includes(p.id));
+
     if (jarPromises.length === 0) {
-      return showAlert ? showAlert("Empty Jar", "This jar is empty! Add a sweet note first.") : alert("This jar is empty! Add a sweet note first.");
+      return showAlert ? showAlert("Empty Jar", "This jar is empty! Add a sweet note first.") : alert("Empty Jar");
     }
-    const randomIdx = Math.floor(Math.random() * jarPromises.length);
-    setDrawnPromise(jarPromises[randomIdx]);
+
+    if (availablePromises.length === 0) {
+      setDrawnIds([]); 
+      return showAlert ? showAlert("Jar Empty!", "You've read all the notes! The jar has been shaken up and refilled.") : alert("Refilled!");
+    }
+
+    const randomIdx = Math.floor(Math.random() * availablePromises.length);
+    const selected = availablePromises[randomIdx];
+    
+    setDrawnPromise(selected);
+    setDrawnIds(prev => [...prev, selected.id]); 
   };
 
   return (
@@ -1899,7 +2221,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
   const [showDrawPad, setShowDrawPad] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   
-  const [isEditMode, setIsEditMode] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false); // Default to locked
   const [zoom, setZoom] = useState(1);
   const canvasRef = useRef(null);
 
@@ -1915,6 +2237,22 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     { label: 'Typewriter', css: "'Courier New', Courier, monospace" },
     { label: 'Classic', css: "Georgia, serif" }
   ];
+
+  // Pinch to Zoom Logic
+  useEffect(() => {
+    const viewport = document.getElementById("board-viewport");
+    if (!viewport) return;
+
+    const handleWheel = (e) => {
+      if (e.ctrlKey || e.metaKey) { 
+        e.preventDefault();
+        setZoom(z => Math.max(0.3, Math.min(3, z - e.deltaY * 0.01)));
+      }
+    };
+    
+    viewport.addEventListener('wheel', handleWheel, { passive: false });
+    return () => viewport.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const handleAddText = (e) => {
     e.preventDefault();
@@ -1993,7 +2331,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
         <div>
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Mood Board 📌</h1>
           <p className="text-gray-500 mt-1 text-sm md:text-base">
-            {isEditMode ? "Edit Mode ON: Drag to move, double tap to resize." : "Locked Mode: Scroll freely to view your board."}
+            {isEditMode ? "Edit Mode ON: Drag to move, double tap to resize." : "Locked Mode: Scroll, pan, and pinch freely."}
           </p>
         </div>
         
@@ -2085,7 +2423,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
 
       <AnimatePresence>
         {showDrawPad && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setShowDrawPad(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setShowDrawPad(false)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
                 <div>
@@ -2137,7 +2475,7 @@ const sendInstantNotification = (itemType, itemTitle) => {
 };
 
 // ==========================================
-// 9. FULL ADVANCED SETTINGS PAGE 
+// FULL ADVANCED SETTINGS PAGE 
 // ==========================================
 const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, showAlert }) => {
   const [newQuote, setNewQuote] = useState("");
@@ -2181,7 +2519,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
       </motion.div>
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6 md:space-y-8">
-        
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><Lock size={20} /></div>
@@ -2222,7 +2559,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
             <div className="p-2.5 bg-gray-100 text-[var(--color-primary)] rounded-xl"><PenTool size={20} /></div>
             <h2 className="text-xl font-semibold text-gray-800">Whispers of the Universe</h2>
           </div>
-          
           <form onSubmit={handleAddQuote} className="mb-6">
             <label className="block text-sm md:text-base text-gray-600 mb-2 font-medium">Add a lovely sentence to rotate on the dashboard</label>
             <textarea value={newQuote} onChange={(e) => setNewQuote(e.target.value)} placeholder="e.g. You are my today and all of my tomorrows..." className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-200 bg-white/50 resize-none font-serif text-lg" rows="3" />
@@ -2254,27 +2590,22 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
             <h2 className="text-xl font-semibold text-gray-800">Aesthetic Theme</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
             <button onClick={() => setTheme('light')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'light' ? 'border-rose-400 bg-rose-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
               <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#FCF8F9] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#8B1235] shadow-sm"></div></div>
               <div><p className="font-semibold text-gray-800">Light Romantic</p><p className="text-[10px] text-gray-500 mt-0.5">Soft whites and deep maroon.</p></div>
             </button>
-            
             <button onClick={() => setTheme('lavender')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'lavender' ? 'border-purple-400 bg-purple-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
               <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#F5F3FF] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#7E57C2] shadow-sm"></div></div>
               <div><p className="font-semibold text-gray-800">Lavender Dream</p><p className="text-[10px] text-gray-500 mt-0.5">Soft lavenders and deep violet.</p></div>
             </button>
-
             <button onClick={() => setTheme('beach')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'beach' ? 'border-cyan-400 bg-cyan-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
               <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#F4F9F9] border border-cyan-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#0C4A6E] shadow-sm"></div></div>
               <div><p className="font-semibold text-gray-800">Heavenly Beach</p><p className="text-[10px] text-gray-500 mt-0.5">Soft ocean blues and warm shores.</p></div>
             </button>
-            
             <button onClick={() => setTheme('sunset')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'sunset' ? 'border-orange-400 bg-orange-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
               <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#FFF2EB] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#ea580c] shadow-sm"></div></div>
               <div><p className="font-semibold text-gray-800">Sunset Glow</p><p className="text-[10px] text-gray-500 mt-0.5">Warm peaches and vibrant orange.</p></div>
             </button>
-
           </div>
         </motion.div>
       </motion.div>
@@ -2283,11 +2614,10 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
 };
 
 // ==========================================
-// 10. MAIN APP ROUTER & FIREBASE LOGIC
+// MAIN APP ROUTER & FIREBASE LOGIC
 // ==========================================
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'light');
-  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeUniverse, setActiveUniverse] = useState(null);
@@ -2299,7 +2629,6 @@ function App() {
   const [bucketList, setBucketList] = useState([]);
   const [promises, setPromises] = useState([]);
   const [boardItems, setBoardItems] = useState([]);
-  
   const [loading, setLoading] = useState(false);
   
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
@@ -2318,9 +2647,7 @@ function App() {
       setLoading(false);
       return;
     }
-
     setLoading(true);
-
     const fetchData = async () => {
       try {
         const fetchAndSort = async (colName, sortField = 'id') => {
@@ -2329,7 +2656,6 @@ function App() {
           const data = snap.docs.map(doc => ({ firestoreId: doc.id, id: doc.id, ...doc.data() }));
           return data.sort((a, b) => (b[sortField] > a[sortField] ? 1 : -1));
         };
-
         setMemories(await fetchAndSort('memories'));
         setLetters(await fetchAndSort('letters', 'createdAt'));
         setQuotes(await fetchAndSort('quotes', 'timestamp'));
@@ -2337,13 +2663,8 @@ function App() {
         setBucketList(await fetchAndSort('bucketlist'));
         setPromises(await fetchAndSort('promises'));
         setBoardItems(await fetchAndSort('moodboard'));
-      } catch (err) {
-        console.error("Error fetching data: ", err);
-      } finally {
-        setLoading(false);
-      }
+      } catch (err) { console.error("Error fetching data: ", err); } finally { setLoading(false); }
     };
-    
     fetchData();
   }, [isAuthenticated, activeUniverse]);
 
@@ -2352,11 +2673,9 @@ function App() {
       const imagesBase64 = [];
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
         for (const file of newMemoryData.imgFiles) {
-          const base64 = await fileToBase64(file);
-          imagesBase64.push(base64);
+          imagesBase64.push(await fileToBase64(file));
         }
       }
-
       let voiceBase64 = '';
       if (newMemoryData.voiceBlob) voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
 
@@ -2364,21 +2683,19 @@ function App() {
         title: newMemoryData.title,
         date: newMemoryData.date || '',
         location: newMemoryData.location || '',
+        lat: newMemoryData.lat || null, 
+        lng: newMemoryData.lng || null, 
         description: newMemoryData.description || '',
         images: imagesBase64, 
         voiceNote: voiceBase64,
         id: Date.now(),
         universeId: activeUniverse 
       };
-
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
       setMemories(prev => [{ ...finalMemory, firestoreId: docRef.id }, ...prev]);
       sendInstantNotification("Memory", finalMemory.title);
       return true;
-    } catch (err) {
-      showAlert("Upload Failed", `Memory upload failed! Reason: ${err.message}`);
-      return false;
-    }
+    } catch (err) { showAlert("Upload Failed", `Memory upload failed! Reason: ${err.message}`); return false; }
   };
 
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
@@ -2389,49 +2706,26 @@ function App() {
   const triggerDeletePromise = (id) => setConfirmModal({ isOpen: true, id, type: 'promise', title: 'Delete Note?', message: 'Are you sure you want to permanently remove this sweet note?' });
 
   const editMemory = async (id, updatedFields) => {
-    try {
-      await updateDoc(doc(db, "memories", id), updatedFields);
-      setMemories(prev => prev.map(m => m.firestoreId === id ? { ...m, ...updatedFields } : m));
-    } catch (err) { console.error(err); }
+    try { await updateDoc(doc(db, "memories", id), updatedFields); setMemories(prev => prev.map(m => m.firestoreId === id ? { ...m, ...updatedFields } : m)); } catch (err) { console.error(err); }
   };
 
   const editLetter = async (id, updatedFields) => {
-    try {
-      await updateDoc(doc(db, "letters", id), updatedFields);
-      setLetters(prev => prev.map(l => l.firestoreId === id ? { ...l, ...updatedFields } : l));
-    } catch (err) { console.error(err); }
+    try { await updateDoc(doc(db, "letters", id), updatedFields); setLetters(prev => prev.map(l => l.firestoreId === id ? { ...l, ...updatedFields } : l)); } catch (err) { console.error(err); }
   };
 
   const handleConfirmAction = async () => {
     const { type, id } = confirmModal;
     if (!id) return;
-    
     try {
-      if (type === 'memory') {
-        await deleteDoc(doc(db, "memories", id));
-        setMemories(prev => prev.filter(m => m.firestoreId !== id));
-      } else if (type === 'letter') {
-        await deleteDoc(doc(db, "letters", id));
-        setLetters(prev => prev.filter(l => l.firestoreId !== id));
-      } else if (type === 'gallery') {
-        await deleteDoc(doc(db, "gallery", id));
-        setGalleryPhotos(prev => prev.filter(p => p.id !== id));
-      } else if (type === 'quote') {
-        await deleteDoc(doc(db, "quotes", id));
-        setQuotes(prev => prev.filter(q => q.id !== id));
-      } else if (type === 'goal') {
-        await deleteDoc(doc(db, "bucketlist", id));
-        setBucketList(prev => prev.filter(g => g.id !== id));
-      } else if (type === 'promise') {
-        await deleteDoc(doc(db, "promises", id));
-        setPromises(prev => prev.filter(p => p.id !== id));
-      }
+      if (type === 'memory') { await deleteDoc(doc(db, "memories", id)); setMemories(prev => prev.filter(m => m.firestoreId !== id)); } 
+      else if (type === 'letter') { await deleteDoc(doc(db, "letters", id)); setLetters(prev => prev.filter(l => l.firestoreId !== id)); } 
+      else if (type === 'gallery') { await deleteDoc(doc(db, "gallery", id)); setGalleryPhotos(prev => prev.filter(p => p.id !== id)); } 
+      else if (type === 'quote') { await deleteDoc(doc(db, "quotes", id)); setQuotes(prev => prev.filter(q => q.id !== id)); } 
+      else if (type === 'goal') { await deleteDoc(doc(db, "bucketlist", id)); setBucketList(prev => prev.filter(g => g.id !== id)); } 
+      else if (type === 'promise') { await deleteDoc(doc(db, "promises", id)); setPromises(prev => prev.filter(p => p.id !== id)); }
       setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' }); 
-    } catch (err) { 
-      console.error("Error deleting item: ", err); 
-    }
+    } catch (err) { console.error("Error deleting item: ", err); }
   };
-
 
   const addLetter = async (newLetterData) => {
     try {
@@ -2440,10 +2734,7 @@ function App() {
       setLetters(prev => [{ firestoreId: docRef.id, ...finalLetter }, ...prev]);
       sendInstantNotification("Love Letter", finalLetter.title);
       return true;
-    } catch (err) {
-      showAlert("Image Too Large", "Attached image is too large! Try a smaller picture.");
-      return false;
-    }
+    } catch (err) { showAlert("Image Too Large", "Attached image is too large! Try a smaller picture."); return false; }
   };
 
   const addGalleryPhotos = async (newPhoto) => {
@@ -2512,51 +2803,37 @@ function App() {
     </>
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-        <GlobalThemeStyles />
-        <div className="animate-pulse text-[var(--color-primary)] text-xl font-serif">Syncing Universe {activeUniverse}... ✨</div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+      <GlobalThemeStyles />
+      <div className="animate-pulse text-[var(--color-primary)] text-xl font-serif">Syncing Universe {activeUniverse}... ✨</div>
+    </div>
+  );
 
   return (
     <BrowserRouter>
       <GlobalThemeStyles />
-      <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500">
+      <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500 pb-20">
         
         <DashboardLayout theme={theme}>
           <Routes>
             <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} theme={theme} />} />
             <Route path="/timeline" element={<Timeline memories={memories} />} />
-            <Route path="/places" element={<LovelyMap memories={memories} />} />
+            <Route path="/places" element={<LovelyMap memories={memories} theme={theme} />} />
             <Route path="/create-memory" element={<CreateMemory onAddMemory={addMemory} showAlert={showAlert} />} />
-            
             <Route path="/gallery" element={<PolaroidGallery galleryPhotos={galleryPhotos} memories={memories} onAddPhotos={addGalleryPhotos} deleteGalleryPhoto={triggerDeleteGalleryPhoto} />} />
-            
             <Route path="/letters" element={<Letters letters={letters} deleteLetter={triggerDeleteLetter} editLetter={editLetter} />} />
             <Route path="/create-letter" element={<CreateLetter onAddLetter={addLetter} showAlert={showAlert} />} />
-            
             <Route path="/memories" element={<Memories memories={memories} deleteMemory={triggerDeleteMemory} editMemory={editMemory} />} />
-            
             <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} currentUser={currentUser} />} />
-            
             <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
             <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
-
-            <Route path="/settings" element={
-              <SettingsPage 
-                theme={theme} setTheme={setTheme}
-                activeUniverse={activeUniverse}
-                quotes={quotes} deleteQuote={triggerDeleteQuote}
-                showAlert={showAlert}
-              />
-            } />
+            <Route path="/settings" element={<SettingsPage theme={theme} setTheme={setTheme} activeUniverse={activeUniverse} quotes={quotes} deleteQuote={triggerDeleteQuote} showAlert={showAlert} />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
           </Routes>
         </DashboardLayout>
 
-        {/* GLOBAL MODALS */}
         <DeleteConfirmModal 
           isOpen={confirmModal.isOpen}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
