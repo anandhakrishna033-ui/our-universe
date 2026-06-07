@@ -919,7 +919,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
     </div>
   );
 };
-
 // ==========================================
 // 6. ALL MEMORIES PAGE
 // ==========================================
@@ -1023,7 +1022,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
       {/* FULL SCREEN READING SLIDER MODAL */}
       <AnimatePresence>
         {selectedMemory && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden" onClick={closeMemory}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden" onClick={closeMemory}>
             
             {!isEditing && memories.length > 1 && (
               <>
@@ -1083,16 +1082,16 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </>
                   )}
 
-                  {/* LAYOUT 2: CINEMATIC GLASS */}
+                  {/* LAYOUT 2: CINEMATIC GLASS (Fixed Scrolling) */}
                   {selectedMemory.layoutStyle === 'cinematic' && (
-                    <div className="relative min-h-[80vh] flex flex-col justify-end p-8 md:p-12 overflow-hidden">
+                    <div className="relative min-h-[80vh] flex flex-col justify-end p-8 md:p-12">
                        {selectedMemory.images && selectedMemory.images.length > 0 && (
-                         <div className="absolute inset-0 z-0">
+                         <div className="absolute inset-0 z-0 h-full">
                            <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Background" />
-                           <div className="absolute inset-0 bg-black/40 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
+                           <div className="absolute inset-0 bg-black/40 bg-gradient-to-t from-black/90 via-black/30 to-black/80"></div>
                          </div>
                        )}
-                       <div className="relative z-10 bg-black/30 backdrop-blur-md border border-white/20 p-8 rounded-3xl text-white shadow-2xl">
+                       <div className="relative z-10 bg-black/30 backdrop-blur-md border border-white/20 p-8 rounded-3xl text-white shadow-2xl mt-auto">
                           <p className="text-rose-300 font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
                           <h2 className="text-4xl md:text-6xl font-serif font-bold leading-tight mb-6">{selectedMemory.title}</h2>
                           <div className="whitespace-pre-wrap text-lg md:text-xl text-gray-200 font-serif leading-relaxed">
@@ -1102,15 +1101,15 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   )}
 
-                  {/* LAYOUT 3: SPLIT STORYBOOK */}
+                  {/* LAYOUT 3: SPLIT STORYBOOK (Fixed Scrolling) */}
                   {selectedMemory.layoutStyle === 'split' && (
                     <div className="flex flex-col md:flex-row min-h-[60vh]">
-                      <div className="w-full md:w-1/2 min-h-[300px] relative bg-gray-100 border-r border-gray-200">
+                      <div className="w-full md:w-1/2 min-h-[300px] md:min-h-full relative bg-gray-100 border-r border-gray-200">
                         {selectedMemory.images && selectedMemory.images.length > 0 ? (
                           <img src={selectedMemory.images[0]} className="absolute inset-0 w-full h-full object-cover" />
                         ) : <div className="absolute inset-0 flex items-center justify-center"><ImageIcon size={48} className="text-gray-300"/></div>}
                       </div>
-                      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center bg-white">
+                      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col bg-white">
                         <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date}</p>
                         <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 leading-tight mb-4">{selectedMemory.title}</h2>
                         {selectedMemory.location && <p className="text-sm text-gray-500 mb-6 flex items-center gap-1"><MapPin size={14} className="text-blue-400" /> {selectedMemory.location}</p>}
@@ -1143,9 +1142,9 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   )}
 
-                  {/* LAYOUT 5: MESSY SCRAPBOOK */}
+                  {/* LAYOUT 5: MESSY SCRAPBOOK (Fixed Scrolling) */}
                   {selectedMemory.layoutStyle === 'scrapbook' && (
-                    <div className="p-8 md:p-12 bg-gray-50 relative overflow-hidden min-h-[70vh]">
+                    <div className="p-8 md:p-12 bg-gray-50 relative min-h-[70vh]">
                       <div className="absolute top-0 right-0 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
                       <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
                       
@@ -1238,7 +1237,6 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
     </div>
   );
 };
-
 // ==========================================
 // 7. TIMELINE & LOVELY MAP PLACES
 // ==========================================
@@ -1380,7 +1378,7 @@ const LovelyMap = ({ memories, theme }) => {
 
   // Dynamic Tile URLs based on your Aesthetic Theme
   const mapTiles = {
-    lavender: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    lavender: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
     beach: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
     sunset: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
     light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
