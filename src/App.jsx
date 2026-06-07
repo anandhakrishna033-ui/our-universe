@@ -920,12 +920,22 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
   );
 };
 // ==========================================
-// 6. ALL MEMORIES PAGE
+// 6. ALL MEMORIES PAGE (Fixed Scrolling + 7 Layouts)
 // ==========================================
 const Memories = ({ memories, deleteMemory, editMemory }) => {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', description: '', location: '', borderStyle: 'border-white', layoutStyle: 'classic' });
+
+  // NEW: Completely lock the background body from scrolling when a memory is open!
+  useEffect(() => {
+    if (currentIndex !== -1) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => { document.body.style.overflow = 'auto'; };
+  }, [currentIndex]);
 
   const openMemory = (idx) => {
     setCurrentIndex(idx);
@@ -977,7 +987,9 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
     { label: "Cinematic Glass", value: "cinematic" },
     { label: "Split Storybook", value: "split" },
     { label: "Vintage Journal", value: "journal" },
-    { label: "Messy Scrapbook", value: "scrapbook" }
+    { label: "Messy Scrapbook", value: "scrapbook" },
+    { label: "Modern Minimal", value: "minimal" }, // NEW
+    { label: "Dark Elegance", value: "dark" }     // NEW
   ];
 
   const selectedMemory = currentIndex >= 0 ? memories[currentIndex] : null;
@@ -1033,26 +1045,30 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
 
             <button onClick={closeMemory} className="absolute top-6 right-6 bg-black/20 text-white hover:bg-black/50 p-3 rounded-full z-50 backdrop-blur-sm transition"><X size={32}/></button>
 
+            {/* FIXED: Modal is now a rigid box (h-[90vh] overflow-hidden). The INSIDES will scroll independently! */}
             <motion.div 
               key={currentIndex}
               initial={{ scale: 0.9, x: 100, opacity: 0 }} 
               animate={{ scale: 1, x: 0, opacity: 1 }} 
               exit={{ scale: 0.9, x: -100, opacity: 0 }} 
               transition={{ type: "spring", bounce: 0.3 }}
-              className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl relative border-[8px] ${selectedMemory.borderStyle || 'border-white'} flex flex-col ${
+              className={`w-full max-w-4xl h-[90vh] overflow-hidden rounded-xl shadow-2xl relative border-[8px] flex flex-col ${selectedMemory.borderStyle || 'border-white'} ${
                 selectedMemory.layoutStyle === 'journal' ? 'bg-[#FFF9E6]' : 
-                selectedMemory.layoutStyle === 'cinematic' ? 'bg-black' : 'bg-[var(--color-bg)]'
+                selectedMemory.layoutStyle === 'cinematic' ? 'bg-black' : 
+                selectedMemory.layoutStyle === 'dark' ? 'bg-gray-900' : 'bg-[var(--color-bg)]'
               }`} 
               onClick={e => e.stopPropagation()}
             >
-              {!isEditing ? (
-                <div className="relative min-h-[60vh] flex flex-col">
-                  <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 bg-white/30 backdrop-blur-md text-gray-900 px-4 py-2 rounded-full font-bold text-sm hover:bg-white shadow-sm transition z-50">Edit Style</button>
+              <button onClick={() => setIsEditing(true)} className={`absolute top-4 right-4 backdrop-blur-md px-4 py-2 rounded-full font-bold text-sm shadow-sm transition z-50 ${selectedMemory.layoutStyle === 'cinematic' || selectedMemory.layoutStyle === 'dark' ? 'bg-white/20 text-white hover:bg-white/40' : 'bg-white/50 text-gray-900 hover:bg-white'}`}>
+                Edit Style
+              </button>
 
+              {!isEditing ? (
+                <>
                   {/* LAYOUT 1: CLASSIC POLAROID */}
                   {(!selectedMemory.layoutStyle || selectedMemory.layoutStyle === 'classic') && (
-                    <>
-                      <div className="relative">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar relative flex flex-col">
+                      <div className="relative shrink-0">
                         {selectedMemory.images && selectedMemory.images.length > 0 ? (
                           <div className="w-full h-72 md:h-96 relative">
                             <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Memory Cover" />
@@ -1060,7 +1076,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                           </div>
                         ) : <div className="h-32 bg-[var(--color-primary)] opacity-10"></div>}
                       </div>
-                      <div className="px-8 md:px-12 pb-12 -mt-16 relative z-10">
+                      <div className="px-8 md:px-12 pb-12 -mt-16 relative z-10 shrink-0">
                         <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white">
                           <div className="flex flex-col items-center text-center mb-8 border-b border-gray-100 pb-8">
                             <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date}</p>
@@ -1079,37 +1095,42 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                           )}
                         </div>
                       </div>
-                    </>
-                  )}
-
-                  {/* LAYOUT 2: CINEMATIC GLASS (Fixed Scrolling) */}
-                  {selectedMemory.layoutStyle === 'cinematic' && (
-                    <div className="relative min-h-[80vh] flex flex-col justify-end p-8 md:p-12">
-                       {selectedMemory.images && selectedMemory.images.length > 0 && (
-                         <div className="absolute inset-0 z-0 h-full">
-                           <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Background" />
-                           <div className="absolute inset-0 bg-black/40 bg-gradient-to-t from-black/90 via-black/30 to-black/80"></div>
-                         </div>
-                       )}
-                       <div className="relative z-10 bg-black/30 backdrop-blur-md border border-white/20 p-8 rounded-3xl text-white shadow-2xl mt-auto">
-                          <p className="text-rose-300 font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
-                          <h2 className="text-4xl md:text-6xl font-serif font-bold leading-tight mb-6">{selectedMemory.title}</h2>
-                          <div className="whitespace-pre-wrap text-lg md:text-xl text-gray-200 font-serif leading-relaxed">
-                            {selectedMemory.description || <span className="italic opacity-60">No story written.</span>}
-                          </div>
-                       </div>
                     </div>
                   )}
 
-                  {/* LAYOUT 3: SPLIT STORYBOOK (Fixed Scrolling) */}
+                  {/* LAYOUT 2: CINEMATIC GLASS (Fixed Background, Scrolling Text!) */}
+                  {selectedMemory.layoutStyle === 'cinematic' && (
+                    <>
+                      {selectedMemory.images && selectedMemory.images.length > 0 && (
+                        <div className="absolute inset-0 z-0 pointer-events-none">
+                          <img src={selectedMemory.images[0]} className="w-full h-full object-cover" alt="Background" />
+                          <div className="absolute inset-0 bg-black/40 bg-gradient-to-t from-black/95 via-black/40 to-black/10"></div>
+                        </div>
+                      )}
+                      <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar flex flex-col p-6 md:p-10">
+                         {/* Invisible spacer pushes text down over the image */}
+                         <div className="min-h-[40vh] md:min-h-[50vh] shrink-0"></div>
+                         
+                         <div className="bg-black/40 backdrop-blur-md border border-white/20 p-8 rounded-3xl text-white shadow-2xl shrink-0 mt-auto">
+                            <p className="text-rose-300 font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                            <h2 className="text-4xl md:text-6xl font-serif font-bold leading-tight mb-6">{selectedMemory.title}</h2>
+                            <div className="whitespace-pre-wrap text-lg md:text-xl text-gray-200 font-serif leading-relaxed">
+                              {selectedMemory.description || <span className="italic opacity-60">No story written.</span>}
+                            </div>
+                         </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* LAYOUT 3: SPLIT STORYBOOK */}
                   {selectedMemory.layoutStyle === 'split' && (
-                    <div className="flex flex-col md:flex-row min-h-[60vh]">
-                      <div className="w-full md:w-1/2 min-h-[300px] md:min-h-full relative bg-gray-100 border-r border-gray-200">
+                    <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                      <div className="w-full md:w-1/2 h-64 md:h-full relative bg-gray-100 border-r border-gray-200 shrink-0">
                         {selectedMemory.images && selectedMemory.images.length > 0 ? (
                           <img src={selectedMemory.images[0]} className="absolute inset-0 w-full h-full object-cover" />
                         ) : <div className="absolute inset-0 flex items-center justify-center"><ImageIcon size={48} className="text-gray-300"/></div>}
                       </div>
-                      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col bg-white">
+                      <div className="w-full md:w-1/2 flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12 bg-white flex flex-col">
                         <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date}</p>
                         <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 leading-tight mb-4">{selectedMemory.title}</h2>
                         {selectedMemory.location && <p className="text-sm text-gray-500 mb-6 flex items-center gap-1"><MapPin size={14} className="text-blue-400" /> {selectedMemory.location}</p>}
@@ -1122,16 +1143,16 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
 
                   {/* LAYOUT 4: VINTAGE JOURNAL */}
                   {selectedMemory.layoutStyle === 'journal' && (
-                    <div className="p-8 md:p-14 relative" style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, rgba(0,0,0,0.05) 31px, rgba(0,0,0,0.05) 32px)'}}>
-                      <div className="text-center mb-10">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-14 relative" style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, rgba(0,0,0,0.05) 31px, rgba(0,0,0,0.05) 32px)'}}>
+                      <div className="text-center mb-10 shrink-0">
                         <h2 className="text-4xl md:text-5xl font-serif italic text-gray-800 mb-4">{selectedMemory.title}</h2>
                         <p className="text-gray-500 font-serif font-bold uppercase tracking-widest text-sm border-y border-gray-300 py-2 inline-block px-8">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
                       </div>
-                      <div className="whitespace-pre-wrap text-xl leading-[32px] text-gray-800 mb-10 px-4 md:px-8" style={{ fontFamily: "'Georgia', serif" }}>
+                      <div className="whitespace-pre-wrap text-xl leading-[32px] text-gray-800 mb-10 px-4 md:px-8 shrink-0" style={{ fontFamily: "'Georgia', serif" }}>
                         {selectedMemory.description || <span className="italic text-gray-400">Dear journal...</span>}
                       </div>
                       {selectedMemory.images && selectedMemory.images.length > 0 && (
-                        <div className="flex flex-wrap justify-center gap-4 px-4">
+                        <div className="flex flex-wrap justify-center gap-4 px-4 shrink-0">
                            {selectedMemory.images.map((img, i) => (
                              <div key={i} className="p-2 bg-white shadow-md border border-gray-200 transform rotate-1 hover:scale-105 transition">
                                <img src={img} className="max-h-64 object-cover" />
@@ -1142,13 +1163,13 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   )}
 
-                  {/* LAYOUT 5: MESSY SCRAPBOOK (Fixed Scrolling) */}
+                  {/* LAYOUT 5: MESSY SCRAPBOOK */}
                   {selectedMemory.layoutStyle === 'scrapbook' && (
-                    <div className="p-8 md:p-12 bg-gray-50 relative min-h-[70vh]">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
-                      <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12 bg-gray-50 relative">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 pointer-events-none"></div>
+                      <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 pointer-events-none"></div>
                       
-                      <div className="flex flex-wrap justify-center gap-4 mb-12 relative z-10 pt-8">
+                      <div className="flex flex-wrap justify-center gap-4 mb-12 relative z-10 pt-8 shrink-0">
                         {selectedMemory.images && selectedMemory.images.length > 0 ? (
                            selectedMemory.images.map((img, i) => {
                              const tilt = (i % 2 === 0 ? 1 : -1) * ((i * 3) + 4);
@@ -1162,7 +1183,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                         ) : <div className="p-10 border-4 border-dashed border-gray-300 rounded-xl text-gray-400 font-bold rotate-2">Needs Photos!</div>}
                       </div>
                       
-                      <div className="relative z-10 bg-white/60 backdrop-blur-md p-8 rounded-2xl shadow-sm border border-white max-w-2xl mx-auto">
+                      <div className="relative z-10 bg-white/60 backdrop-blur-md p-8 rounded-2xl shadow-sm border border-white max-w-2xl mx-auto shrink-0">
                         <h2 className="text-3xl font-bold text-[#8B1235] mb-2">{selectedMemory.title}</h2>
                         <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-6">{selectedMemory.date} | {selectedMemory.location}</p>
                         <div className="whitespace-pre-wrap text-xl leading-relaxed text-gray-700" style={{ fontFamily: "'Comic Sans MS', cursive" }}>
@@ -1172,17 +1193,55 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   )}
 
+                  {/* LAYOUT 6: MODERN MINIMAL */}
+                  {selectedMemory.layoutStyle === 'minimal' && (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar bg-white flex flex-col">
+                      {selectedMemory.images?.[0] && (
+                        <div className="w-full h-64 md:h-80 shrink-0">
+                          <img src={selectedMemory.images[0]} className="w-full h-full object-cover grayscale-[30%]" />
+                        </div>
+                      )}
+                      <div className="max-w-3xl mx-auto w-full p-10 md:p-16 text-center shrink-0">
+                        <p className="text-gray-400 tracking-[0.3em] uppercase text-xs mb-6">{selectedMemory.date} {selectedMemory.location && `// ${selectedMemory.location}`}</p>
+                        <h2 className="text-4xl md:text-5xl font-light text-gray-900 mb-10 tracking-tight">{selectedMemory.title}</h2>
+                        <div className="w-12 h-px bg-gray-300 mx-auto mb-10"></div>
+                        <div className="text-lg md:text-xl text-gray-600 font-sans leading-loose text-left whitespace-pre-wrap">
+                          {selectedMemory.description || <span className="italic text-gray-300">No content.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* LAYOUT 7: DARK ELEGANCE */}
+                  {selectedMemory.layoutStyle === 'dark' && (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-900 text-gray-100 flex flex-col p-6 md:p-12">
+                      <div className="border border-gray-700/50 p-6 md:p-12 rounded-3xl bg-gray-800/50 backdrop-blur-sm shrink-0 shadow-2xl">
+                        <p className="text-amber-500/80 font-serif italic mb-3 text-center">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                        <h2 className="text-3xl md:text-5xl font-serif text-amber-50 text-center mb-10">{selectedMemory.title}</h2>
+                        
+                        {selectedMemory.images?.[0] && (
+                          <div className="w-full h-72 md:h-[28rem] rounded-xl overflow-hidden border-2 border-gray-700 mb-10 shadow-2xl">
+                            <img src={selectedMemory.images[0]} className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
+                          </div>
+                        )}
+                        <div className="prose prose-invert max-w-none text-gray-300 font-serif text-lg leading-loose whitespace-pre-wrap">
+                          {selectedMemory.description || <span className="italic text-gray-600">No story written.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* GLOBAL AUDIO PLAYER AT BOTTOM */}
-                  {selectedMemory.voiceNote && <div className="p-8 border-t border-black/5 bg-white/50"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
-                </div>
+                  {selectedMemory.voiceNote && <div className="p-8 border-t border-black/10 bg-[var(--color-bg)] shrink-0"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
+                </>
               ) : (
-                <div className="p-8 space-y-8 bg-white/95 backdrop-blur-md">
-                  <div className="flex items-center justify-between border-b pb-4">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12 space-y-8 bg-white/95 backdrop-blur-md">
+                  <div className="flex items-center justify-between border-b pb-4 shrink-0">
                     <h3 className="text-2xl font-serif font-bold text-[var(--color-primary)]">Edit Memory Styling</h3>
                     <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-800"><X size={24}/></button>
                   </div>
                   
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-4 shrink-0">
                     <div>
                       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Title</label>
                       <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-bold text-xl outline-none focus:border-[var(--color-primary)] bg-gray-50" />
@@ -1196,7 +1255,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   </div>
 
-                  <div>
+                  <div className="shrink-0">
                     <label className="text-xs font-bold text-[var(--color-primary)] uppercase tracking-wider block mb-2">1. Choose Layout Style</label>
                     <div className="flex flex-wrap gap-2 pb-2">
                       {layoutOptions.map(l => (
@@ -1207,7 +1266,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   </div>
 
-                  <div>
+                  <div className="shrink-0">
                     <label className="text-xs font-bold text-[var(--color-primary)] uppercase tracking-wider block mb-2">2. Choose Outer Border Color</label>
                     <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar">
                       {borderOptions.map(b => (
@@ -1219,12 +1278,12 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   </div>
 
-                  <div>
+                  <div className="shrink-0">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Our Story</label>
                     <textarea rows="6" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-serif text-lg outline-none focus:border-[var(--color-primary)] bg-gray-50" />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-6 border-t">
+                  <div className="flex justify-end gap-3 pt-6 border-t shrink-0">
                     <button onClick={() => setIsEditing(false)} className="px-6 py-3 font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancel</button>
                     <button onClick={handleSaveEdit} className="px-8 py-3 font-bold bg-[var(--color-primary)] text-white rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-transform hover:scale-105">Save Changes</button>
                   </div>
