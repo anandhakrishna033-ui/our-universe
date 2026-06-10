@@ -375,18 +375,36 @@ const AuthGateway = ({ onUnlock }) => {
   );
 };
 
-// Helper to upload a raw file to Firebase Storage and get the URL back
-  const uploadFileToStorage = async (file, folderPath) => {
-    if (!file) return null;
-    
-    // Creates a unique file path: e.g., memories/UNIVERSE-123/1680000000_photo.jpg
-    const fileRef = ref(storage, `${folderPath}/${activeUniverse}/${Date.now()}_${file.name || 'upload.jpg'}`);
-    
-    // Upload the physical file
-    await uploadBytes(fileRef, file);
-    
-    // Retrieve and return the public URL
-    return await getDownloadURL(fileRef);
+// --- NEW: COMPLETELY FREE CLOUDINARY UPLOAD HELPER ---
+  const uploadToCloudinary = async (fileOrBlob, resourceType = 'image') => {
+    if (!fileOrBlob) return null;
+
+    // REPLACE THESE TWO STRINGS WITH YOUR COPIED CODES FROM YOUR DASHBOARD
+    const CLOUD_NAME = "dwq5ldt3m";
+    const UPLOAD_PRESET = "m0l4rdft";
+
+    const formData = new FormData();
+    formData.append('file', fileOrBlob);
+    formData.append('upload_preset', UPLOAD_PRESET);
+
+    try {
+      // resourceType can be 'image' or 'video' (Cloudinary treats audio blobs as video files)
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.secure_url) {
+        return data.secure_url; // Returns a tiny web link: https://res.cloudinary.com/...
+      } else {
+        console.error("Cloudinary Error:", data.error?.message);
+        return null;
+      }
+    } catch (err) {
+      console.error("Network upload failure:", err);
+      return null;
+    }
   };
 // ==========================================
 // PROFESSIONAL & PLAY STORE COMPLIANT PAGES
@@ -2740,25 +2758,26 @@ function App() {
 
   const addMemory = async (newMemoryData) => {
     try {
+      triggerHaptic('heavy');
       const imageUrls = [];
       
-      // 1. Upload Images to Storage
+      // 1. Upload Images to Cloudinary
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
-        // Run all uploads in parallel for maximum speed
         const uploadPromises = newMemoryData.imgFiles.map(file => 
-          uploadFileToStorage(file, 'memories')
+          uploadToCloudinary(file, 'image')
         );
         const resolvedUrls = await Promise.all(uploadPromises);
         imageUrls.push(...resolvedUrls.filter(url => url !== null));
       }
 
-      // 2. Upload Voice Note to Storage
+      // 2. Upload Voice Note to Cloudinary
       let voiceUrl = '';
       if (newMemoryData.voiceBlob) {
-        voiceUrl = await uploadFileToStorage(newMemoryData.voiceBlob, 'voice_notes');
+        // Cloudinary processes audio files under the 'video' API endpoint
+        voiceUrl = await uploadToCloudinary(newMemoryData.voiceBlob, 'video');
       }
 
-      // 3. Save the lightweight URLs to Firestore
+      // 3. Save only the clean URLs to your free Firestore Database
       const finalMemory = {
         title: newMemoryData.title,
         date: newMemoryData.date || '',
@@ -2766,7 +2785,7 @@ function App() {
         lat: newMemoryData.lat || null, 
         lng: newMemoryData.lng || null, 
         description: newMemoryData.description || '',
-        images: imageUrls, // No more Base64! Just clean URLs.
+        images: imageUrls, 
         voiceNote: voiceUrl,
         id: Date.now(),
         universeId: activeUniverse 
@@ -2777,12 +2796,10 @@ function App() {
       
       return true;
     } catch (err) { 
-      console.error("Upload Error:", err);
-      // If you have your showAlert function, you can call it here
+      showAlert("Upload Failed", "Could not complete memory save file routing.");
       return false; 
     }
   };
-
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
   const triggerDeleteLetter = (id) => setConfirmModal({ isOpen: true, id, type: 'letter', title: 'Delete Letter?', message: 'Are you sure you want to permanently delete this letter?' });
   const triggerDeleteGalleryPhoto = (id) => setConfirmModal({ isOpen: true, id, type: 'gallery', title: 'Remove Photo?', message: 'Are you sure you want to remove this beautiful photo from the gallery?' });
