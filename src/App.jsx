@@ -2727,15 +2727,26 @@ function App() {
 
   const addMemory = async (newMemoryData) => {
     try {
+      // If you are using the haptics we added, keep this! Otherwise, you can remove it.
+      if (window.navigator && window.navigator.vibrate) navigator.vibrate([50, 100, 50]); 
+
       const imagesBase64 = [];
+      
+      // 1. Convert physical files back to Base64 strings
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
         for (const file of newMemoryData.imgFiles) {
-          imagesBase64.push(await fileToBase64(file));
+          const base64String = await fileToBase64(file);
+          imagesBase64.push(base64String);
         }
       }
-      let voiceBase64 = '';
-      if (newMemoryData.voiceBlob) voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
 
+      // 2. Convert Voice Note to Base64 (if it exists)
+      let voiceBase64 = '';
+      if (newMemoryData.voiceBlob) {
+        voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
+      }
+
+      // 3. Save to Firestore
       const finalMemory = {
         title: newMemoryData.title,
         date: newMemoryData.date || '',
@@ -2743,18 +2754,21 @@ function App() {
         lat: newMemoryData.lat || null, 
         lng: newMemoryData.lng || null, 
         description: newMemoryData.description || '',
-        images: imagesBase64, 
+        images: imagesBase64, // Successfully saving the Base64 strings!
         voiceNote: voiceBase64,
         id: Date.now(),
         universeId: activeUniverse 
       };
+
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
       setMemories(prev => [{ ...finalMemory, firestoreId: docRef.id }, ...prev]);
-      sendInstantNotification("Memory", finalMemory.title);
+      
       return true;
-    } catch (err) { showAlert("Upload Failed", `Memory upload failed! Reason: ${err.message}`); return false; }
+    } catch (err) { 
+      console.error("Upload Failed:", err);
+      return false; 
+    }
   };
-
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
   const triggerDeleteLetter = (id) => setConfirmModal({ isOpen: true, id, type: 'letter', title: 'Delete Letter?', message: 'Are you sure you want to permanently delete this letter?' });
   const triggerDeleteGalleryPhoto = (id) => setConfirmModal({ isOpen: true, id, type: 'gallery', title: 'Remove Photo?', message: 'Are you sure you want to remove this beautiful photo from the gallery?' });
