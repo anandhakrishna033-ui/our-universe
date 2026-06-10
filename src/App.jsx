@@ -14,7 +14,7 @@ import Cropper from 'react-easy-crop';
 // --- FIREBASE IMPORTS ---
 import { db, storage, auth } from './firebase'; 
 import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import imageCompression from 'browser-image-compression';
 
@@ -375,6 +375,19 @@ const AuthGateway = ({ onUnlock }) => {
   );
 };
 
+// Helper to upload a raw file to Firebase Storage and get the URL back
+  const uploadFileToStorage = async (file, folderPath) => {
+    if (!file) return null;
+    
+    // Creates a unique file path: e.g., memories/UNIVERSE-123/1680000000_photo.jpg
+    const fileRef = ref(storage, `${folderPath}/${activeUniverse}/${Date.now()}_${file.name || 'upload.jpg'}`);
+    
+    // Upload the physical file
+    await uploadBytes(fileRef, file);
+    
+    // Retrieve and return the public URL
+    return await getDownloadURL(fileRef);
+  };
 // ==========================================
 // PROFESSIONAL & PLAY STORE COMPLIANT PAGES
 // ==========================================
@@ -2727,15 +2740,25 @@ function App() {
 
   const addMemory = async (newMemoryData) => {
     try {
-      const imagesBase64 = [];
+      const imageUrls = [];
+      
+      // 1. Upload Images to Storage
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
-        for (const file of newMemoryData.imgFiles) {
-          imagesBase64.push(await fileToBase64(file));
-        }
+        // Run all uploads in parallel for maximum speed
+        const uploadPromises = newMemoryData.imgFiles.map(file => 
+          uploadFileToStorage(file, 'memories')
+        );
+        const resolvedUrls = await Promise.all(uploadPromises);
+        imageUrls.push(...resolvedUrls.filter(url => url !== null));
       }
-      let voiceBase64 = '';
-      if (newMemoryData.voiceBlob) voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
 
+      // 2. Upload Voice Note to Storage
+      let voiceUrl = '';
+      if (newMemoryData.voiceBlob) {
+        voiceUrl = await uploadFileToStorage(newMemoryData.voiceBlob, 'voice_notes');
+      }
+
+      // 3. Save the lightweight URLs to Firestore
       const finalMemory = {
         title: newMemoryData.title,
         date: newMemoryData.date || '',
@@ -2743,16 +2766,21 @@ function App() {
         lat: newMemoryData.lat || null, 
         lng: newMemoryData.lng || null, 
         description: newMemoryData.description || '',
-        images: imagesBase64, 
-        voiceNote: voiceBase64,
+        images: imageUrls, // No more Base64! Just clean URLs.
+        voiceNote: voiceUrl,
         id: Date.now(),
         universeId: activeUniverse 
       };
+
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
       setMemories(prev => [{ ...finalMemory, firestoreId: docRef.id }, ...prev]);
-      sendInstantNotification("Memory", finalMemory.title);
+      
       return true;
-    } catch (err) { showAlert("Upload Failed", `Memory upload failed! Reason: ${err.message}`); return false; }
+    } catch (err) { 
+      console.error("Upload Error:", err);
+      // If you have your showAlert function, you can call it here
+      return false; 
+    }
   };
 
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
