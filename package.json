@@ -12,6 +12,7 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@tailwindcss/vite": "^4.3.0",
+    "@use-gesture/react": "^10.3.1",
     "browser-image-compression": "^2.0.2",
     "firebase": "^12.13.0",
     "framer-motion": "^12.40.0",
@@ -23,7 +24,7 @@
     "react-easy-crop": "^5.5.7",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.15.1",
-    "react-use": "^17.6.0",
+    "react-use": "^13.14.3",
     "react-zoom-pan-pinch": "^4.0.3",
     "tailwindcss": "^4.3.0"
   },
