@@ -16,7 +16,7 @@ export default defineConfig({
         description: 'Our private digital scrapbook and memories.',
         theme_color: '#8B1235',
         background_color: '#FCF8F9',
-        display: 'standalone', // RESTORED: Keeps mobile status bar (clock/battery) visible!
+        display: 'fullscreen', // RESTORED: Keeps mobile status bar (clock/battery) visible!
         orientation: 'portrait',
         icons: [
           {
