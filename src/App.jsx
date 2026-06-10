@@ -14,7 +14,7 @@ import Cropper from 'react-easy-crop';
 // --- FIREBASE IMPORTS ---
 import { db, storage, auth } from './firebase'; 
 import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import imageCompression from 'browser-image-compression';
 
@@ -375,37 +375,6 @@ const AuthGateway = ({ onUnlock }) => {
   );
 };
 
-// --- NEW: COMPLETELY FREE CLOUDINARY UPLOAD HELPER ---
-  const uploadToCloudinary = async (fileOrBlob, resourceType = 'image') => {
-    if (!fileOrBlob) return null;
-
-    // REPLACE THESE TWO STRINGS WITH YOUR COPIED CODES FROM YOUR DASHBOARD
-    const CLOUD_NAME = "dwq5ldt3m";
-    const UPLOAD_PRESET = "m0l4rdft";
-
-    const formData = new FormData();
-    formData.append('file', fileOrBlob);
-    formData.append('upload_preset', UPLOAD_PRESET);
-
-    try {
-      // resourceType can be 'image' or 'video' (Cloudinary treats audio blobs as video files)
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (data.secure_url) {
-        return data.secure_url; // Returns a tiny web link: https://res.cloudinary.com/...
-      } else {
-        console.error("Cloudinary Error:", data.error?.message);
-        return null;
-      }
-    } catch (err) {
-      console.error("Network upload failure:", err);
-      return null;
-    }
-  };
 // ==========================================
 // PROFESSIONAL & PLAY STORE COMPLIANT PAGES
 // ==========================================
@@ -2758,26 +2727,15 @@ function App() {
 
   const addMemory = async (newMemoryData) => {
     try {
-      triggerHaptic('heavy');
-      const imageUrls = [];
-      
-      // 1. Upload Images to Cloudinary
+      const imagesBase64 = [];
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
-        const uploadPromises = newMemoryData.imgFiles.map(file => 
-          uploadToCloudinary(file, 'image')
-        );
-        const resolvedUrls = await Promise.all(uploadPromises);
-        imageUrls.push(...resolvedUrls.filter(url => url !== null));
+        for (const file of newMemoryData.imgFiles) {
+          imagesBase64.push(await fileToBase64(file));
+        }
       }
+      let voiceBase64 = '';
+      if (newMemoryData.voiceBlob) voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
 
-      // 2. Upload Voice Note to Cloudinary
-      let voiceUrl = '';
-      if (newMemoryData.voiceBlob) {
-        // Cloudinary processes audio files under the 'video' API endpoint
-        voiceUrl = await uploadToCloudinary(newMemoryData.voiceBlob, 'video');
-      }
-
-      // 3. Save only the clean URLs to your free Firestore Database
       const finalMemory = {
         title: newMemoryData.title,
         date: newMemoryData.date || '',
@@ -2785,21 +2743,18 @@ function App() {
         lat: newMemoryData.lat || null, 
         lng: newMemoryData.lng || null, 
         description: newMemoryData.description || '',
-        images: imageUrls, 
-        voiceNote: voiceUrl,
+        images: imagesBase64, 
+        voiceNote: voiceBase64,
         id: Date.now(),
         universeId: activeUniverse 
       };
-
       const docRef = await addDoc(collection(db, "memories"), finalMemory);
       setMemories(prev => [{ ...finalMemory, firestoreId: docRef.id }, ...prev]);
-      
+      sendInstantNotification("Memory", finalMemory.title);
       return true;
-    } catch (err) { 
-      showAlert("Upload Failed", "Could not complete memory save file routing.");
-      return false; 
-    }
+    } catch (err) { showAlert("Upload Failed", `Memory upload failed! Reason: ${err.message}`); return false; }
   };
+
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
   const triggerDeleteLetter = (id) => setConfirmModal({ isOpen: true, id, type: 'letter', title: 'Delete Letter?', message: 'Are you sure you want to permanently delete this letter?' });
   const triggerDeleteGalleryPhoto = (id) => setConfirmModal({ isOpen: true, id, type: 'gallery', title: 'Remove Photo?', message: 'Are you sure you want to remove this beautiful photo from the gallery?' });
