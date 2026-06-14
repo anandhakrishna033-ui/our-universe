@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Clock, LogOut } from 'lucide-react'; // Added a few icons for the account section
-import { db } from './firebase'; // Ensure this points to your config
+import { db } from '../../firebase'; // Ensure this points to your config
 import { collection, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const Sidebar = ({ isOpen, setIsOpen, onLogout }) => {
