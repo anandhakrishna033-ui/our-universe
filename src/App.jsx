@@ -13,7 +13,7 @@ import Cropper from 'react-easy-crop';
 
 // --- FIREBASE IMPORTS ---
 import { db, storage, auth } from './firebase'; 
-import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, setDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import imageCompression from 'browser-image-compression';
@@ -228,7 +228,7 @@ const AudioPlayer = ({ src }) => {
 };
 
 // ==========================================
-// 2. TRUE SECURE GATEWAY (Fixed Refresh Bug)
+// 2. TRUE SECURE GATEWAY (UPDATED WITH VISITOR NAME CAPTURE)
 // ==========================================
 const AuthGateway = ({ onUnlock }) => {
   const [authStep, setAuthStep] = useState('LOADING'); 
@@ -242,6 +242,7 @@ const AuthGateway = ({ onUnlock }) => {
   const [savedPin, setSavedPin] = useState(() => localStorage.getItem('personalPin'));
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [visitorName, setVisitorName] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -292,21 +293,54 @@ const AuthGateway = ({ onUnlock }) => {
     setIsLoading(false);
   };
 
+  const logVisitToFirebase = async (nameToLog) => {
+    try {
+      const visitorRef = doc(db, 'visitors', nameToLog.toLowerCase());
+      await setDoc(visitorRef, {
+        name: nameToLog,
+        lastSeen: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error logging visit:", err);
+    }
+  };
+
   const handlePinSubmit = (e) => {
     e.preventDefault();
+    
+    const proceedWithUnlock = () => {
+      const savedName = localStorage.getItem('universe_visitor');
+      if (savedName) {
+        logVisitToFirebase(savedName);
+        sessionStorage.setItem('sessionUnlocked', 'true');
+        onUnlock(user, universeId);
+      } else {
+        setAuthStep('NAME_ENTRY');
+      }
+    };
+
     if (authStep === 'PIN_SETUP') {
       if (pin.length < 4) return setError("PIN must be at least 4 digits.");
       localStorage.setItem('personalPin', pin);
       setSavedPin(pin);
-      sessionStorage.setItem('sessionUnlocked', 'true');
-      onUnlock(user, universeId);
+      proceedWithUnlock();
     } else if (authStep === 'PIN_ENTRY') {
       if (pin === savedPin) {
-        sessionStorage.setItem('sessionUnlocked', 'true');
-        onUnlock(user, universeId);
+        proceedWithUnlock();
       } else { 
         setError("Incorrect PIN."); setPin(''); 
       }
+    }
+  };
+
+  const handleNameSubmit = async (e) => {
+    e.preventDefault();
+    if (visitorName.trim()) {
+      const finalName = visitorName.trim();
+      localStorage.setItem('universe_visitor', finalName);
+      await logVisitToFirebase(finalName);
+      sessionStorage.setItem('sessionUnlocked', 'true');
+      onUnlock(user, universeId);
     }
   };
 
@@ -323,10 +357,10 @@ const AuthGateway = ({ onUnlock }) => {
       <div className="absolute top-[-30%] left-[-30%] w-[500px] h-[500px] bg-pink-200/50 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/60 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-xl border border-white/50 max-w-md w-full relative z-10 text-center">
         <div className="w-16 h-16 bg-rose-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-          {authStep === 'AUTH' ? <Shield size={32} /> : authStep === 'UNIVERSE_SETUP' ? <Sparkles size={32} /> : <Lock size={32} />}
+          {authStep === 'AUTH' ? <Shield size={32} /> : authStep === 'UNIVERSE_SETUP' ? <Sparkles size={32} /> : authStep === 'NAME_ENTRY' ? <Heart size={32} /> : <Lock size={32} />}
         </div>
         <h1 className="text-3xl font-serif text-[var(--color-primary)] mb-2">
-          {authStep === 'AUTH' ? "Our Universe" : authStep === 'UNIVERSE_SETUP' ? "Initialize Universe" : "App Locked"}
+          {authStep === 'AUTH' ? "Our Universe" : authStep === 'UNIVERSE_SETUP' ? "Initialize Universe" : authStep === 'NAME_ENTRY' ? "Who is visiting?" : "App Locked"}
         </h1>
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl mb-4 text-sm font-bold animate-bounce">{error}</div>}
 
@@ -366,6 +400,24 @@ const AuthGateway = ({ onUnlock }) => {
             <input type="password" required maxLength="8" value={pin} onChange={e => setPin(e.target.value)} placeholder={authStep === 'PIN_ENTRY' ? "Enter PIN" : "Create PIN"} className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-2xl tracking-widest text-gray-800 shadow-inner" />
             <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
               {authStep === 'PIN_ENTRY' ? "Unlock App" : "Set PIN & Enter"}
+            </button>
+            <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
+          </form>
+        )}
+
+        {authStep === 'NAME_ENTRY' && (
+          <form onSubmit={handleNameSubmit} className="space-y-4 mt-6">
+            <p className="text-sm text-gray-500 mb-4">What should we call you inside the Universe?</p>
+            <input
+              type="text"
+              required
+              value={visitorName}
+              onChange={e => setVisitorName(e.target.value)}
+              placeholder="Enter your name"
+              className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-xl tracking-wide text-gray-800 shadow-inner"
+            />
+            <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
+              Enter Universe
             </button>
             <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
           </form>
@@ -2691,6 +2743,11 @@ function App() {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '' });
 
+  // --- NEW VISITOR TRACKING STATE ---
+  const [visitors, setVisitors] = useState([]);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [localName, setLocalName] = useState(localStorage.getItem('universe_visitor') || 'Guest');
+
   const showAlert = (title, message) => setAlertState({ isOpen: true, title, message });
 
   useEffect(() => {
@@ -2698,6 +2755,39 @@ function App() {
     document.body.setAttribute('data-theme', theme);
     document.body.style.backgroundColor = 'var(--color-bg)';
   }, [theme]);
+
+  // --- NEW VISITOR LISTENER ---
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const unsubscribe = onSnapshot(collection(db, 'visitors'), (snapshot) => {
+      const visitorData = snapshot.docs.map(doc => doc.data());
+      visitorData.sort((a, b) => (b.lastSeen?.toMillis() || 0) - (a.lastSeen?.toMillis() || 0));
+      setVisitors(visitorData);
+    });
+    return () => unsubscribe();
+  }, [isAuthenticated]);
+
+  const handleSaveName = async () => {
+    if (localName.trim()) {
+      const newName = localName.trim();
+      localStorage.setItem('universe_visitor', newName);
+      setIsEditingName(false);
+      try {
+        const visitorRef = doc(db, 'visitors', newName.toLowerCase());
+        await setDoc(visitorRef, {
+          name: newName,
+          lastSeen: serverTimestamp() 
+        }, { merge: true });
+      } catch (error) {
+        console.error("Error updating name:", error);
+      }
+    }
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "Just now";
+    return timestamp.toDate().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !activeUniverse) {
@@ -2727,7 +2817,6 @@ function App() {
 
   const addMemory = async (newMemoryData) => {
     try {
-      // If you are using the haptics we added, keep this! Otherwise, you can remove it.
       if (window.navigator && window.navigator.vibrate) navigator.vibrate([50, 100, 50]); 
 
       const imagesBase64 = [];
@@ -2754,7 +2843,7 @@ function App() {
         lat: newMemoryData.lat || null, 
         lng: newMemoryData.lng || null, 
         description: newMemoryData.description || '',
-        images: imagesBase64, // Successfully saving the Base64 strings!
+        images: imagesBase64,
         voiceNote: voiceBase64,
         id: Date.now(),
         universeId: activeUniverse 
@@ -2769,6 +2858,7 @@ function App() {
       return false; 
     }
   };
+  
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
   const triggerDeleteLetter = (id) => setConfirmModal({ isOpen: true, id, type: 'letter', title: 'Delete Letter?', message: 'Are you sure you want to permanently delete this letter?' });
   const triggerDeleteGalleryPhoto = (id) => setConfirmModal({ isOpen: true, id, type: 'gallery', title: 'Remove Photo?', message: 'Are you sure you want to remove this beautiful photo from the gallery?' });
@@ -2886,7 +2976,17 @@ function App() {
       <GlobalThemeStyles />
       <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500 pb-20">
         
-        <DashboardLayout theme={theme}>
+        {/* WE PASS ALL THE NEW VISITOR STATE TO DASHBOARD LAYOUT SO SIDEBAR CAN READ IT! */}
+        <DashboardLayout 
+          theme={theme}
+          visitors={visitors}
+          localName={localName}
+          setLocalName={setLocalName}
+          isEditingName={isEditingName}
+          setIsEditingName={setIsEditingName}
+          handleSaveName={handleSaveName}
+          formatTime={formatTime}
+        >
           <Routes>
             <Route path="/" element={<Home memories={memories} quotes={quotes} deleteMemory={triggerDeleteMemory} theme={theme} />} />
             <Route path="/timeline" element={<Timeline memories={memories} />} />
