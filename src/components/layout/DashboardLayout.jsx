@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 
-const DashboardLayout = ({ children, theme }) => {
+const DashboardLayout = ({ children, theme, onAccountClick }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Define background styles based on the current theme
@@ -40,7 +40,13 @@ const DashboardLayout = ({ children, theme }) => {
       <div className={`absolute top-0 left-0 w-[800px] h-[800px] ${orbs.orb1} rounded-full mix-blend-multiply filter blur-[150px] opacity-70 pointer-events-none transition-colors duration-700`}></div>
       <div className={`absolute bottom-0 right-0 w-[600px] h-[600px] ${orbs.orb2} rounded-full mix-blend-multiply filter blur-[150px] opacity-70 pointer-events-none transition-colors duration-700`}></div>
       
-      <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} theme={theme} />
+      {/* --- UPGRADED: PASSING THE ONACCOUNTCLICK PROP TO SIDEBAR --- */}
+      <Sidebar 
+        isOpen={isMobileMenuOpen} 
+        setIsOpen={setIsMobileMenuOpen} 
+        theme={theme} 
+        onAccountClick={onAccountClick} 
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         <Navbar onMenuClick={() => setIsMobileMenuOpen(true)} theme={theme} />
