@@ -23,6 +23,12 @@ import imageCompression from 'browser-image-compression';
 // ==========================================
 const GlobalThemeStyles = () => (
   <style>{`
+    /* NEW: Completely locks the screen background from bouncing */
+    html, body, #root {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
     :root {
       --color-primary: #8B1235;
       --color-primary-hover: #6A0D28;
@@ -2826,10 +2832,31 @@ function App() {
     setIsAuthenticated(false);
   };
 
-  useEffect(() => {
+ useEffect(() => {
+    // 1. Update React / CSS Variables
     localStorage.setItem('appTheme', theme);
     document.body.setAttribute('data-theme', theme);
     document.body.style.backgroundColor = 'var(--color-bg)';
+
+    // 2. NEW: Update the OS Window / PWA Top Bar Color!
+    const topBarColors = {
+      light: '#8B1235',    // Maroon
+      lavender: '#7E57C2', // Deep Violet
+      beach: '#0C4A6E',    // Ocean Blue
+      sunset: '#EA580C'    // Sunset Orange
+    };
+
+    // Find the meta tag in the HTML, or create it if it doesn't exist
+    let metaThemeColor = document.querySelector("meta[name='theme-color']");
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement("meta");
+      metaThemeColor.setAttribute("name", "theme-color");
+      document.head.appendChild(metaThemeColor);
+    }
+    
+    // Apply the correct color to the window bar
+    metaThemeColor.setAttribute("content", topBarColors[theme] || '#8B1235');
+
   }, [theme]);
 
   // --- NEW VISITOR LISTENER ---

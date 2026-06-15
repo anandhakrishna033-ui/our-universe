@@ -53,7 +53,7 @@ const Sidebar = ({ isOpen, setIsOpen, onAccountClick }) => {
         </div>
 
         {/* Navigation & Account Container */}
-        <nav className="flex-1 p-5 flex flex-col overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 p-5 flex flex-col overflow-y-auto overscroll-none custom-scrollbar">
           
           {/* Links Section (Takes up available top space) */}
           <div className="space-y-2 flex-1">

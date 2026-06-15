@@ -51,7 +51,7 @@ const DashboardLayout = ({ children, theme, onAccountClick }) => {
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         <Navbar onMenuClick={() => setIsMobileMenuOpen(true)} theme={theme} />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 scroll-smooth">
+       <main className="flex-1 overflow-x-hidden overflow-y-auto overscroll-none p-4 md:p-8 scroll-smooth">
           {children}
         </main>
       </div>
