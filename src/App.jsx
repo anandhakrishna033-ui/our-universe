@@ -292,17 +292,14 @@ const AuthGateway = ({ onUnlock }) => {
     setIsLoading(false);
   };
 
-  const logVisitToFirebase = async (nameToLog) => {
+ const logVisitToFirebase = async (nameToLog) => {
     try {
-      let deviceId = localStorage.getItem('universe_device_id');
-      if (!deviceId) {
-        deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('universe_device_id', deviceId);
-      }
+      // Use the authenticated Firebase User ID, NOT a random device ID
+      const uniqueUserId = user.uid;
 
-      const visitorRef = doc(db, 'visitors', deviceId);
+      const visitorRef = doc(db, 'visitors', uniqueUserId);
       await setDoc(visitorRef, {
-        deviceId: deviceId,
+        userId: uniqueUserId,
         name: nameToLog,
         universeId: universeId,
         lastSeen: serverTimestamp()
@@ -2863,9 +2860,26 @@ function App() {
     }
   };
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return "Just now";
-    return timestamp.toDate().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+ const formatTime = (timestamp) => {
+    if (!timestamp) return "Online";
+    const date = timestamp.toDate();
+    const now = new Date();
+    const diffMs = now - date;
+    
+    // If active within the last 2 minutes, show exactly as WhatsApp does
+    if (diffMs < 120000) return "Online";
+
+    const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (isToday) return `Today at ${timeStr}`;
+    if (isYesterday) return `Yesterday at ${timeStr}`;
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
   };
 
   useEffect(() => {
