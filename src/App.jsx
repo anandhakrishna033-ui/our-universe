@@ -2819,8 +2819,15 @@ function App() {
   const [visitors, setVisitors] = useState([]);
   const [isEditingName, setIsEditingName] = useState(false);
   const [localName, setLocalName] = useState(localStorage.getItem('universe_visitor') || 'Guest');
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false); 
 
   const showAlert = (title, message) => setAlertState({ isOpen: true, title, message });
+
+  const handleLockUniverse = () => {
+    sessionStorage.removeItem('sessionUnlocked');
+    setIsAccountModalOpen(false);
+    setIsAuthenticated(false);
+  };
 
   useEffect(() => {
     localStorage.setItem('appTheme', theme);
