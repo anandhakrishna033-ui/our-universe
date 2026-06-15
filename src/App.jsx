@@ -29,6 +29,7 @@ const GlobalThemeStyles = () => (
       height: 100%;
       overflow: hidden;
       overscroll-behavior: none;
+    }
     :root {
       --color-primary: #8B1235;
       --color-primary-hover: #6A0D28;
@@ -298,14 +299,17 @@ const AuthGateway = ({ onUnlock }) => {
     setIsLoading(false);
   };
 
- const logVisitToFirebase = async (nameToLog) => {
+  const logVisitToFirebase = async (nameToLog) => {
     try {
-      // Use the authenticated Firebase User ID, NOT a random device ID
-      const uniqueUserId = user.uid;
+      let deviceId = localStorage.getItem('universe_device_id');
+      if (!deviceId) {
+        deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('universe_device_id', deviceId);
+      }
 
-      const visitorRef = doc(db, 'visitors', uniqueUserId);
+      const visitorRef = doc(db, 'visitors', deviceId);
       await setDoc(visitorRef, {
-        userId: uniqueUserId,
+        deviceId: deviceId,
         name: nameToLog,
         universeId: universeId,
         lastSeen: serverTimestamp()
@@ -2832,31 +2836,10 @@ function App() {
     setIsAuthenticated(false);
   };
 
- useEffect(() => {
-    // 1. Update React / CSS Variables
+  useEffect(() => {
     localStorage.setItem('appTheme', theme);
     document.body.setAttribute('data-theme', theme);
     document.body.style.backgroundColor = 'var(--color-bg)';
-
-    // 2. NEW: Update the OS Window / PWA Top Bar Color!
-    const topBarColors = {
-      light: '#8B1235',    // Maroon
-      lavender: '#7E57C2', // Deep Violet
-      beach: '#0C4A6E',    // Ocean Blue
-      sunset: '#EA580C'    // Sunset Orange
-    };
-
-    // Find the meta tag in the HTML, or create it if it doesn't exist
-    let metaThemeColor = document.querySelector("meta[name='theme-color']");
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.setAttribute("name", "theme-color");
-      document.head.appendChild(metaThemeColor);
-    }
-    
-    // Apply the correct color to the window bar
-    metaThemeColor.setAttribute("content", topBarColors[theme] || '#8B1235');
-
   }, [theme]);
 
   // --- NEW VISITOR LISTENER ---
@@ -2887,26 +2870,9 @@ function App() {
     }
   };
 
- const formatTime = (timestamp) => {
-    if (!timestamp) return "Online";
-    const date = timestamp.toDate();
-    const now = new Date();
-    const diffMs = now - date;
-    
-    // If active within the last 2 minutes, show exactly as WhatsApp does
-    if (diffMs < 120000) return "Online";
-
-    const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
-
-    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    if (isToday) return `Today at ${timeStr}`;
-    if (isYesterday) return `Yesterday at ${timeStr}`;
-    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "Just now";
+    return timestamp.toDate().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   useEffect(() => {
