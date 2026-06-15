@@ -226,8 +226,7 @@ const AudioPlayer = ({ src }) => {
     </div>
   );
 };
-
-/// ==========================================
+// ==========================================
 // 2. TRUE SECURE GATEWAY (UPDATED WITH DEVICE ID VISITOR TRACKING)
 // ==========================================
 const AuthGateway = ({ onUnlock }) => {
@@ -295,19 +294,17 @@ const AuthGateway = ({ onUnlock }) => {
 
   const logVisitToFirebase = async (nameToLog) => {
     try {
-      // NEW: Generate or fetch a unique Device ID so names don't overwrite each other
       let deviceId = localStorage.getItem('universe_device_id');
       if (!deviceId) {
         deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('universe_device_id', deviceId);
       }
 
-      // Use deviceId as the document reference instead of the name
       const visitorRef = doc(db, 'visitors', deviceId);
       await setDoc(visitorRef, {
         deviceId: deviceId,
         name: nameToLog,
-        universeId: universeId, // Store universeId so we can filter visitors per universe
+        universeId: universeId,
         lastSeen: serverTimestamp()
       }, { merge: true });
     } catch (err) {
@@ -432,84 +429,10 @@ const AuthGateway = ({ onUnlock }) => {
             <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
           </form>
         )}
-     
-
-  if (authStep === 'LOADING') return <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center font-serif text-[var(--color-primary)] text-xl animate-pulse">Loading Gateway...</div>;
-
-  return (
-    <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
-      <div className="absolute top-[-30%] left-[-30%] w-[500px] h-[500px] bg-pink-200/50 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/60 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-xl border border-white/50 max-w-md w-full relative z-10 text-center">
-        <div className="w-16 h-16 bg-rose-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-          {authStep === 'AUTH' ? <Shield size={32} /> : authStep === 'UNIVERSE_SETUP' ? <Sparkles size={32} /> : authStep === 'NAME_ENTRY' ? <Heart size={32} /> : <Lock size={32} />}
-        </div>
-        <h1 className="text-3xl font-serif text-[var(--color-primary)] mb-2">
-          {authStep === 'AUTH' ? "Our Universe" : authStep === 'UNIVERSE_SETUP' ? "Initialize Universe" : authStep === 'NAME_ENTRY' ? "Who is visiting?" : "App Locked"}
-        </h1>
-        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl mb-4 text-sm font-bold animate-bounce">{error}</div>}
-
-        {authStep === 'AUTH' && (
-          <form onSubmit={handleAuthSubmit} className="space-y-4 mt-6">
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[var(--color-primary)] text-gray-800 shadow-inner" />
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[var(--color-primary)] text-gray-800 shadow-inner" />
-            <button type="submit" disabled={isLoading} className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] shadow-md flex justify-center gap-2 transition-colors">
-              {isLoading ? "Authenticating..." : (isLoginMode ? "Secure Login" : "Create Account")}
-            </button>
-            <p className="text-sm text-gray-500 mt-4 cursor-pointer hover:text-[var(--color-primary)]" onClick={() => setIsLoginMode(!isLoginMode)}>
-              {isLoginMode ? "Need an account? Sign up" : "Have an account? Log in"}
-            </p>
-          </form>
-        )}
-
-        {authStep === 'UNIVERSE_SETUP' && (
-          <div className="space-y-6 mt-6">
-            <p className="text-sm text-gray-500 mb-4">You need a shared space to store memories.</p>
-            <button onClick={() => handleUniverseSetup('CREATE')} disabled={isLoading} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">
-              Create New Universe
-            </button>
-            <div className="relative flex items-center py-2"><div className="flex-grow border-t border-gray-300"></div><span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-bold">OR</span><div className="flex-grow border-t border-gray-300"></div></div>
-            <div>
-              <input type="text" value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="Enter Partner's Universe Code" className="w-full px-5 py-4 rounded-xl bg-white border outline-none text-center font-bold tracking-widest text-gray-800 mb-2 shadow-inner" />
-              <button onClick={() => handleUniverseSetup('JOIN')} disabled={isLoading} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold shadow-md hover:bg-black">
-                Join Existing Universe
-              </button>
-            </div>
-            <p className="text-sm text-red-400 cursor-pointer mt-4" onClick={handleLogout}>Log out</p>
-          </div>
-        )}
-
-        {(authStep === 'PIN_SETUP' || authStep === 'PIN_ENTRY') && (
-          <form onSubmit={handlePinSubmit} className="space-y-4 mt-6">
-            <p className="text-sm text-gray-500 mb-4">{authStep === 'PIN_SETUP' ? "Create a personal 4-digit PIN for this device." : "Enter your PIN to unlock."}</p>
-            <input type="password" required maxLength="8" value={pin} onChange={e => setPin(e.target.value)} placeholder={authStep === 'PIN_ENTRY' ? "Enter PIN" : "Create PIN"} className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-2xl tracking-widest text-gray-800 shadow-inner" />
-            <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
-              {authStep === 'PIN_ENTRY' ? "Unlock App" : "Set PIN & Enter"}
-            </button>
-            <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
-          </form>
-        )}
-
-        {authStep === 'NAME_ENTRY' && (
-          <form onSubmit={handleNameSubmit} className="space-y-4 mt-6">
-            <p className="text-sm text-gray-500 mb-4">What should we call you inside the Universe?</p>
-            <input
-              type="text"
-              required
-              value={visitorName}
-              onChange={e => setVisitorName(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-xl tracking-wide text-gray-800 shadow-inner"
-            />
-            <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
-              Enter Universe
-            </button>
-            <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
-          </form>
-        )}
       </motion.div>
     </div>
   );
-
+};
 
 // ==========================================
 // PROFESSIONAL & PLAY STORE COMPLIANT PAGES
