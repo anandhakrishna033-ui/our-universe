@@ -512,7 +512,7 @@ const AuthGateway = ({ onUnlock }) => {
       </motion.div>
     </div>
   );
-};
+
 
 // ==========================================
 // PROFESSIONAL & PLAY STORE COMPLIANT PAGES
