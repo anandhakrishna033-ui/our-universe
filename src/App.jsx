@@ -432,10 +432,7 @@ const AuthGateway = ({ onUnlock }) => {
             <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
           </form>
         )}
-      </motion.div>
-    </div>
-  );
-};
+     
 
   if (authStep === 'LOADING') return <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center font-serif text-[var(--color-primary)] text-xl animate-pulse">Loading Gateway...</div>;
 
