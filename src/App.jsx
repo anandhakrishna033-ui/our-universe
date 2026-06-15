@@ -227,8 +227,8 @@ const AudioPlayer = ({ src }) => {
   );
 };
 
-// ==========================================
-// 2. TRUE SECURE GATEWAY (UPDATED WITH VISITOR NAME CAPTURE)
+/// ==========================================
+// 2. TRUE SECURE GATEWAY (UPDATED WITH DEVICE ID VISITOR TRACKING)
 // ==========================================
 const AuthGateway = ({ onUnlock }) => {
   const [authStep, setAuthStep] = useState('LOADING'); 
@@ -295,9 +295,19 @@ const AuthGateway = ({ onUnlock }) => {
 
   const logVisitToFirebase = async (nameToLog) => {
     try {
-      const visitorRef = doc(db, 'visitors', nameToLog.toLowerCase());
+      // NEW: Generate or fetch a unique Device ID so names don't overwrite each other
+      let deviceId = localStorage.getItem('universe_device_id');
+      if (!deviceId) {
+        deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('universe_device_id', deviceId);
+      }
+
+      // Use deviceId as the document reference instead of the name
+      const visitorRef = doc(db, 'visitors', deviceId);
       await setDoc(visitorRef, {
+        deviceId: deviceId,
         name: nameToLog,
+        universeId: universeId, // Store universeId so we can filter visitors per universe
         lastSeen: serverTimestamp()
       }, { merge: true });
     } catch (err) {
@@ -349,6 +359,83 @@ const AuthGateway = ({ onUnlock }) => {
     setPin(''); 
     sessionStorage.removeItem('sessionUnlocked'); 
   };
+
+  if (authStep === 'LOADING') return <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center font-serif text-[var(--color-primary)] text-xl animate-pulse">Loading Gateway...</div>;
+
+  return (
+    <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
+      <div className="absolute top-[-30%] left-[-30%] w-[500px] h-[500px] bg-pink-200/50 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/60 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-xl border border-white/50 max-w-md w-full relative z-10 text-center">
+        <div className="w-16 h-16 bg-rose-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+          {authStep === 'AUTH' ? <Shield size={32} /> : authStep === 'UNIVERSE_SETUP' ? <Sparkles size={32} /> : authStep === 'NAME_ENTRY' ? <Heart size={32} /> : <Lock size={32} />}
+        </div>
+        <h1 className="text-3xl font-serif text-[var(--color-primary)] mb-2">
+          {authStep === 'AUTH' ? "Our Universe" : authStep === 'UNIVERSE_SETUP' ? "Initialize Universe" : authStep === 'NAME_ENTRY' ? "Who is visiting?" : "App Locked"}
+        </h1>
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-xl mb-4 text-sm font-bold animate-bounce">{error}</div>}
+
+        {authStep === 'AUTH' && (
+          <form onSubmit={handleAuthSubmit} className="space-y-4 mt-6">
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[var(--color-primary)] text-gray-800 shadow-inner" />
+            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl bg-white border border-pink-100 outline-none focus:border-[var(--color-primary)] text-gray-800 shadow-inner" />
+            <button type="submit" disabled={isLoading} className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] shadow-md flex justify-center gap-2 transition-colors">
+              {isLoading ? "Authenticating..." : (isLoginMode ? "Secure Login" : "Create Account")}
+            </button>
+            <p className="text-sm text-gray-500 mt-4 cursor-pointer hover:text-[var(--color-primary)]" onClick={() => setIsLoginMode(!isLoginMode)}>
+              {isLoginMode ? "Need an account? Sign up" : "Have an account? Log in"}
+            </p>
+          </form>
+        )}
+
+        {authStep === 'UNIVERSE_SETUP' && (
+          <div className="space-y-6 mt-6">
+            <p className="text-sm text-gray-500 mb-4">You need a shared space to store memories.</p>
+            <button onClick={() => handleUniverseSetup('CREATE')} disabled={isLoading} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">
+              Create New Universe
+            </button>
+            <div className="relative flex items-center py-2"><div className="flex-grow border-t border-gray-300"></div><span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-bold">OR</span><div className="flex-grow border-t border-gray-300"></div></div>
+            <div>
+              <input type="text" value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="Enter Partner's Universe Code" className="w-full px-5 py-4 rounded-xl bg-white border outline-none text-center font-bold tracking-widest text-gray-800 mb-2 shadow-inner" />
+              <button onClick={() => handleUniverseSetup('JOIN')} disabled={isLoading} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold shadow-md hover:bg-black">
+                Join Existing Universe
+              </button>
+            </div>
+            <p className="text-sm text-red-400 cursor-pointer mt-4" onClick={handleLogout}>Log out</p>
+          </div>
+        )}
+
+        {(authStep === 'PIN_SETUP' || authStep === 'PIN_ENTRY') && (
+          <form onSubmit={handlePinSubmit} className="space-y-4 mt-6">
+            <p className="text-sm text-gray-500 mb-4">{authStep === 'PIN_SETUP' ? "Create a personal 4-digit PIN for this device." : "Enter your PIN to unlock."}</p>
+            <input type="password" required maxLength="8" value={pin} onChange={e => setPin(e.target.value)} placeholder={authStep === 'PIN_ENTRY' ? "Enter PIN" : "Create PIN"} className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-2xl tracking-widest text-gray-800 shadow-inner" />
+            <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
+              {authStep === 'PIN_ENTRY' ? "Unlock App" : "Set PIN & Enter"}
+            </button>
+            <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
+          </form>
+        )}
+
+        {authStep === 'NAME_ENTRY' && (
+          <form onSubmit={handleNameSubmit} className="space-y-4 mt-6">
+            <p className="text-sm text-gray-500 mb-4">What should we call you inside the Universe?</p>
+            <input
+              type="text"
+              required
+              value={visitorName}
+              onChange={e => setVisitorName(e.target.value)}
+              placeholder="Enter your name"
+              className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-xl tracking-wide text-gray-800 shadow-inner"
+            />
+            <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
+              Enter Universe
+            </button>
+            <p className="text-sm text-red-400 mt-4 cursor-pointer hover:underline" onClick={handleLogout}>Log out entirely</p>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+};
 
   if (authStep === 'LOADING') return <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center font-serif text-[var(--color-primary)] text-xl animate-pulse">Loading Gateway...</div>;
 
@@ -525,6 +612,71 @@ const LiveClockCard = () => {
         <p className="text-sm text-gray-600 mt-1">Our Time</p>
       </div>
     </div>
+  );
+};
+
+// ==========================================
+// NEW: PROFESSIONAL ACCOUNT MODAL
+// ==========================================
+const AccountModal = ({ isOpen, onClose, localName, setLocalName, isEditingName, setIsEditingName, handleSaveName, visitors, formatTime, onLockApp }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+          <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            
+            <button onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><X size={20}/></button>
+            
+            <h2 className="text-2xl font-serif font-bold text-[#8B1235] mb-6 flex items-center gap-2">
+              <Shield size={24} /> Account & Security
+            </h2>
+
+            {/* Edit Name Section */}
+            <div className="bg-[#FCF8F9] p-5 rounded-2xl border border-rose-100 mb-6 shadow-inner">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Your Display Name</label>
+              {isEditingName ? (
+                <div className="flex gap-2">
+                  <input type="text" value={localName} onChange={(e) => setLocalName(e.target.value)} className="w-full text-sm p-3 border border-gray-200 rounded-xl outline-none focus:border-[#8B1235] shadow-sm bg-white" autoFocus />
+                  <button onClick={handleSaveName} className="text-xs bg-[#8B1235] text-white px-4 rounded-xl font-bold hover:shadow-md transition-all">Save</button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                  <span className="font-bold text-gray-800 text-lg">{localName}</span>
+                  <button onClick={() => setIsEditingName(true)} className="text-sm text-[#8B1235] hover:underline font-bold bg-rose-50 px-3 py-1 rounded-lg">Edit</button>
+                </div>
+              )}
+            </div>
+
+            {/* Live Universe Visitors */}
+            <div className="mb-8">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-3 flex items-center gap-1">
+                <Clock size={12} /> Active Universe Devices ({visitors.length})
+              </label>
+              <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                {visitors.map((visitor, idx) => {
+                  const isOnline = visitor.lastSeen && (Date.now() - visitor.lastSeen.toMillis() < 120000); // Online if active in last 2 mins
+                  return (
+                    <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-300'}`} />
+                        <span className="text-gray-700 font-bold">{visitor.name}</span>
+                      </div>
+                      <span className="text-xs text-gray-400 font-medium">{formatTime(visitor.lastSeen)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Secure Logout Button */}
+            <button onClick={onLockApp} className="w-full py-4 flex items-center justify-center gap-2 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
+              <Lock size={18} /> Lock Universe
+            </button>
+            
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -2979,6 +3131,7 @@ function App() {
         {/* WE PASS ALL THE NEW VISITOR STATE TO DASHBOARD LAYOUT SO SIDEBAR CAN READ IT! */}
         <DashboardLayout 
           theme={theme}
+          onAccountClick={() => setIsAccountModalOpen(true)}
           visitors={visitors}
           localName={localName}
           setLocalName={setLocalName}
@@ -3004,6 +3157,19 @@ function App() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
           </Routes>
         </DashboardLayout>
+
+        <AccountModal 
+          isOpen={isAccountModalOpen}
+          onClose={() => setIsAccountModalOpen(false)}
+          localName={localName}
+          setLocalName={setLocalName}
+          isEditingName={isEditingName}
+          setIsEditingName={setIsEditingName}
+          handleSaveName={handleSaveName}
+          visitors={visitors}
+          formatTime={formatTime}
+          onLockApp={handleLockUniverse}
+        />
 
         <DeleteConfirmModal 
           isOpen={confirmModal.isOpen}
