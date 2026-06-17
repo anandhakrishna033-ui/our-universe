@@ -23,6 +23,7 @@ import imageCompression from 'browser-image-compression';
 // ==========================================
 const GlobalThemeStyles = () => (
   <style>{`
+    /* NEW: Completely locks the screen background from bouncing */
     html, body, #root {
       width: 100%;
       height: 100%;
@@ -232,8 +233,9 @@ const AudioPlayer = ({ src }) => {
     </div>
   );
 };
+
 // ==========================================
-// 2. TRUE SECURE GATEWAY
+// 2. TRUE SECURE GATEWAY (UPDATED WITH DEVICE ID VISITOR TRACKING)
 // ==========================================
 const AuthGateway = ({ onUnlock }) => {
   const [authStep, setAuthStep] = useState('LOADING'); 
@@ -300,15 +302,10 @@ const AuthGateway = ({ onUnlock }) => {
 
   const logVisitToFirebase = async (nameToLog) => {
     try {
-      let deviceId = localStorage.getItem('universe_device_id');
-      if (!deviceId) {
-        deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('universe_device_id', deviceId);
-      }
-
-      const visitorRef = doc(db, 'visitors', deviceId);
+      const uniqueUserId = user.uid;
+      const visitorRef = doc(db, 'visitors', uniqueUserId);
       await setDoc(visitorRef, {
-        deviceId: deviceId,
+        userId: uniqueUserId,
         name: nameToLog,
         universeId: universeId,
         lastSeen: serverTimestamp()
@@ -542,9 +539,9 @@ const LiveClockCard = () => {
 };
 
 // ==========================================
-// ACCOUNT MODAL
+// NEW: PROFESSIONAL ACCOUNT MODAL
 // ==========================================
-const AccountModal = ({ isOpen, onClose, localName, setLocalName, isEditingName, setIsEditingName, handleSaveName, visitors, formatTime, onLockApp }) => {
+const AccountModal = ({ isOpen, onClose, localName, setLocalName, isEditingName, setIsEditingName, handleSaveName, visitors, formatTime, onLockApp, currentUser }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -557,6 +554,7 @@ const AccountModal = ({ isOpen, onClose, localName, setLocalName, isEditingName,
               <Shield size={24} /> Account & Security
             </h2>
 
+            {/* Edit Name Section */}
             <div className="bg-[#FCF8F9] p-5 rounded-2xl border border-rose-100 mb-6 shadow-inner">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Your Display Name</label>
               {isEditingName ? (
@@ -572,26 +570,30 @@ const AccountModal = ({ isOpen, onClose, localName, setLocalName, isEditingName,
               )}
             </div>
 
+            {/* Live Universe Visitors */}
             <div className="mb-8">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-3 flex items-center gap-1">
                 <Clock size={12} /> Active Universe Devices ({visitors.length})
               </label>
               <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
                 {visitors.map((visitor, idx) => {
-                  const isOnline = visitor.lastSeen && (Date.now() - visitor.lastSeen.toMillis() < 120000); 
+                  const isMe = currentUser && visitor.userId === currentUser.uid;
+                  const isOnline = isMe || !visitor.lastSeen || (Date.now() - visitor.lastSeen.toMillis() < 120000); 
+                  
                   return (
                     <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-xl border border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-300'}`} />
-                        <span className="text-gray-700 font-bold">{visitor.name}</span>
+                        <span className="text-gray-700 font-bold">{visitor.name} {isMe ? "(You)" : ""}</span>
                       </div>
-                      <span className="text-xs text-gray-400 font-medium">{formatTime(visitor.lastSeen)}</span>
+                      <span className="text-xs text-gray-400 font-medium">{formatTime(visitor.lastSeen, visitor.userId)}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
+            {/* Secure Logout Button */}
             <button onClick={onLockApp} className="w-full py-4 flex items-center justify-center gap-2 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
               <Lock size={18} /> Lock Universe
             </button>
@@ -622,7 +624,7 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
           <motion.h1 variants={itemVariants} className="text-4xl md:text-6xl font-serif text-gray-800 leading-tight mb-4">
             "I will be there for you <span className="text-[var(--color-primary)] italic font-light relative inline-block">
               always
-              <motion.span animate={{ opacity: [0.3, 1, 0.3], scaleX: [0.9, 1, 0.9] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }} className="absolute -bottom-1 left-0 w-full h-[2px] md:h-[3px] bg-[var(--color-primary)] rounded-full origin-center" />
+              <motion.span animate={{ opacity: [0.3, 1, 0.3], scaleX: [0.9, 1, 0.9] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" className="absolute -bottom-1 left-0 w-full h-[2px] md:h-[3px] bg-[var(--color-primary)] rounded-full origin-center" />
             </span>."
           </motion.h1>
           <motion.p variants={itemVariants} className="text-gray-600 mb-8 md:mb-10 text-base md:text-lg leading-relaxed">
@@ -759,9 +761,8 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setImgPreviews(prev => [...prev, ...newPreviews].slice(0, 4));
 
-    // OPTIMIZED for ultra-fast performance
     const compressedFiles = [];
-    const options = { maxSizeMB: 0.1, maxWidthOrHeight: 600, useWebWorker: true };
+    const options = { maxSizeMB: 0.4, maxWidthOrHeight: 1080, useWebWorker: true };
     
     for (const file of files) {
       try {
@@ -942,7 +943,7 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
 
     for (const file of pendingFiles) {
       try {
-        const options = { maxSizeMB: 0.1, maxWidthOrHeight: 600, useWebWorker: true };
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
         
@@ -1048,13 +1049,14 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
   );
 };
 // ==========================================
-// 6. ALL MEMORIES PAGE
+// 6. ALL MEMORIES PAGE (Fixed Scrolling + 7 Layouts)
 // ==========================================
 const Memories = ({ memories, deleteMemory, editMemory }) => {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', description: '', location: '', borderStyle: 'border-white', layoutStyle: 'classic' });
 
+  // NEW: Completely lock the background body from scrolling when a memory is open!
   useEffect(() => {
     if (currentIndex !== -1) {
       document.body.style.overflow = 'hidden';
@@ -1115,8 +1117,8 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
     { label: "Split Storybook", value: "split" },
     { label: "Vintage Journal", value: "journal" },
     { label: "Messy Scrapbook", value: "scrapbook" },
-    { label: "Modern Minimal", value: "minimal" },
-    { label: "Dark Elegance", value: "dark" }     
+    { label: "Modern Minimal", value: "minimal" }, // NEW
+    { label: "Dark Elegance", value: "dark" }     // NEW
   ];
 
   const selectedMemory = currentIndex >= 0 ? memories[currentIndex] : null;
@@ -1172,6 +1174,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
 
             <button onClick={closeMemory} className="absolute top-6 right-6 bg-black/20 text-white hover:bg-black/50 p-3 rounded-full z-50 backdrop-blur-sm transition"><X size={32}/></button>
 
+            {/* FIXED: Modal is now a rigid box (h-[90vh] overflow-hidden). The INSIDES will scroll independently! */}
             <motion.div 
               key={currentIndex}
               initial={{ scale: 0.9, x: 100, opacity: 0 }} 
@@ -1191,6 +1194,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
 
               {!isEditing ? (
                 <>
+                  {/* LAYOUT 1: CLASSIC POLAROID */}
                   {(!selectedMemory.layoutStyle || selectedMemory.layoutStyle === 'classic') && (
                     <div className="flex-1 overflow-y-auto custom-scrollbar relative flex flex-col">
                       <div className="relative shrink-0">
@@ -1213,10 +1217,17 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                           <div className="prose prose-rose max-w-none text-lg md:text-xl text-gray-700 font-serif leading-loose whitespace-pre-wrap px-4">
                             {selectedMemory.description || <span className="italic text-gray-400">No story written for this moment yet. Click Edit to add one.</span>}
                           </div>
+                          {selectedMemory.images && selectedMemory.images.length > 1 && (
+                            <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-gray-100">
+                              {selectedMemory.images.slice(1).map((img, i) => <img key={i} src={img} className="w-full h-48 object-cover rounded-xl shadow-sm border border-gray-200" />)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   )}
+
+                  {/* LAYOUT 2: CINEMATIC GLASS (Fixed Background, Scrolling Text!) */}
                   {selectedMemory.layoutStyle === 'cinematic' && (
                     <>
                       {selectedMemory.images && selectedMemory.images.length > 0 && (
@@ -1226,6 +1237,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                         </div>
                       )}
                       <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar flex flex-col p-6 md:p-10">
+                         {/* Invisible spacer pushes text down over the image */}
                          <div className="min-h-[40vh] md:min-h-[50vh] shrink-0"></div>
                          
                          <div className="bg-black/40 backdrop-blur-md border border-white/20 p-8 rounded-3xl text-white shadow-2xl shrink-0 mt-auto">
@@ -1238,8 +1250,117 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                       </div>
                     </>
                   )}
-                  {/* Keep other layouts similarly... */}
-                  
+
+                  {/* LAYOUT 3: SPLIT STORYBOOK */}
+                  {selectedMemory.layoutStyle === 'split' && (
+                    <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                      <div className="w-full md:w-1/2 h-64 md:h-full relative bg-gray-100 border-r border-gray-200 shrink-0">
+                        {selectedMemory.images && selectedMemory.images.length > 0 ? (
+                          <img src={selectedMemory.images[0]} className="absolute inset-0 w-full h-full object-cover" />
+                        ) : <div className="absolute inset-0 flex items-center justify-center"><ImageIcon size={48} className="text-gray-300"/></div>}
+                      </div>
+                      <div className="w-full md:w-1/2 flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12 bg-white flex flex-col">
+                        <p className="text-[var(--color-primary)] font-bold tracking-widest uppercase text-xs mb-2">{selectedMemory.date}</p>
+                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 leading-tight mb-4">{selectedMemory.title}</h2>
+                        {selectedMemory.location && <p className="text-sm text-gray-500 mb-6 flex items-center gap-1"><MapPin size={14} className="text-blue-400" /> {selectedMemory.location}</p>}
+                        <div className="whitespace-pre-wrap text-lg text-gray-700 font-serif leading-loose">
+                           {selectedMemory.description || <span className="italic text-gray-400">No story written.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* LAYOUT 4: VINTAGE JOURNAL */}
+                  {selectedMemory.layoutStyle === 'journal' && (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-14 relative" style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, rgba(0,0,0,0.05) 31px, rgba(0,0,0,0.05) 32px)'}}>
+                      <div className="text-center mb-10 shrink-0">
+                        <h2 className="text-4xl md:text-5xl font-serif italic text-gray-800 mb-4">{selectedMemory.title}</h2>
+                        <p className="text-gray-500 font-serif font-bold uppercase tracking-widest text-sm border-y border-gray-300 py-2 inline-block px-8">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                      </div>
+                      <div className="whitespace-pre-wrap text-xl leading-[32px] text-gray-800 mb-10 px-4 md:px-8 shrink-0" style={{ fontFamily: "'Georgia', serif" }}>
+                        {selectedMemory.description || <span className="italic text-gray-400">Dear journal...</span>}
+                      </div>
+                      {selectedMemory.images && selectedMemory.images.length > 0 && (
+                        <div className="flex flex-wrap justify-center gap-4 px-4 shrink-0">
+                           {selectedMemory.images.map((img, i) => (
+                             <div key={i} className="p-2 bg-white shadow-md border border-gray-200 transform rotate-1 hover:scale-105 transition">
+                               <img src={img} className="max-h-64 object-cover" />
+                             </div>
+                           ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* LAYOUT 5: MESSY SCRAPBOOK */}
+                  {selectedMemory.layoutStyle === 'scrapbook' && (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12 bg-gray-50 relative">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 pointer-events-none"></div>
+                      <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 pointer-events-none"></div>
+                      
+                      <div className="flex flex-wrap justify-center gap-4 mb-12 relative z-10 pt-8 shrink-0">
+                        {selectedMemory.images && selectedMemory.images.length > 0 ? (
+                           selectedMemory.images.map((img, i) => {
+                             const tilt = (i % 2 === 0 ? 1 : -1) * ((i * 3) + 4);
+                             return (
+                               <div key={i} className="relative p-3 bg-white shadow-xl border border-gray-200" style={{ transform: `rotate(${tilt}deg)` }}>
+                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-white/60 backdrop-blur-sm border border-white/40 shadow-sm rotate-3"></div>
+                                 <img src={img} className="w-48 h-48 md:w-64 md:h-64 object-cover" />
+                               </div>
+                             )
+                           })
+                        ) : <div className="p-10 border-4 border-dashed border-gray-300 rounded-xl text-gray-400 font-bold rotate-2">Needs Photos!</div>}
+                      </div>
+                      
+                      <div className="relative z-10 bg-white/60 backdrop-blur-md p-8 rounded-2xl shadow-sm border border-white max-w-2xl mx-auto shrink-0">
+                        <h2 className="text-3xl font-bold text-[#8B1235] mb-2">{selectedMemory.title}</h2>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-6">{selectedMemory.date} | {selectedMemory.location}</p>
+                        <div className="whitespace-pre-wrap text-xl leading-relaxed text-gray-700" style={{ fontFamily: "'Comic Sans MS', cursive" }}>
+                          {selectedMemory.description || "Jot down some notes..."}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* LAYOUT 6: MODERN MINIMAL */}
+                  {selectedMemory.layoutStyle === 'minimal' && (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar bg-white flex flex-col">
+                      {selectedMemory.images?.[0] && (
+                        <div className="w-full h-64 md:h-80 shrink-0">
+                          <img src={selectedMemory.images[0]} className="w-full h-full object-cover grayscale-[30%]" />
+                        </div>
+                      )}
+                      <div className="max-w-3xl mx-auto w-full p-10 md:p-16 text-center shrink-0">
+                        <p className="text-gray-400 tracking-[0.3em] uppercase text-xs mb-6">{selectedMemory.date} {selectedMemory.location && `// ${selectedMemory.location}`}</p>
+                        <h2 className="text-4xl md:text-5xl font-light text-gray-900 mb-10 tracking-tight">{selectedMemory.title}</h2>
+                        <div className="w-12 h-px bg-gray-300 mx-auto mb-10"></div>
+                        <div className="text-lg md:text-xl text-gray-600 font-sans leading-loose text-left whitespace-pre-wrap">
+                          {selectedMemory.description || <span className="italic text-gray-300">No content.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* LAYOUT 7: DARK ELEGANCE */}
+                  {selectedMemory.layoutStyle === 'dark' && (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-900 text-gray-100 flex flex-col p-6 md:p-12">
+                      <div className="border border-gray-700/50 p-6 md:p-12 rounded-3xl bg-gray-800/50 backdrop-blur-sm shrink-0 shadow-2xl">
+                        <p className="text-amber-500/80 font-serif italic mb-3 text-center">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
+                        <h2 className="text-3xl md:text-5xl font-serif text-amber-50 text-center mb-10">{selectedMemory.title}</h2>
+                        
+                        {selectedMemory.images?.[0] && (
+                          <div className="w-full h-72 md:h-[28rem] rounded-xl overflow-hidden border-2 border-gray-700 mb-10 shadow-2xl">
+                            <img src={selectedMemory.images[0]} className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
+                          </div>
+                        )}
+                        <div className="prose prose-invert max-w-none text-gray-300 font-serif text-lg leading-loose whitespace-pre-wrap">
+                          {selectedMemory.description || <span className="italic text-gray-600">No story written.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* GLOBAL AUDIO PLAYER AT BOTTOM */}
                   {selectedMemory.voiceNote && <div className="p-8 border-t border-black/10 bg-[var(--color-bg)] shrink-0"><AudioPlayer src={selectedMemory.voiceNote} /></div>}
                 </>
               ) : (
@@ -1326,6 +1447,7 @@ const Timeline = ({ memories }) => {
     <div className="max-w-5xl mx-auto pb-20 px-4 md:px-8 relative">
       <div className="text-center mb-16 relative z-10">
         <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-800 mb-3">Our Journey 🕰️</h1>
+        <p className="text-gray-500 font-medium">Every step we've taken, beautifully unfolding.</p>
       </div>
 
       <div className="absolute left-8 md:left-1/2 top-32 bottom-0 w-1.5 md:-translate-x-1/2 rounded-full bg-gradient-to-b from-gray-200 via-gray-300 to-gray-200 opacity-60"></div>
@@ -1346,7 +1468,7 @@ const Timeline = ({ memories }) => {
               transition={{ duration: 0.6, type: "spring", bounce: 0.3 }}
               className={`flex flex-col md:flex-row items-center w-full ${isEven ? 'md:justify-start' : 'md:justify-end'} relative group`}
             >
-              <div className="absolute left-4 md:left-1/2 w-8 h-8 rounded-full border-4 border-[var(--color-bg)] bg-[var(--color-primary)] md:-translate-x-1/2 shadow-md z-20 group-hover:scale-125 transition-all duration-300 flex items-center justify-center">
+              <div className="absolute left-4 md:left-1/2 w-8 h-8 rounded-full border-4 border-[var(--color-bg)] bg-[var(--color-primary)] md:-translate-x-1/2 shadow-md z-20 group-hover:scale-125 group-hover:bg-[var(--color-primary-hover)] transition-all duration-300 flex items-center justify-center">
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               </div>
 
@@ -1362,6 +1484,12 @@ const Timeline = ({ memories }) => {
 
                   <div className="flex justify-between items-start gap-4">
                     <h3 className="text-2xl font-serif font-bold text-gray-800 leading-tight mb-2">{m.title}</h3>
+                    <button 
+                      onClick={(e) => toggleLike(e, m.firestoreId || m.id)} 
+                      className={`p-2 rounded-full transition-colors ${isLiked ? 'bg-rose-100 text-rose-500' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                    >
+                      <Heart size={18} fill={isLiked ? "currentColor" : "none"} className={isLiked ? "animate-pulse" : ""} />
+                    </button>
                   </div>
 
                   {!isExpanded && coverImg && (
@@ -1389,14 +1517,708 @@ const Timeline = ({ memories }) => {
                             "{m.description}"
                           </p>
                         )}
+                        {m.images && m.images.length > 0 ? (
+                          <div className={`grid gap-2 mb-4 ${m.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                            {m.images.map((imgBase64, i) => (
+                              <img key={i} src={imgBase64} className="w-full h-48 object-cover rounded-2xl shadow-sm border border-gray-100" />
+                            ))}
+                          </div>
+                        ) : m.img ? (
+                          <img src={m.img} className="w-full h-48 object-cover rounded-2xl shadow-sm mb-4 border border-gray-100" />
+                        ) : null}
                       </motion.div>
                     )}
                   </AnimatePresence>
+
+                  <div className="w-full flex justify-center mt-4 text-gray-300 group-hover:text-[var(--color-primary)] transition-colors">
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </div>
                 </motion.div>
               </div>
             </motion.div>
           );
         })}
+        {memories.length === 0 && (
+          <div className="text-center text-gray-400 font-medium py-20">The journey begins when you add your first memory.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Helper component to control map flying animations
+const MapController = ({ selectedMarker }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (selectedMarker && selectedMarker.lat && selectedMarker.lng) {
+      map.flyTo([selectedMarker.lat, selectedMarker.lng], 12, {
+        duration: 2.5, 
+        easeLinearity: 0.25
+      });
+    }
+  }, [selectedMarker, map]);
+  return null;
+};
+
+const LovelyMap = ({ memories, theme }) => {
+  const [markers, setMarkers] = useState([]);
+  const [selectedMarker, setSelectedMarker] = useState(null);
+
+  // Dynamic Tile URLs based on your Aesthetic Theme
+  const mapTiles = {
+    lavender: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+    beach: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+    sunset: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+    light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+  };
+  
+  useEffect(() => {
+    const fetchCoordinates = async () => {
+      const placesWithCoords = [];
+      const places = memories
+        .filter(m => m.location)
+        .sort((a, b) => new Date(a.id) - new Date(b.id)); 
+
+      for (const place of places) {
+        if (place.lat && place.lng) {
+          placesWithCoords.push({ ...place, lat: place.lat, lng: place.lng });
+          continue;
+        }
+        await new Promise(resolve => setTimeout(resolve, 600));
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place.location)}&format=json&limit=1`);
+          const data = await response.json();
+          if (data && data.length > 0) {
+            placesWithCoords.push({ 
+              ...place, 
+              lat: parseFloat(data[0].lat), 
+              lng: parseFloat(data[0].lon) 
+            });
+          }
+        } catch (error) { 
+          console.error("Error finding coordinates for:", place.location); 
+        }
+      }
+      setMarkers(placesWithCoords);
+    };
+    fetchCoordinates();
+  }, [memories]);
+
+  const journeyPath = markers.map(m => [m.lat, m.lng]);
+  const defaultCenter = markers.length > 0 ? [markers[0].lat, markers[0].lng] : [8.5241, 76.9366];
+
+  return (
+    <div className="max-w-7xl mx-auto pb-10 flex flex-col h-full">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">The Map of Us 🌍</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Everywhere we've been, connected together.</p>
+        </div>
+        <p className="text-sm font-medium bg-white text-[var(--color-primary)] border border-gray-200 px-4 py-2 rounded-full shadow-sm flex items-center gap-2">
+          <MapPin size={16} /> {markers.length} {markers.length === 1 ? 'Pin' : 'Pins'}
+        </p>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* INTERACTIVE STORY MODE SIDEBAR */}
+        <div className="w-full lg:w-1/3 flex flex-col bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm rounded-[2rem] overflow-hidden max-h-[400px] lg:max-h-[650px]">
+          <div className="p-6 border-b border-gray-100 bg-white/80">
+            <h3 className="font-serif font-bold text-xl text-[var(--color-primary)] flex items-center gap-2">
+              <Sparkles size={20} /> Our Adventures
+            </h3>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+            {markers.length === 0 ? (
+              <div className="text-center text-gray-400 py-10 text-sm font-medium">Adding locations to your memories will drop pins here.</div>
+            ) : (
+              markers.map((marker, idx) => (
+                <div 
+                  key={idx}
+                  onMouseEnter={() => setSelectedMarker(marker)} 
+                  onTouchStart={() => setSelectedMarker(marker)}
+                  onClick={() => setSelectedMarker(marker)}
+                  className={`w-full text-left p-4 rounded-2xl transition-all border cursor-pointer ${selectedMarker?.id === marker.id ? 'bg-[var(--color-primary)] border-[var(--color-primary)] shadow-md text-white scale-[1.02] origin-left' : 'bg-white border-transparent hover:border-gray-200 hover:bg-gray-50 shadow-sm'}`}
+                >
+                  <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${selectedMarker?.id === marker.id ? 'text-white/70' : 'text-[var(--color-primary)]'}`}>
+                    Step {idx + 1}
+                  </p>
+                  <h4 className="font-serif font-bold text-lg leading-tight mb-1 truncate">{marker.title}</h4>
+                  <p className={`text-xs font-medium flex items-center gap-1 ${selectedMarker?.id === marker.id ? 'text-white/90' : 'text-gray-500'}`}>
+                    <MapPin size={12} /> {marker.location}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* THE MAP */}
+        <div className="w-full lg:w-2/3 bg-white/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] shadow-sm border border-white/40">
+          <div className="w-full h-[400px] md:h-[650px] rounded-2xl overflow-hidden shadow-inner border-4 border-white relative z-0">
+            <MapContainer center={defaultCenter} zoom={4} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+              <TileLayer url={mapTiles[theme] || mapTiles.light} />
+              
+              <MapController selectedMarker={selectedMarker} />
+
+              {journeyPath.length > 1 && (
+                <Polyline positions={journeyPath} pathOptions={{ color: 'var(--color-primary)', weight: 3, dashArray: '10, 10', opacity: 0.6 }} />
+              )}
+
+              {markers.map((marker, idx) => {
+                const coverImg = (marker.images && marker.images.length > 0) ? marker.images[0] : marker.img;
+                return (
+                  <Marker key={idx} position={[marker.lat, marker.lng]} icon={lovelyHeartMarker}>
+                    <Popup className="custom-popup border-0 shadow-lg rounded-xl">
+                      <div className="p-1 text-center min-w-[150px]">
+                        {coverImg && <img src={coverImg} alt={marker.title} className="w-full h-28 object-cover rounded-lg mb-3 shadow-md border border-gray-100" />}
+                        <h3 className="font-bold font-serif text-[var(--color-primary)] text-lg leading-tight">{marker.title}</h3>
+                        <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-wider border-t pt-2">{marker.date}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 8. TIME CAPSULE & LOVE LETTERS 💌
+// ==========================================
+const LockedLetter = ({ letter }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const calculateTime = () => {
+      if (!letter.unlockDate) return '';
+      const unlockTime = new Date(letter.unlockDate).getTime();
+      const now = new Date().getTime();
+      const distance = unlockTime - now;
+
+      if (distance < 0) return "Unlocked! Refresh the page.";
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      return `${days}d ${hours}h ${minutes}m remaining`;
+    };
+
+    setTimeLeft(calculateTime());
+    const timer = setInterval(() => setTimeLeft(calculateTime()), 60000); 
+    return () => clearInterval(timer);
+  }, [letter.unlockDate]);
+
+  return (
+    <div className="bg-rose-950/80 backdrop-blur-md border border-rose-800/50 rounded-sm p-8 flex flex-col items-center justify-center text-center h-full min-h-[300px] shadow-xl relative overflow-hidden">
+      <div className="absolute inset-2 border border-rose-800/30 rounded-sm pointer-events-none"></div>
+      <Lock size={48} className="text-rose-300 mb-4 opacity-80" />
+      <h3 className="text-2xl font-serif font-bold text-rose-100 mb-2 tracking-wide">Time Capsule</h3>
+      <div className="w-12 h-px bg-rose-400/50 my-3"></div>
+      <p className="text-rose-200/80 mb-6 font-serif italic">"Do not open until our special day."</p>
+      <div className="bg-rose-900/50 border border-rose-400/30 text-rose-100 px-5 py-2.5 rounded-full font-mono text-sm shadow-inner tracking-widest">
+        {timeLeft}
+      </div>
+    </div>
+  );
+};
+
+const Letters = ({ letters, deleteLetter, editLetter }) => {
+  const navigate = useNavigate();
+  const [selectedLetter, setSelectedLetter] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', content: '' });
+
+  const openLetter = (l) => {
+    setSelectedLetter(l);
+    setEditForm({ title: l.title, content: l.content });
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = () => {
+    editLetter(selectedLetter.firestoreId, editForm);
+    setSelectedLetter({ ...selectedLetter, ...editForm });
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Love Letters 💌</h1>
+        <button onClick={() => navigate('/create-letter')} className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full font-medium hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 shadow-md">
+          <PenTool size={18} /> Write a Letter
+        </button>
+      </div>
+
+      {letters.length === 0 ? (
+        <p className="text-gray-500 text-center py-10 bg-white/50 backdrop-blur-sm rounded-3xl border border-white">No letters written yet. Leave a sweet note!</p>
+      ) : (
+        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <AnimatePresence>
+            {letters.map((letter, idx) => {
+              const isLocked = letter.unlockDate && new Date(letter.unlockDate).getTime() > new Date().getTime();
+              const randomRotation = (idx % 2 === 0 ? 1 : -1) * ((idx % 3) + 1);
+
+              if (isLocked) {
+                return (
+                  <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: idx * 0.1 }} key={letter.firestoreId || letter.id} className="relative group">
+                     <button onClick={() => deleteLetter(letter.firestoreId || letter.id)} className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-50">
+                        <Trash2 size={16} />
+                      </button>
+                     <LockedLetter letter={letter} />
+                  </motion.div>
+                );
+              }
+
+              return (
+                <motion.div 
+                  key={letter.firestoreId || letter.id} layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  whileHover={{ scale: 1.02, rotate: randomRotation, zIndex: 10 }} 
+                  onClick={() => openLetter(letter)}
+                  className={`p-6 pb-12 rounded-sm shadow-lg hover:shadow-2xl transition-all relative cursor-pointer group flex flex-col h-[320px] overflow-hidden ${
+                    letter.layout === 'image-background' 
+                      ? 'border border-gray-300 text-white' 
+                      : 'bg-[#FFFAF0] border-[8px] border-white outline outline-1 outline-gray-200 text-gray-800'
+                  }`}
+                >
+                  {letter.layout !== 'image-background' && (
+                    <div className="absolute inset-2 border border-rose-200/50 rounded-sm pointer-events-none z-10"></div>
+                  )}
+
+                  <button onClick={(e) => { e.stopPropagation(); deleteLetter(letter.firestoreId || letter.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-50">
+                    <Trash2 size={16} />
+                  </button>
+
+                  {letter.layout === 'image-background' && letter.img && (
+                    <div className="absolute inset-0 z-0">
+                      <img src={letter.img} alt="Background" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"></div>
+                      <div className="absolute inset-3 border border-white/30 rounded-sm pointer-events-none"></div>
+                    </div>
+                  )}
+
+                  <div className="relative z-10 flex flex-col flex-1 h-full text-center mt-2">
+                    <div className="mb-4">
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${letter.layout === 'image-background' ? 'text-rose-200' : 'text-rose-400'}`}>{letter.date}</p>
+                      <h3 className={`text-2xl font-serif font-bold mb-2 truncate ${letter.layout === 'image-background' ? 'text-white' : 'text-[#8B1235]'}`}>{letter.title}</h3>
+                      <div className={`w-10 h-px mx-auto ${letter.layout === 'image-background' ? 'bg-white/40' : 'bg-rose-200'}`}></div>
+                    </div>
+                    
+                    {letter.img && letter.layout !== 'image-background' && (
+                       <img src={letter.img} className="w-full h-28 object-cover rounded-md mb-4 shadow-sm border border-gray-200" alt="Letter Attachment" />
+                    )}
+
+                    <div className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed overflow-hidden ${letter.font} ${letter.layout === 'image-background' ? 'text-gray-100' : 'text-gray-600'}`}>
+                      {letter.content.substring(0, 110)}...
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
+        </motion.div>
+      )}
+
+      {/* FULL SCREEN READING MODAL FOR LETTERS */}
+      <AnimatePresence>
+        {selectedLetter && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm overflow-y-auto" 
+            onClick={() => setSelectedLetter(null)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 30, rotateX: 15 }} 
+              animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: -20 }} 
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className={`p-8 md:p-14 w-full max-w-2xl rounded-sm shadow-2xl relative my-auto ${
+                selectedLetter.layout === 'image-background' 
+                  ? 'border border-gray-500 text-white overflow-hidden' 
+                  : 'bg-[#FDFBF7] border-[12px] border-white outline outline-1 outline-rose-100 text-gray-800'
+              }`} 
+              onClick={e => e.stopPropagation()}
+            >
+              {selectedLetter.layout !== 'image-background' && (
+                <div className="absolute inset-3 border-[1.5px] border-rose-200/60 rounded-sm pointer-events-none z-10"></div>
+              )}
+
+              <button onClick={() => setSelectedLetter(null)} className="absolute top-4 right-4 bg-white/90 text-gray-800 p-2.5 rounded-full shadow-md hover:bg-gray-100 z-50 transition-transform hover:scale-110"><X size={20}/></button>
+              
+              {selectedLetter.layout === 'image-background' && selectedLetter.img && (
+                <div className="absolute inset-0 z-0">
+                  <img src={selectedLetter.img} alt="Background" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]"></div>
+                  <div className="absolute inset-4 border border-white/20 rounded-sm pointer-events-none"></div>
+                </div>
+              )}
+
+              <div className="relative z-10">
+                {!isEditing ? (
+                  <div className="flex flex-col text-center">
+                    <button onClick={() => setIsEditing(true)} className="absolute -top-2 left-0 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-1.5 rounded-full font-bold text-xs hover:bg-white transition shadow-sm border border-white/50">Edit</button>
+                    
+                    <p className={`font-bold tracking-widest uppercase text-xs mb-3 ${selectedLetter.layout === 'image-background' ? 'text-rose-200' : 'text-[#8B1235]'}`}>
+                      {selectedLetter.date} <span className="mx-1">•</span> {selectedLetter.time}
+                    </p>
+                    
+                    <h2 className={`text-4xl md:text-5xl font-serif font-bold mb-4 leading-tight ${selectedLetter.layout === 'image-background' ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedLetter.title}
+                    </h2>
+                    
+                    <div className={`text-xl mb-8 opacity-70 tracking-widest ${selectedLetter.layout === 'image-background' ? 'text-white' : 'text-rose-400'}`}>~ ♡ ~</div>
+                    
+                    {selectedLetter.layout === 'image-top' && selectedLetter.img && (
+                      <img src={selectedLetter.img} className="w-full object-cover rounded-md mb-8 shadow-md border-4 border-white" alt="Letter Attachment" />
+                    )}
+
+                    <div className={`whitespace-pre-wrap text-lg md:text-xl leading-loose text-left ${selectedLetter.font} ${selectedLetter.layout === 'image-background' ? 'text-gray-100' : 'text-gray-700'}`}>
+                      {selectedLetter.content}
+                    </div>
+
+                    {selectedLetter.layout === 'image-bottom' && selectedLetter.img && (
+                      <img src={selectedLetter.img} className="w-full object-cover rounded-md mt-10 shadow-md border-4 border-white" alt="Letter Attachment" />
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4 bg-white/95 backdrop-blur-md p-6 md:p-8 rounded-xl shadow-xl text-gray-800 relative z-20">
+                    <h3 className="text-2xl font-serif font-bold text-[#8B1235] border-b border-rose-100 pb-3">Edit Letter</h3>
+                    <input type="text" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-bold text-xl outline-none focus:border-[#8B1235] bg-gray-50/50" />
+                    <textarea rows="12" value={editForm.content} onChange={e => setEditForm({...editForm, content: e.target.value})} className="w-full p-4 rounded-xl border border-gray-200 font-serif text-lg outline-none focus:border-[#8B1235] leading-relaxed bg-gray-50/50" />
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                      <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 font-bold text-gray-500 hover:bg-gray-100 rounded-full transition">Cancel</button>
+                      <button onClick={handleSaveEdit} className="px-6 py-2.5 font-bold bg-[#8B1235] text-white rounded-full shadow-md hover:bg-[#6A0D28] transition">Save Changes</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const CreateLetter = ({ onAddLetter, showAlert }) => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ title: '', content: '', font: 'font-serif', img: '', layout: 'image-top', unlockDate: '' });
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [rawImage, setRawImage] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  const symbols = ['♡', '✨', '🌙', '🌸', '🦋', '💌', '♾️', '💍', '🥺', '❤️'];
+  const handleAddSymbol = (sym) => setFormData({ ...formData, content: formData.content + sym });
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setRawImage(URL.createObjectURL(file)); 
+    }
+  };
+
+  const removeImage = () => setFormData({ ...formData, img: '' });
+
+  const onCropComplete = (croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const confirmCrop = async () => {
+    try {
+      setIsSaving(true);
+      const image = new Image();
+      image.src = rawImage;
+      await new Promise(res => image.onload = res);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+      const ctx = canvas.getContext('2d');
+
+      ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
+        const compressedFile = await imageCompression(file, options);
+        const base64String = await fileToBase64(compressedFile);
+
+        setFormData({ ...formData, img: base64String });
+        setRawImage(null); 
+        setIsSaving(false);
+      }, 'image/jpeg', 0.95);
+      
+    } catch (error) {
+      setIsSaving(false);
+      if (showAlert) showAlert("Crop Error", "Failed to crop image.");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.title || !formData.content) return;
+    setIsSaving(true);
+    const now = new Date();
+    const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const success = await onAddLetter({ ...formData, date, time });
+    setIsSaving(false);
+    if (success) navigate('/letters');
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto pb-10">
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Draft a Love Letter ✍️</h1>
+      <form onSubmit={handleSubmit} className="bg-white/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-sm border border-white space-y-6">
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Heading / Subject</label>
+          <input type="text" required onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Letter Font</label>
+            <select onChange={e => setFormData({...formData, font: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
+              <option value="font-serif">Elegant Serif (Classic)</option>
+              <option value="font-sans">Clean Sans (Modern)</option>
+              <option value="font-mono">Typewriter (Vintage)</option>
+              <option value="italic font-serif">Handwritten Style</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Image Layout</label>
+            <select onChange={e => setFormData({...formData, layout: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 cursor-pointer">
+              <option value="image-top">Image at the Top</option>
+              <option value="image-bottom">Image at the Bottom</option>
+              <option value="image-background">Full Background Image</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Time Capsule Lock</label>
+            <input type="datetime-local" onChange={e => setFormData({...formData, unlockDate: e.target.value})} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Attach Picture or Handwritten Letter</label>
+          {!formData.img ? (
+            <label className="flex flex-col items-center justify-center w-full h-32 md:h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white/50 hover:bg-white/80 cursor-pointer transition-colors">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
+                <p className="text-sm text-gray-500"><span className="font-semibold text-[var(--color-primary)]">Tap to upload</span></p>
+              </div>
+              <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+            </label>
+          ) : (
+            <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-sm border-4 border-white group">
+              <img src={formData.img} alt="Preview" className="w-full h-full object-cover" />
+              <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md transition-all"><Trash2 size={18} /></button>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="flex justify-between items-end mb-2">
+            <label className="block text-sm font-bold text-gray-700">Your Letter</label>
+            <div className="flex gap-1 bg-gray-50 p-1 rounded-lg border border-gray-200 overflow-x-auto">
+              {symbols.map(sym => <button key={sym} type="button" onClick={() => handleAddSymbol(sym)} className="hover:bg-white p-1 rounded transition-colors text-sm shrink-0">{sym}</button>)}
+            </div>
+          </div>
+          <textarea required rows="8" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 resize-none ${formData.font}`} />
+        </div>
+        <button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 hover:bg-[var(--color-primary-hover)] shadow-md transition-colors">
+          {isSaving ? "Sealing envelope... 💌" : "Seal & Save Letter 💌"}
+        </button>
+      </form>
+
+      {/* --- CROP MODAL --- */}
+      <AnimatePresence>
+        {rawImage && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <h3 className="text-white text-xl font-bold mb-2 font-serif text-center">Frame Your Photo ✂️</h3>
+            <p className="text-gray-400 text-xs mb-6 text-center">
+              {formData.layout === 'image-background' ? "Portrait mode selected for full backgrounds." : "Landscape mode selected for classic photos."}
+            </p>
+            
+            <div className="relative w-full max-w-2xl h-[55vh] bg-black rounded-xl overflow-hidden shadow-2xl border border-white/20">
+              <Cropper
+                image={rawImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={formData.layout === 'image-background' ? 9 / 16 : 4 / 3}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="mt-6 w-full max-w-md flex items-center gap-4 bg-white/10 p-3 rounded-full backdrop-blur-md">
+               <span className="text-white text-sm pl-2"><ImageIcon size={16}/></span>
+               <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="w-full accent-rose-400" />
+               <span className="text-white text-sm pr-2"><ImageIcon size={24}/></span>
+            </div>
+            
+            <div className="mt-8 flex gap-4">
+              <button type="button" onClick={() => setRawImage(null)} className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-full font-bold transition-colors shadow-lg">Cancel</button>
+              <button type="button" onClick={confirmCrop} disabled={isSaving} className="px-6 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-full font-bold transition-colors shadow-lg flex items-center gap-2 border border-rose-400/30">
+                {isSaving ? "Cropping..." : <><Check size={18} /> Apply Crop</>}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ==========================================
+// 11. OUR BUCKET LIST 📝
+// ==========================================
+const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }) => {
+  const [newGoal, setNewGoal] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("✈️ Travel");
+  const [filter, setFilter] = useState("All");
+  const { width, height } = useWindowSize();
+  const [showConfetti, setShowConfetti] = useState(false);
+  
+  const [completingGoalId, setCompletingGoalId] = useState(null);
+
+  const categories = ["✈️ Travel", "🍕 Food", "🪂 Crazy", "🛋️ Cozy", "💕 Romance"];
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!newGoal.trim()) return;
+    addGoal({ 
+      title: newGoal, 
+      completed: false, 
+      category: selectedCategory,
+      authorEmail: currentUser?.email || "Unknown" 
+    });
+    setNewGoal("");
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !completingGoalId) return;
+    
+    try {
+      const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
+      const compressed = await imageCompression(file, options);
+      const base64 = await fileToBase64(compressed);
+      
+      toggleGoal(completingGoalId, true, base64);
+      setCompletingGoalId(null);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 4000); 
+    } catch (err) {
+      alert("Failed to upload photo proof.");
+    }
+  };
+
+  const handleToggle = (id, isCompleted) => {
+    if (!isCompleted) {
+      setCompletingGoalId(id);
+    } else {
+      toggleGoal(id, false);
+    }
+  };
+
+  const filteredList = filter === "All" ? bucketList : bucketList.filter(g => g.category === filter);
+
+  return (
+    <div className="max-w-4xl mx-auto pb-10">
+      {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
+      
+      <AnimatePresence>
+        {completingGoalId && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl">
+              <div className="w-16 h-16 bg-gray-100 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4"><ImageIcon size={32} /></div>
+              <h3 className="text-2xl font-bold font-serif text-gray-800 mb-2">Goal Completed! 🎉</h3>
+              <p className="text-gray-500 mb-6">Attach a photo of this moment to immortalize it as a polaroid.</p>
+              
+              <label className="block w-full bg-[var(--color-primary)] text-white py-3 rounded-xl font-bold cursor-pointer hover:bg-[var(--color-primary-hover)] transition shadow-md mb-3">
+                Upload Photo Proof
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              </label>
+              <button onClick={() => { toggleGoal(completingGoalId, true); setCompletingGoalId(null); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 4000); }} className="block w-full py-3 text-gray-500 font-bold bg-gray-100 rounded-xl hover:bg-gray-200 transition">
+                Skip Photo
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Our Bucket List ✈️</h1>
+      
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
+        <button onClick={() => setFilter("All")} className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors ${filter === "All" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-100"}`}>All</button>
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setFilter(cat)} className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition-colors shadow-sm ${filter === cat ? "bg-[var(--color-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>{cat}</button>
+        ))}
+      </div>
+
+      <form onSubmit={handleSubmit} className="mb-8 bg-white/60 backdrop-blur-md p-4 rounded-3xl border border-white shadow-sm flex flex-col gap-4">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {categories.map(cat => (
+            <button type="button" key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition ${selectedCategory === cat ? "bg-gray-100 text-[var(--color-primary)] border border-gray-200" : "bg-gray-50 text-gray-500"}`}>{cat}</button>
+          ))}
+        </div>
+        <div className="flex gap-3">
+          <input type="text" value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="What's our next adventure?" className="flex-1 p-4 rounded-2xl border border-gray-200 outline-none focus:border-[var(--color-primary)] shadow-inner bg-white" />
+          <button type="submit" className="bg-[var(--color-primary)] text-white px-6 py-4 rounded-2xl font-bold hover:bg-[var(--color-primary-hover)] transition shadow-md"><Plus size={24} /></button>
+        </div>
+      </form>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <AnimatePresence>
+          {filteredList.map(goal => (
+            <motion.div key={goal.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${goal.completed ? 'bg-[var(--color-bg)] border-white' : 'bg-white/80 border-gray-100 hover:shadow-md'}`}>
+              
+              {goal.completed && goal.proofImage && (
+                <div className="w-full h-40 bg-gray-200 relative">
+                  <img src={goal.proofImage} className="w-full h-full object-cover filter contrast-110" alt="Proof" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                </div>
+              )}
+
+              <div className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleToggle(goal.id, goal.completed)}>
+                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${goal.completed ? 'bg-green-500 border-green-500 shadow-md' : 'border-gray-300 bg-gray-50'}`}>
+                    {goal.completed && <Check size={16} className="text-white" />}
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] block mb-0.5">{goal.category}</span>
+                    <span className={`text-lg font-serif font-bold transition-all block leading-tight ${goal.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{goal.title}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <button onClick={() => deleteGoal(goal.id)} className="text-gray-300 hover:text-red-500 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16} /></button>
+                  {goal.authorEmail && (
+                    <div className="w-6 h-6 rounded-full bg-blue-50 text-[var(--color-primary)] flex items-center justify-center text-[10px] font-bold uppercase border border-blue-100" title={`Added by ${goal.authorEmail}`}>
+                      {goal.authorEmail.charAt(0)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -1422,12 +2244,13 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
       <div className="flex justify-center w-full h-[90%] px-4 relative z-10 overflow-hidden">
         <AnimatePresence>
           {jarPromises.map((p, i) => {
-            // FIX for True randomness visual: Use index to spread them, rather than pseudo Math.sin on seed
-            const pseudoRandomX = (i % 2 === 0 ? 1 : -1) * ((i % 10) * 8); 
-            const pseudoRandomY = -(i * 6); 
-            const pseudoRandomRot = (i % 2 === 0 ? 1 : -1) * ((i % 5) * 12); 
+            // Seed allows the notes to stack consistently instead of wildly dancing around
+            const seed = p.id ? p.id.toString().charCodeAt(0) + i : i;
+            const pseudoRandomX = Math.sin(seed) * 50; 
+            const pseudoRandomY = -(i * 4) - Math.abs(Math.cos(seed) * 15); 
+            const pseudoRandomRot = Math.sin(seed * 2) * 60; 
             const colors = ['bg-gray-100', 'bg-white', 'bg-[var(--color-bg-alt)]'];
-            const noteColor = colors[i % colors.length];
+            const noteColor = colors[seed % colors.length];
 
             return (
               <motion.div 
@@ -1506,7 +2329,7 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   const jar2Promises = promises.filter(p => p.target === 'jar2');
 
   const drawRandomPromise = (jarPromises) => {
-    let availablePromises = jarPromises.filter(p => !drawnIds.includes(p.id));
+    const availablePromises = jarPromises.filter(p => !drawnIds.includes(p.id));
 
     if (jarPromises.length === 0) {
       return showAlert ? showAlert("Empty Jar", "This jar is empty! Add a sweet note first.") : alert("Empty Jar");
@@ -1514,11 +2337,10 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
 
     if (availablePromises.length === 0) {
       setDrawnIds([]); 
-      availablePromises = jarPromises; // Refill automatically
-      if(showAlert) showAlert("Jar Empty!", "You've read all the notes! The jar has been shaken up and refilled.");
+      return showAlert ? showAlert("Jar Empty!", "You've read all the notes! The jar has been shaken up and refilled.") : alert("Refilled!");
     }
 
-    // FIX: Using Math.random directly on available ones, ensuring true random pull
+    // Perfectly random draw from remaining promises
     const randomIdx = Math.floor(Math.random() * availablePromises.length);
     const selected = availablePromises[randomIdx];
     
@@ -1545,6 +2367,21 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
           <textarea value={newPromise} onChange={(e) => setNewPromise(e.target.value)} placeholder="Write a tiny promise, compliment, or memory here..." className="w-full p-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50 resize-none font-serif text-lg" rows="3" />
           <button type="submit" className="w-full mt-4 bg-[var(--color-primary)] text-white py-4 rounded-xl font-bold hover:bg-[var(--color-primary-hover)] transition-all hover:shadow-lg shadow-sm flex items-center justify-center gap-2">Drop Note into Jar <ChevronDown size={18} /></button>
         </form>
+        
+        {promises.length > 0 && (
+          <div className="mt-8 pt-8 border-t border-gray-200 space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Manage All Notes</p>
+            {promises.map((p) => (
+              <div key={p.id} className="flex justify-between items-center bg-white/80 p-4 rounded-xl shadow-sm border border-white">
+                <div>
+                  <p className="text-sm font-bold text-[var(--color-primary)] uppercase text-[10px] mb-1">In {p.target === 'jar2' ? jar2Name : jar1Name}</p>
+                  <p className="text-gray-700 font-serif italic pr-4">"{p.text}"</p>
+                </div>
+                <button onClick={() => deletePromise(p.id)} className="text-gray-400 hover:text-red-500 ml-2 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16}/></button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <AnimatePresence>
         {drawnPromise && (
@@ -1589,7 +2426,6 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     { label: 'Classic', css: "Georgia, serif" }
   ];
 
-  // Pinch to Zoom Logic
   useEffect(() => {
     const viewport = document.getElementById("board-viewport");
     if (!viewport) return;
@@ -1619,7 +2455,8 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     const file = e.target.files[0];
     if (!file) return;
     try {
-      const options = { maxSizeMB: 0.1, maxWidthOrHeight: 600, useWebWorker: true }; // OPTIMIZED SPEED
+      // MASSIVE SPEED UPGRADE: Reduced maxSizeMB heavily for rapid uploading
+      const options = { maxSizeMB: 0.1, maxWidthOrHeight: 600, useWebWorker: true };
       const compressed = await imageCompression(file, options);
       const base64 = await fileToBase64(compressed);
       const viewport = document.getElementById("board-viewport");
@@ -1629,13 +2466,60 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     } catch (err) { alert("Image upload failed."); }
   };
 
+  useEffect(() => {
+    if (showDrawPad && canvasRef.current) {
+      const canvas = canvasRef.current;
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height); 
+      ctx.lineCap = "round";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#8B1235"; 
+    }
+  }, [showDrawPad]);
+
+  const startDraw = (e) => {
+    if (!canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    const rect = canvasRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing || !canvasRef.current) return;
+    e.preventDefault(); 
+    const ctx = canvasRef.current.getContext("2d");
+    const rect = canvasRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDraw = () => setIsDrawing(false);
+
+  const saveDrawing = () => {
+    if (!canvasRef.current) return;
+    const base64 = canvasRef.current.toDataURL("image/png");
+    const viewport = document.getElementById("board-viewport");
+    const startX = viewport ? viewport.scrollLeft + 150 : 150;
+    const startY = viewport ? viewport.scrollTop + 150 : 150;
+    addBoardItem({ type: 'drawing', content: base64, x: startX, y: startY, w: 300, h: 300 });
+    setShowDrawPad(false);
+  };
+
   return (
     <div className="max-w-7xl mx-auto pb-10 flex flex-col h-[calc(100vh-100px)]">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 shrink-0 relative z-40">
         <div>
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-800">Mood Board 📌</h1>
           <p className="text-gray-500 mt-1 text-sm md:text-base">
-            {isEditMode ? "Edit Mode ON: Drag to move, double tap to resize." : "Locked Mode: Scroll, pan, and pinch freely."}
+            {isEditMode ? "Edit Mode ON: Drag to move, use corner handles to resize." : "Locked Mode: Scroll, pan, and pinch freely."}
           </p>
         </div>
         
@@ -1657,12 +2541,23 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
           <div className={`flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-xl p-3 rounded-2xl shadow-sm border border-white transition-opacity ${!isEditMode && 'opacity-50 pointer-events-none'}`}>
             <form onSubmit={handleAddText} className="flex flex-wrap items-center gap-2 border-r border-gray-200 pr-3">
               <input type="text" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Type note..." className="px-3 py-2 rounded-xl text-sm border outline-none focus:border-[var(--color-primary)] w-28 md:w-36 bg-white/50" />
+              <div className="flex gap-1">
+                {colors.map(c => (
+                  <button key={c.bg} type="button" onClick={() => setNoteColor(c.bg)} className={`w-5 h-5 rounded-full ${c.bg} border-2 ${noteColor === c.bg ? 'border-gray-800 scale-110 shadow-md' : c.border} transition-transform`}></button>
+                ))}
+              </div>
+              <select value={noteFont} onChange={e => setNoteFont(e.target.value)} className="px-2 py-1 text-xs border rounded-lg outline-none bg-white text-gray-600 font-medium cursor-pointer">
+                {fonts.map(f => <option key={f.label} value={f.css}>{f.label}</option>)}
+              </select>
               <button type="submit" className="bg-yellow-100 text-yellow-700 p-2 rounded-xl hover:bg-yellow-200 transition shadow-sm"><StickyNote size={18}/></button>
             </form>
             <label className="bg-gray-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-gray-200 transition cursor-pointer flex items-center gap-2 font-bold text-sm shadow-sm">
               <ImageIcon size={18} /> Pic
               <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
             </label>
+            <button onClick={() => setShowDrawPad(true)} className="bg-purple-100 text-[var(--color-primary)] px-4 py-2 rounded-xl hover:bg-purple-200 transition flex items-center gap-2 font-bold text-sm shadow-sm">
+              <PenTool size={18} /> Ink
+            </button>
           </div>
         </div>
       </div>
@@ -1674,7 +2569,8 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
             return (
               <motion.div
                 key={item.id} drag={isEditMode && !isEditing} dragMomentum={false}
-                onDragEnd={(e, info) => updateBoardItem(item.id, { x: item.x + info.offset.x / zoom, y: item.y + info.offset.y / zoom })}
+                // INSTANT DRAG FIX: Using the exact point coordinate to eliminate lag and misalignment
+                onDragEnd={(e, info) => updateBoardItem(item.id, { x: info.point.x / zoom, y: info.point.y / zoom })}
                 initial={{ x: item.x, y: item.y }}
                 onDoubleClick={(e) => { e.stopPropagation(); if(isEditMode) setEditingId(item.id); }}
                 className={`absolute group transition-shadow ${isEditing ? 'z-50 shadow-2xl scale-105' : 'shadow-sm hover:shadow-lg z-10'} ${isEditMode ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-auto'}`}
@@ -1683,33 +2579,22 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
                 {isEditMode && (
                   <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className={`absolute -top-4 -right-4 bg-white text-red-500 p-2 rounded-full shadow-lg transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} z-20`}><Trash2 size={16}/></button>
                 )}
-                {/* FIX: Improved resizer anchor points instead of CSS resize:both */}
+                
+                {/* PRO RESIZE FIX: Dedicated easy-drag handle instead of native CSS resize */}
                 {isEditing && (
-                  <div 
-                    className="absolute bottom-[-10px] right-[-10px] w-6 h-6 bg-[var(--color-primary)] rounded-full cursor-se-resize z-50 flex items-center justify-center shadow-lg"
-                    onPointerDown={(e) => {
-                        e.stopPropagation();
-                        const startX = e.clientX;
-                        const startY = e.clientY;
-                        const startW = item.w || 200;
-                        const startH = item.h || 200;
-
-                        const onMove = (moveEvent) => {
-                            updateBoardItem(item.id, {
-                                w: Math.max(100, startW + (moveEvent.clientX - startX) / zoom),
-                                h: Math.max(100, startH + (moveEvent.clientY - startY) / zoom)
-                            });
-                        };
-                        const onUp = () => {
-                            window.removeEventListener('pointermove', onMove);
-                            window.removeEventListener('pointerup', onUp);
-                        };
-                        window.addEventListener('pointermove', onMove);
-                        window.addEventListener('pointerup', onUp);
+                  <motion.div 
+                    drag 
+                    dragMomentum={false}
+                    onDragEnd={(e, info) => {
+                      e.stopPropagation();
+                      const newW = Math.max(100, (item.w || 200) + info.offset.x / zoom);
+                      const newH = Math.max(100, (item.h || 200) + info.offset.y / zoom);
+                      updateBoardItem(item.id, { w: newW, h: newH });
                     }}
+                    className="absolute -bottom-4 -right-4 w-8 h-8 bg-blue-500 rounded-full shadow-lg flex items-center justify-center cursor-nwse-resize z-50 border-2 border-white"
                   >
-                    <span className="text-white text-[10px]">↘</span>
-                  </div>
+                    <ArrowRight size={14} className="text-white transform rotate-45" />
+                  </motion.div>
                 )}
                 
                 {item.type === 'text' && (
@@ -1725,11 +2610,206 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
                     </div>
                   </div>
                 )}
+
+                {item.type === 'drawing' && (
+                  <div className="relative" style={{ width: item.w || 300, height: item.h || 300, overflow: 'hidden' }}>
+                    <img src={item.content} className="w-full h-full object-contain pointer-events-none drop-shadow-sm" />
+                  </div>
+                )}
               </motion.div>
             );
           })}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showDrawPad && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={() => setShowDrawPad(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="font-serif font-bold text-xl text-gray-800">Digital Ink ✍️</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1">Background will be transparent.</p>
+                </div>
+                <button onClick={() => setShowDrawPad(false)} className="bg-gray-100 text-gray-500 p-2 rounded-full hover:bg-red-100 hover:text-red-500 transition-colors"><X size={20}/></button>
+              </div>
+              <div className="w-full h-72 border-2 border-gray-300 rounded-2xl relative shadow-inner cursor-crosshair overflow-hidden" style={{ backgroundImage: 'radial-gradient(#e5e7eb 2px, transparent 2px)', backgroundSize: '20px 20px' }}>
+                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full touch-none bg-transparent" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}></canvas>
+              </div>
+              <div className="flex justify-between items-center mt-6">
+                <button onClick={() => { const ctx = canvasRef.current.getContext('2d'); ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); }} className="text-gray-500 font-bold hover:text-gray-800 text-sm flex items-center gap-1"><Trash2 size={16}/> Clear</button>
+                <button onClick={saveDrawing} className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-full font-bold hover:bg-[var(--color-primary-hover)] shadow-md flex items-center gap-2 transition-all hover:scale-105">Stick to Board <Check size={18}/></button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ==========================================
+// SILENT EMAIL NOTIFICATION HELPER
+// ==========================================
+const sendInstantNotification = (itemType, itemTitle) => {
+  const email1 = localStorage.getItem('notifyEmail1');
+  const email2 = localStorage.getItem('notifyEmail2');
+  const validEmails = [email1, email2].filter(Boolean);
+
+  if (validEmails.length === 0) return;
+
+  validEmails.forEach((targetEmail) => {
+    const templateParams = {
+      to_email: targetEmail,
+      subject: `New ${itemType} Added to Our Universe! ✨`,
+      message: `A new ${itemType} titled "${itemTitle}" was just added. Go check it out!`
+    };
+
+    emailjs.send(
+      'service_qwk8ies', 
+      'template_7vk7y9m', 
+      templateParams, 
+      'ICqdxeukLfDRZVg9K'
+    ).then(() => console.log(`Silent ping sent successfully to ${targetEmail}!`))
+     .catch((err) => console.error(`Silent email failed for ${targetEmail}:`, err));
+  });
+};
+
+// ==========================================
+// FULL ADVANCED SETTINGS PAGE 
+// ==========================================
+const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, showAlert }) => {
+  const [newQuote, setNewQuote] = useState("");
+  const [isSavingQuote, setIsSavingQuote] = useState(false);
+  const [email1, setEmail1] = useState(() => localStorage.getItem('notifyEmail1') || '');
+  const [email2, setEmail2] = useState(() => localStorage.getItem('notifyEmail2') || '');
+
+  const handleAddQuote = async (e) => {
+    e.preventDefault();
+    if (!newQuote.trim()) return;
+    setIsSavingQuote(true);
+    try {
+      await addDoc(collection(db, "quotes"), { text: newQuote, timestamp: new Date(), universeId: activeUniverse });
+      setNewQuote("");
+      showAlert("Quote Added! ✨", "Your quote was beautifully added to the universe.");
+    } catch (error) {
+      showAlert("Error", "Failed to add quote.");
+    }
+    setIsSavingQuote(false);
+  };
+
+  const handleSaveEmails = () => {
+    localStorage.setItem('notifyEmail1', email1);
+    localStorage.setItem('notifyEmail2', email2);
+    showAlert("Saved! 💌", "Notification emails saved! You will now get pinged when memories are added.");
+  };
+
+  const copyUniverseCode = () => {
+    navigator.clipboard.writeText(activeUniverse);
+    showAlert("Copied! 🔑", "Universe Code copied! Send this to your partner.");
+  };
+
+  const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } }};
+  const itemVariants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
+
+  return (
+    <div className="max-w-4xl mx-auto pb-10">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 md:mb-10">
+        <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">Universe Settings ⚙️</h1>
+        <p className="opacity-70 text-sm md:text-base">Manage your space, appearance, and memory backups.</p>
+      </motion.div>
+
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6 md:space-y-8">
+        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><Lock size={20} /></div>
+            <h2 className="text-xl font-semibold text-gray-800">Your Shared Universe</h2>
+          </div>
+          <p className="text-sm text-gray-500 mb-6">Send this code to your partner. When they create an account, they can select "Join Universe" and paste this code to sync your memories securely.</p>
+          
+          <div className="flex items-center bg-gray-50 border border-gray-200 p-4 rounded-xl gap-4">
+            <code className="text-xl font-bold tracking-widest text-[var(--color-primary)] flex-1 text-center">{activeUniverse}</code>
+            <button onClick={copyUniverseCode} className="bg-[var(--color-primary)] text-white p-3 rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"><Copy size={20} /></button>
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><Mail size={20} /></div>
+            <h2 className="text-xl font-semibold text-gray-800">Email Notifications</h2>
+          </div>
+          <p className="text-sm text-gray-500 mb-6">Get pinged instantly on your phone when a new memory or letter is added.</p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Your Email</label>
+              <input type="email" value={email1} onChange={(e) => setEmail1(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" placeholder="you@example.com" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Partner's Email</label>
+              <input type="email" value={email2} onChange={(e) => setEmail2(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" placeholder="partner@example.com" />
+            </div>
+            <button onClick={handleSaveEmails} className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors w-full md:w-auto flex items-center justify-center gap-2 shadow-sm">
+              <Check size={18} /> Save Notification Emails
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
+           <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-gray-100 text-[var(--color-primary)] rounded-xl"><PenTool size={20} /></div>
+            <h2 className="text-xl font-semibold text-gray-800">Whispers of the Universe</h2>
+          </div>
+          <form onSubmit={handleAddQuote} className="mb-6">
+            <label className="block text-sm md:text-base text-gray-600 mb-2 font-medium">Add a lovely sentence to rotate on the dashboard</label>
+            <textarea value={newQuote} onChange={(e) => setNewQuote(e.target.value)} placeholder="e.g. You are my today and all of my tomorrows..." className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-gray-200 bg-white/50 resize-none font-serif text-lg" rows="3" />
+            <button type="submit" disabled={isSavingQuote || !newQuote.trim()} className="mt-4 bg-[var(--color-primary)] text-white px-6 py-3 rounded-xl w-full font-medium hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {isSavingQuote ? "Adding to the stars..." : <><Sparkles size={18}/> Add to Dashboard</>}
+            </button>
+          </form>
+
+          {quotes && quotes.length > 0 && (
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <h3 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">Active Quotes</h3>
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {quotes.map(q => (
+                    <motion.div key={q.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center bg-white/80 p-3 rounded-xl border border-gray-100 shadow-sm">
+                      <p className="font-serif italic text-gray-700 truncate pr-4 text-sm md:text-base">"{q.text}"</p>
+                      <button onClick={() => deleteQuote(q.id)} className="text-gray-400 hover:text-red-500 p-2 transition-colors shrink-0 bg-white rounded-lg shadow-sm border border-gray-100"><Trash2 size={16}/></button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><Palette size={20} /></div>
+            <h2 className="text-xl font-semibold text-gray-800">Aesthetic Theme</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button onClick={() => setTheme('light')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'light' ? 'border-rose-400 bg-rose-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
+              <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#FCF8F9] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#8B1235] shadow-sm"></div></div>
+              <div><p className="font-semibold text-gray-800">Light Romantic</p><p className="text-[10px] text-gray-500 mt-0.5">Soft whites and deep maroon.</p></div>
+            </button>
+            <button onClick={() => setTheme('lavender')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'lavender' ? 'border-purple-400 bg-purple-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
+              <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#F5F3FF] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#7E57C2] shadow-sm"></div></div>
+              <div><p className="font-semibold text-gray-800">Lavender Dream</p><p className="text-[10px] text-gray-500 mt-0.5">Soft lavenders and deep violet.</p></div>
+            </button>
+            <button onClick={() => setTheme('beach')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'beach' ? 'border-cyan-400 bg-cyan-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
+              <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#F4F9F9] border border-cyan-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#0C4A6E] shadow-sm"></div></div>
+              <div><p className="font-semibold text-gray-800">Heavenly Beach</p><p className="text-[10px] text-gray-500 mt-0.5">Soft ocean blues and warm shores.</p></div>
+            </button>
+            <button onClick={() => setTheme('sunset')} className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-3 ${theme === 'sunset' ? 'border-orange-400 bg-orange-50 shadow-md scale-[1.02]' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
+              <div className="flex gap-2"><div className="w-6 h-6 rounded-full bg-[#FFF2EB] border border-gray-200 shadow-sm"></div><div className="w-6 h-6 rounded-full bg-[#ea580c] shadow-sm"></div></div>
+              <div><p className="font-semibold text-gray-800">Sunset Glow</p><p className="text-[10px] text-gray-500 mt-0.5">Warm peaches and vibrant orange.</p></div>
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };
@@ -1755,6 +2835,7 @@ function App() {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '' });
 
+  // --- NEW VISITOR TRACKING STATE ---
   const [visitors, setVisitors] = useState([]);
   const [isEditingName, setIsEditingName] = useState(false);
   const [localName, setLocalName] = useState(localStorage.getItem('universe_visitor') || 'Guest');
@@ -1772,57 +2853,113 @@ function App() {
     localStorage.setItem('appTheme', theme);
     document.body.setAttribute('data-theme', theme);
     document.body.style.backgroundColor = 'var(--color-bg)';
+    
+    const topBarColors = {
+      light: '#8B1235',
+      lavender: '#7E57C2',
+      beach: '#0C4A6E',
+      sunset: '#EA580C'
+    };
+
+    let metaThemeColor = document.querySelector("meta[name='theme-color']");
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement("meta");
+      metaThemeColor.setAttribute("name", "theme-color");
+      document.head.appendChild(metaThemeColor);
+    }
+    metaThemeColor.setAttribute("content", topBarColors[theme] || '#8B1235');
   }, [theme]);
 
-  // FIX: WHATSAPP-STYLE REALTIME LISTENERS FOR EVERYTHING
+  // --- UPGRADED: INSTANT VISIBILITY HEARTBEAT ---
+  useEffect(() => {
+    if (!isAuthenticated || !activeUniverse || !currentUser) return;
+
+    const uniqueUserId = currentUser.uid;
+
+    const updatePresence = async () => {
+      try {
+        const visitorRef = doc(db, 'visitors', uniqueUserId);
+        await setDoc(visitorRef, {
+          userId: uniqueUserId,
+          name: localStorage.getItem('universe_visitor') || 'Guest',
+          universeId: activeUniverse,
+          lastSeen: serverTimestamp() 
+        }, { merge: true });
+      } catch (error) { console.error("Presence error:", error); }
+    };
+
+    updatePresence();
+    const heartbeat = setInterval(updatePresence, 60000); 
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') updatePresence();
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+
+    return () => {
+      clearInterval(heartbeat);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+    };
+  }, [isAuthenticated, activeUniverse, localName, currentUser]);
+
+  // --- UPGRADED: WHATSAPP-STYLE REAL-TIME SYNC ---
   useEffect(() => {
     if (!isAuthenticated || !activeUniverse) {
       setLoading(false);
       return;
     }
+    
     setLoading(true);
-
-    const unsubscribes = [];
-
-    const setupListener = (colName, setter, sortField = 'id') => {
+    
+    const setupLiveListener = (colName, stateSetter, sortField = 'id') => {
       const q = query(collection(db, colName), where("universeId", "==", activeUniverse));
-      const unsub = onSnapshot(q, (snap) => {
-        const data = snap.docs.map(doc => ({ firestoreId: doc.id, id: doc.id, ...doc.data() }));
-        setter(data.sort((a, b) => (b[sortField] > a[sortField] ? 1 : -1)));
-      }, (error) => console.error(`Error syncing ${colName}:`, error));
-      unsubscribes.push(unsub);
+      return onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ firestoreId: doc.id, id: doc.id, ...doc.data() }));
+        data.sort((a, b) => (b[sortField] > a[sortField] ? 1 : -1));
+        stateSetter(data);
+      }, (error) => console.error(`Live sync error for ${colName}:`, error));
     };
 
-    // Setting up exact WhatsApp-like live updates for every component
-    setupListener('memories', setMemories);
-    setupListener('letters', setLetters, 'createdAt');
-    setupListener('quotes', setQuotes, 'timestamp');
-    setupListener('gallery', setGalleryPhotos, 'timestamp');
-    setupListener('bucketlist', setBucketList);
-    setupListener('promises', setPromises);
-    setupListener('moodboard', setBoardItems);
-
-    const unsubVisitors = onSnapshot(collection(db, 'visitors'), (snap) => {
-      const visitorData = snap.docs.map(doc => doc.data());
-      visitorData.sort((a, b) => (b.lastSeen?.toMillis() || 0) - (a.lastSeen?.toMillis() || 0));
-      setVisitors(visitorData);
+    const unsubMemories = setupLiveListener('memories', setMemories);
+    const unsubLetters = setupLiveListener('letters', setLetters, 'createdAt');
+    const unsubQuotes = setupLiveListener('quotes', setQuotes, 'timestamp');
+    const unsubGallery = setupLiveListener('gallery', setGalleryPhotos, 'timestamp');
+    const unsubBucketList = setupLiveListener('bucketlist', setBucketList);
+    const unsubPromises = setupLiveListener('promises', setPromises);
+    const unsubMoodboard = setupLiveListener('moodboard', setBoardItems);
+    
+    const unsubVisitors = onSnapshot(collection(db, 'visitors'), (snapshot) => {
+      const visitorData = snapshot.docs.map(doc => doc.data());
+      const universeVisitors = visitorData
+        .filter(v => v.universeId === activeUniverse)
+        .sort((a, b) => (b.lastSeen?.toMillis() || 0) - (a.lastSeen?.toMillis() || 0));
+      setVisitors(universeVisitors);
     });
-    unsubscribes.push(unsubVisitors);
 
     setLoading(false);
 
     return () => {
-      unsubscribes.forEach(unsub => unsub());
+      unsubMemories();
+      unsubLetters();
+      unsubQuotes();
+      unsubGallery();
+      unsubBucketList();
+      unsubPromises();
+      unsubMoodboard();
+      unsubVisitors();
     };
   }, [isAuthenticated, activeUniverse]);
 
   const handleSaveName = async () => {
-    if (localName.trim()) {
+    if (localName.trim() && currentUser) {
       const newName = localName.trim();
       localStorage.setItem('universe_visitor', newName);
       setIsEditingName(false);
       try {
-        const visitorRef = doc(db, 'visitors', newName.toLowerCase());
+        const visitorRef = doc(db, 'visitors', currentUser.uid);
         await setDoc(visitorRef, {
           name: newName,
           lastSeen: serverTimestamp() 
@@ -1833,9 +2970,26 @@ function App() {
     }
   };
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return "Just now";
-    return timestamp.toDate().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const formatTime = (timestamp, visitorId) => {
+    if (currentUser && visitorId === currentUser.uid) return "Online";
+    if (!timestamp) return "Online"; 
+
+    const date = timestamp.toDate();
+    const now = new Date();
+    const diffMs = now - date;
+    
+    if (diffMs < 120000) return "Online";
+
+    const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (isToday) return `Today at ${timeStr}`;
+    if (isYesterday) return `Yesterday at ${timeStr}`;
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
   };
 
   const addMemory = async (newMemoryData) => {
@@ -1895,12 +3049,12 @@ function App() {
     const { type, id } = confirmModal;
     if (!id) return;
     try {
-      if (type === 'memory') { await deleteDoc(doc(db, "memories", id)); } 
-      else if (type === 'letter') { await deleteDoc(doc(db, "letters", id)); } 
-      else if (type === 'gallery') { await deleteDoc(doc(db, "gallery", id)); } 
-      else if (type === 'quote') { await deleteDoc(doc(db, "quotes", id)); } 
-      else if (type === 'goal') { await deleteDoc(doc(db, "bucketlist", id)); } 
-      else if (type === 'promise') { await deleteDoc(doc(db, "promises", id)); }
+      if (type === 'memory') await deleteDoc(doc(db, "memories", id));
+      else if (type === 'letter') await deleteDoc(doc(db, "letters", id));
+      else if (type === 'gallery') await deleteDoc(doc(db, "gallery", id));
+      else if (type === 'quote') await deleteDoc(doc(db, "quotes", id));
+      else if (type === 'goal') await deleteDoc(doc(db, "bucketlist", id));
+      else if (type === 'promise') await deleteDoc(doc(db, "promises", id));
       setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' }); 
     } catch (err) { console.error("Error deleting item: ", err); }
   };
@@ -1909,20 +3063,17 @@ function App() {
     try {
       const finalLetter = { ...newLetterData, createdAt: new Date().toISOString(), universeId: activeUniverse }; 
       await addDoc(collection(db, "letters"), finalLetter);
+      sendInstantNotification("Love Letter", finalLetter.title);
       return true;
     } catch (err) { showAlert("Image Too Large", "Attached image is too large! Try a smaller picture."); return false; }
   };
 
   const addGalleryPhotos = async (newPhoto) => {
-    const finalPhoto = { ...newPhoto, universeId: activeUniverse }; 
-    await addDoc(collection(db, "gallery"), finalPhoto);
+    await addDoc(collection(db, "gallery"), { ...newPhoto, universeId: activeUniverse });
   };
 
   const addGoal = async (goal) => {
-    try {
-      const finalGoal = { ...goal, universeId: activeUniverse }; 
-      await addDoc(collection(db, "bucketlist"), finalGoal);
-    } catch (err) { console.error(err); }
+    try { await addDoc(collection(db, "bucketlist"), { ...goal, universeId: activeUniverse }); } catch (err) { console.error(err); }
   };
   
   const toggleGoal = async (id, completed, proofImage = null) => {
@@ -1934,29 +3085,19 @@ function App() {
   };
   
   const addPromise = async (promise) => {
-    try {
-      const finalPromise = { ...promise, universeId: activeUniverse };
-      await addDoc(collection(db, "promises"), finalPromise);
-    } catch (err) { console.error(err); }
+    try { await addDoc(collection(db, "promises"), { ...promise, universeId: activeUniverse }); } catch (err) { console.error(err); }
   };
 
   const addBoardItem = async (item) => {
-    try {
-      const finalItem = { ...item, universeId: activeUniverse }; 
-      await addDoc(collection(db, "moodboard"), finalItem);
-    } catch (err) { console.error(err); }
+    try { await addDoc(collection(db, "moodboard"), { ...item, universeId: activeUniverse }); } catch (err) { console.error(err); }
   };
   
   const updateBoardItem = async (id, newProps) => {
-    try {
-      await updateDoc(doc(db, "moodboard", id), newProps);
-    } catch (err) { console.error(err); }
+    try { await updateDoc(doc(db, "moodboard", id), newProps); } catch (err) { console.error(err); }
   };
   
   const deleteBoardItem = async (id) => {
-    try {
-      await deleteDoc(doc(db, "moodboard", id));
-    } catch (err) { console.error(err); }
+    try { await deleteDoc(doc(db, "moodboard", id)); } catch (err) { console.error(err); }
   };
 
   const handleUnlock = (user, uId) => {
@@ -1984,6 +3125,7 @@ function App() {
       <GlobalThemeStyles />
       <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500 pb-20">
         
+        {/* WE PASS ALL THE NEW VISITOR STATE TO DASHBOARD LAYOUT SO SIDEBAR CAN READ IT! */}
         <DashboardLayout 
           theme={theme}
           onAccountClick={() => setIsAccountModalOpen(true)}
@@ -2007,7 +3149,7 @@ function App() {
             <Route path="/bucket-list" element={<BucketList bucketList={bucketList} addGoal={addGoal} toggleGoal={toggleGoal} deleteGoal={triggerDeleteGoal} currentUser={currentUser} />} />
             <Route path="/promise-jar" element={<PromiseJar promises={promises} addPromise={addPromise} deletePromise={triggerDeletePromise} showAlert={showAlert} />} />
             <Route path="/mood-board" element={<MoodBoard boardItems={boardItems} addBoardItem={addBoardItem} updateBoardItem={updateBoardItem} deleteBoardItem={deleteBoardItem} />} /> 
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<SettingsPage theme={theme} setTheme={setTheme} activeUniverse={activeUniverse} quotes={quotes} deleteQuote={triggerDeleteQuote} showAlert={showAlert} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
           </Routes>
@@ -2024,6 +3166,7 @@ function App() {
           visitors={visitors}
           formatTime={formatTime}
           onLockApp={handleLockUniverse}
+          currentUser={currentUser}
         />
 
         <DeleteConfirmModal 
