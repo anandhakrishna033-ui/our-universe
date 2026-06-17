@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle, Home as HomeIcon, Grip, ListTodo, Archive, Settings } from 'lucide-react';
+import { Heart, Image as ImageIcon, Video, Mail, Music, Calendar, Clock, Shield, Palette, Download, Trash2, Lock, ArrowRight, Check, Sparkles, MapPin, Plus, PenTool, Mic, StopCircle, Play, Pause, Volume2, Type, StickyNote, X, ChevronDown, ChevronUp, Copy, AlertCircle, Home as HomeIcon, Grip, ListTodo, Archive, Settings, Bell } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -23,7 +23,7 @@ import imageCompression from 'browser-image-compression';
 // ==========================================
 const GlobalThemeStyles = () => (
   <style>{`
-    /* NEW: Completely locks the screen background from bouncing */
+    /* Completely locks the screen background from bouncing */
     html, body, #root {
       width: 100%;
       height: 100%;
@@ -94,12 +94,7 @@ const lovelyHeartMarker = new L.DivIcon({
 // ==========================================
 const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
   const [caption, setCaption] = useState("");
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(caption);
-    setCaption(""); 
-  };
+  const handleSubmit = (e) => { e.preventDefault(); onSubmit(caption); setCaption(""); };
 
   return (
     <AnimatePresence>
@@ -110,16 +105,8 @@ const CaptionModal = ({ isOpen, onClose, onSubmit, fileCount }) => {
               {fileCount > 1 ? `Uploading ${fileCount} Photos` : "Add a Caption"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">Give your memory a beautiful short caption.</p>
-            
             <form onSubmit={handleSubmit}>
-              <input 
-                autoFocus
-                type="text" 
-                value={caption} 
-                onChange={(e) => setCaption(e.target.value)} 
-                placeholder="e.g. A beautiful moment..." 
-                className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-gray-50 mb-6 text-gray-800"
-              />
+              <input autoFocus type="text" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="e.g. A beautiful moment..." className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-gray-50 mb-6 text-gray-800" />
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
                 <button type="submit" className="px-5 py-2.5 bg-[var(--color-primary)] text-white font-bold rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">Save Photos</button>
@@ -138,9 +125,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
       {isOpen && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl text-center">
-            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={32} />
-            </div>
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={32} /></div>
             <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">{title}</h3>
             <p className="text-gray-500 mb-8">{message}</p>
             <div className="flex gap-3">
@@ -160,9 +145,7 @@ const AlertModal = ({ isOpen, onClose, title, message }) => {
       {isOpen && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl text-center">
-            <div className="w-16 h-16 bg-pink-50 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles size={32} />
-            </div>
+            <div className="w-16 h-16 bg-pink-50 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-4"><Sparkles size={32} /></div>
             <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">{title}</h3>
             <p className="text-gray-500 mb-8">{message}</p>
             <button onClick={onClose} className="w-full py-3 bg-[var(--color-primary)] text-white font-bold rounded-xl shadow-md hover:bg-[var(--color-primary-hover)] transition-colors">Okay</button>
@@ -174,7 +157,7 @@ const AlertModal = ({ isOpen, onClose, title, message }) => {
 };
 
 // ==========================================
-// 1. BULLETPROOF AUDIO PLAYER
+// AUDIO PLAYER
 // ==========================================
 const AudioPlayer = ({ src }) => {
   const audioRef = useRef(null);
@@ -190,24 +173,18 @@ const AudioPlayer = ({ src }) => {
         const objectUrl = URL.createObjectURL(blob);
         setPlayableUrl(objectUrl);
       }).catch(err => {
-        console.error("Audio conversion failed:", err);
         setPlayableUrl(src); 
       });
     } else {
       setPlayableUrl(src);
     }
-    return () => {
-      if (playableUrl && playableUrl.startsWith('blob:')) URL.revokeObjectURL(playableUrl);
-    };
+    return () => { if (playableUrl && playableUrl.startsWith('blob:')) URL.revokeObjectURL(playableUrl); };
   }, [src]);
 
   const togglePlay = () => {
     if (!audioRef.current || !playableUrl) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play().catch(e => setError("Browser blocked audio. Check silent mode."));
-    }
+    if (isPlaying) { audioRef.current.pause(); } 
+    else { audioRef.current.play().catch(e => setError("Browser blocked audio. Check silent mode.")); }
     setIsPlaying(!isPlaying);
   };
 
@@ -235,7 +212,7 @@ const AudioPlayer = ({ src }) => {
 };
 
 // ==========================================
-// 2. TRUE SECURE GATEWAY (UPDATED WITH DEVICE ID VISITOR TRACKING)
+// TRUE SECURE GATEWAY
 // ==========================================
 const AuthGateway = ({ onUnlock }) => {
   const [authStep, setAuthStep] = useState('LOADING'); 
@@ -259,7 +236,6 @@ const AuthGateway = ({ onUnlock }) => {
         if (userDoc.exists()) {
           const uId = userDoc.data().universeId;
           setUniverseId(uId);
-          
           if (sessionStorage.getItem('sessionUnlocked') === 'true') {
             onUnlock(currentUser, uId);
           } else {
@@ -308,16 +284,14 @@ const AuthGateway = ({ onUnlock }) => {
         userId: uniqueUserId,
         name: nameToLog,
         universeId: universeId,
+        status: 'online',
         lastSeen: serverTimestamp()
       }, { merge: true });
-    } catch (err) {
-      console.error("Error logging visit:", err);
-    }
+    } catch (err) { console.error("Error logging visit:", err); }
   };
 
   const handlePinSubmit = (e) => {
     e.preventDefault();
-    
     const proceedWithUnlock = () => {
       const savedName = localStorage.getItem('universe_visitor');
       if (savedName) {
@@ -335,11 +309,8 @@ const AuthGateway = ({ onUnlock }) => {
       setSavedPin(pin);
       proceedWithUnlock();
     } else if (authStep === 'PIN_ENTRY') {
-      if (pin === savedPin) {
-        proceedWithUnlock();
-      } else { 
-        setError("Incorrect PIN."); setPin(''); 
-      }
+      if (pin === savedPin) proceedWithUnlock();
+      else { setError("Incorrect PIN."); setPin(''); }
     }
   };
 
@@ -354,11 +325,7 @@ const AuthGateway = ({ onUnlock }) => {
     }
   };
 
-  const handleLogout = () => { 
-    signOut(auth); 
-    setPin(''); 
-    sessionStorage.removeItem('sessionUnlocked'); 
-  };
+  const handleLogout = () => { signOut(auth); setPin(''); sessionStorage.removeItem('sessionUnlocked'); };
 
   if (authStep === 'LOADING') return <div className="min-h-screen bg-[var(--color-bg-alt)] flex items-center justify-center font-serif text-[var(--color-primary)] text-xl animate-pulse">Loading Gateway...</div>;
 
@@ -418,14 +385,7 @@ const AuthGateway = ({ onUnlock }) => {
         {authStep === 'NAME_ENTRY' && (
           <form onSubmit={handleNameSubmit} className="space-y-4 mt-6">
             <p className="text-sm text-gray-500 mb-4">What should we call you inside the Universe?</p>
-            <input
-              type="text"
-              required
-              value={visitorName}
-              onChange={e => setVisitorName(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-xl tracking-wide text-gray-800 shadow-inner"
-            />
+            <input type="text" required value={visitorName} onChange={e => setVisitorName(e.target.value)} placeholder="Enter your name" className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-pink-100 outline-none focus:border-[var(--color-primary)] text-center text-xl tracking-wide text-gray-800 shadow-inner" />
             <button type="submit" className="w-full mt-2 bg-[var(--color-primary)] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-md">
               Enter Universe
             </button>
@@ -438,15 +398,149 @@ const AuthGateway = ({ onUnlock }) => {
 };
 
 // ==========================================
-// PROFESSIONAL & PLAY STORE COMPLIANT PAGES
+// NEW: WHATSAPP-STYLE NOTIFICATION WIDGET
 // ==========================================
+const NotificationWidget = ({ notifications, currentUser, markAsRead }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const unreadCount = notifications.filter(n => !n.readBy?.includes(currentUser?.uid)).length;
+
+  const handleNotifClick = (notif) => {
+    markAsRead(notif);
+    setIsOpen(false);
+    navigate(notif.link);
+  };
+
+  return (
+    <div className="fixed top-4 right-16 md:right-24 z-[100]">
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="relative bg-white/80 backdrop-blur-md p-3 rounded-full shadow-md border border-white hover:bg-white hover:scale-105 transition-all text-gray-700"
+      >
+        <Bell size={24} className={unreadCount > 0 ? "text-[var(--color-primary)] animate-pulse" : ""} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm border-2 border-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+            animate={{ opacity: 1, y: 0, scale: 1 }} 
+            exit={{ opacity: 0, y: -10, scale: 0.95 }} 
+            className="absolute top-14 right-0 w-80 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white overflow-hidden origin-top-right flex flex-col"
+          >
+            <div className="p-4 border-b border-gray-100 bg-[var(--color-bg)] flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <Bell size={18} className="text-[var(--color-primary)]" /> Notifications
+              </h3>
+              {unreadCount > 0 && <span className="text-xs font-bold text-[var(--color-primary)] bg-white px-2 py-1 rounded-full shadow-sm">{unreadCount} New</span>}
+            </div>
+
+            <div className="max-h-80 overflow-y-auto custom-scrollbar">
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 font-medium">No recent updates in your universe.</div>
+              ) : (
+                notifications.map((notif) => {
+                  const isUnread = !notif.readBy?.includes(currentUser?.uid);
+                  return (
+                    <div 
+                      key={notif.id} 
+                      onClick={() => handleNotifClick(notif)}
+                      className={`p-4 border-b border-gray-50 cursor-pointer transition-colors flex gap-3 ${isUnread ? 'bg-rose-50/50 hover:bg-rose-50' : 'bg-white hover:bg-gray-50'}`}
+                    >
+                      <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${isUnread ? 'bg-[var(--color-primary)]' : 'bg-gray-200'}`}></div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)] mb-1">{notif.type}</p>
+                        <h4 className={`text-sm ${isUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{notif.title}</h4>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notif.message}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ==========================================
+// ACCOUNT MODAL
+// ==========================================
+const AccountModal = ({ isOpen, onClose, localName, setLocalName, isEditingName, setIsEditingName, handleSaveName, visitors, formatTime, onLockApp, currentUser }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+          <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <button onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><X size={20}/></button>
+            
+            <h2 className="text-2xl font-serif font-bold text-[#8B1235] mb-6 flex items-center gap-2">
+              <Shield size={24} /> Account & Security
+            </h2>
+
+            <div className="bg-[#FCF8F9] p-5 rounded-2xl border border-rose-100 mb-6 shadow-inner">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Your Display Name</label>
+              {isEditingName ? (
+                <div className="flex gap-2">
+                  <input type="text" value={localName} onChange={(e) => setLocalName(e.target.value)} className="w-full text-sm p-3 border border-gray-200 rounded-xl outline-none focus:border-[#8B1235] shadow-sm bg-white" autoFocus />
+                  <button onClick={handleSaveName} className="text-xs bg-[#8B1235] text-white px-4 rounded-xl font-bold hover:shadow-md transition-all">Save</button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                  <span className="font-bold text-gray-800 text-lg">{localName}</span>
+                  <button onClick={() => setIsEditingName(true)} className="text-sm text-[#8B1235] hover:underline font-bold bg-rose-50 px-3 py-1 rounded-lg">Edit</button>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-8">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-3 flex items-center gap-1">
+                <Clock size={12} /> Active Universe Devices ({visitors.length})
+              </label>
+              <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                {visitors.map((visitor, idx) => {
+                  const isMe = currentUser && visitor.userId === currentUser.uid;
+                  // UPGRADED CHECK: Strict boolean check against explicit offline status
+                  const isOnline = isMe ? true : (visitor.status === 'online' && visitor.lastSeen && (Date.now() - visitor.lastSeen.toMillis() < 120000)); 
+                  
+                  return (
+                    <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-300'}`} />
+                        <span className="text-gray-700 font-bold">{visitor.name} {isMe ? "(You)" : ""}</span>
+                      </div>
+                      <span className="text-xs text-gray-400 font-medium">{formatTime(visitor.lastSeen, visitor.userId, visitor.status)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button onClick={onLockApp} className="w-full py-4 flex items-center justify-center gap-2 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
+              <Lock size={18} /> Lock Universe
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const AboutPage = () => (
   <div className="max-w-3xl mx-auto pb-10">
     <h1 className="text-4xl font-serif font-bold text-gray-800 mb-8">About Our Universe ✨</h1>
     <div className="bg-white/80 backdrop-blur-md p-8 md:p-12 rounded-[2rem] shadow-sm border border-white text-gray-700 leading-relaxed font-serif text-lg space-y-6">
       <p><strong>Our Universe</strong> was created as a private, secure, and deeply personal sanctuary for two people to catalog their lives together.</p>
       <p>In a world of public social media feeds and fleeting digital moments, we built a vault. A place where every polaroid, every love letter, and every dropped pin on the map belongs entirely to us.</p>
-      <p>Built with React, Framer Motion, and Firebase, this application ensures our data is encrypted, secure, and locked behind a physical device PIN. Features include collaborative Promise Jars, an infinite Mood Board, cinematic Journey Maps, and Time-Locked Letters.</p>
+      <p>Built with React, Framer Motion, and Firebase, this application ensures our data is encrypted, secure, and locked behind a physical device PIN.</p>
       <p className="text-sm text-gray-400 mt-8 pt-8 border-t border-gray-200">Version 1.0.0 | Created for Love.</p>
     </div>
   </div>
@@ -456,21 +550,14 @@ const PrivacyPolicy = () => (
   <div className="max-w-3xl mx-auto pb-10">
     <h1 className="text-4xl font-serif font-bold text-gray-800 mb-8">Privacy & Security Policy 🔒</h1>
     <div className="bg-white/80 backdrop-blur-md p-8 md:p-12 rounded-[2rem] shadow-sm border border-white text-gray-700 space-y-6 leading-relaxed">
-      <p>Your privacy and data security are the fundamental pillars of Our Universe. We strictly adhere to global privacy standards (including Google Play Store and App Store requirements).</p>
-      
+      <p>Your privacy and data security are the fundamental pillars of Our Universe. We strictly adhere to global privacy standards.</p>
       <h3 className="text-xl font-bold text-[var(--color-primary)]">1. Data Collection & Usage</h3>
-      <p>We only collect the data you explicitly provide: emails for authentication/notifications, text for memories, and uploaded media. This data is used <strong>exclusively</strong> to provide the core functionality of the app. We do not sell, rent, or share your data with any third parties.</p>
-      
+      <p>We only collect the data you explicitly provide. This data is used <strong>exclusively</strong> to provide the core functionality of the app.</p>
       <h3 className="text-xl font-bold text-[var(--color-primary)]">2. Encryption & Storage</h3>
-      <p>All memories, photos, and letters are stored in a secure Google Firebase Firestore database. Your data is restricted strictly to your authenticated `Universe ID`. Media files are compressed securely on your device before transmission.</p>
-      
+      <p>All memories, photos, and letters are stored in a secure Google Firebase Firestore database.</p>
       <h3 className="text-xl font-bold text-[var(--color-primary)]">3. Local Device Lock</h3>
       <p>To prevent unauthorized physical access, a 4-digit PIN is stored locally on your device via `localStorage` and `sessionStorage`. This PIN never leaves your device.</p>
-      
-      <h3 className="text-xl font-bold text-[var(--color-primary)]">4. Location & Tracking</h3>
-      <p><strong>Zero Background Tracking:</strong> We do not track your location in the background. Location data is only requested momentarily when you explicitly click "Use My Current Location" on the interactive map, and is only saved to the specific memory you attach it to.</p>
-
-      <h3 className="text-xl font-bold text-[var(--color-primary)]">5. Data Deletion</h3>
+      <h3 className="text-xl font-bold text-[var(--color-primary)]">4. Data Deletion</h3>
       <p>You have full control over your data. Deleting a memory, photo, or note within the app permanently deletes it from the Firebase backend servers.</p>
     </div>
   </div>
@@ -517,12 +604,10 @@ const RotatingQuotes = ({ quotes }) => {
 
 const LiveClockCard = () => {
   const [time, setTime] = useState(new Date());
-
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 md:p-5 shadow-sm border border-white flex items-center gap-4 hover:scale-[1.02] transition-transform">
       <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center shrink-0">
@@ -538,73 +623,6 @@ const LiveClockCard = () => {
   );
 };
 
-// ==========================================
-// NEW: PROFESSIONAL ACCOUNT MODAL
-// ==========================================
-const AccountModal = ({ isOpen, onClose, localName, setLocalName, isEditingName, setIsEditingName, handleSaveName, visitors, formatTime, onLockApp, currentUser }) => {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-          <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl relative" onClick={e => e.stopPropagation()}>
-            
-            <button onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><X size={20}/></button>
-            
-            <h2 className="text-2xl font-serif font-bold text-[#8B1235] mb-6 flex items-center gap-2">
-              <Shield size={24} /> Account & Security
-            </h2>
-
-            {/* Edit Name Section */}
-            <div className="bg-[#FCF8F9] p-5 rounded-2xl border border-rose-100 mb-6 shadow-inner">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Your Display Name</label>
-              {isEditingName ? (
-                <div className="flex gap-2">
-                  <input type="text" value={localName} onChange={(e) => setLocalName(e.target.value)} className="w-full text-sm p-3 border border-gray-200 rounded-xl outline-none focus:border-[#8B1235] shadow-sm bg-white" autoFocus />
-                  <button onClick={handleSaveName} className="text-xs bg-[#8B1235] text-white px-4 rounded-xl font-bold hover:shadow-md transition-all">Save</button>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-                  <span className="font-bold text-gray-800 text-lg">{localName}</span>
-                  <button onClick={() => setIsEditingName(true)} className="text-sm text-[#8B1235] hover:underline font-bold bg-rose-50 px-3 py-1 rounded-lg">Edit</button>
-                </div>
-              )}
-            </div>
-
-            {/* Live Universe Visitors */}
-            <div className="mb-8">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-3 flex items-center gap-1">
-                <Clock size={12} /> Active Universe Devices ({visitors.length})
-              </label>
-              <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                {visitors.map((visitor, idx) => {
-                  const isMe = currentUser && visitor.userId === currentUser.uid;
-                  const isOnline = isMe || !visitor.lastSeen || (Date.now() - visitor.lastSeen.toMillis() < 120000); 
-                  
-                  return (
-                    <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-300'}`} />
-                        <span className="text-gray-700 font-bold">{visitor.name} {isMe ? "(You)" : ""}</span>
-                      </div>
-                      <span className="text-xs text-gray-400 font-medium">{formatTime(visitor.lastSeen, visitor.userId)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Secure Logout Button */}
-            <button onClick={onLockApp} className="w-full py-4 flex items-center justify-center gap-2 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
-              <Lock size={18} /> Lock Universe
-            </button>
-            
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
 const Home = ({ memories, quotes, deleteMemory, theme }) => {
   const recentMemories = memories.slice(0, 4); 
   const navigate = useNavigate();
@@ -614,7 +632,6 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <RotatingQuotes quotes={quotes} />
-      
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="bg-white/40 backdrop-blur-md rounded-3xl md:rounded-[2rem] p-6 md:p-10 mb-6 md:mb-8 relative overflow-hidden shadow-sm border border-white/50">
         <div className="relative z-10 max-w-2xl">
           <motion.p variants={itemVariants} className="text-[var(--color-primary)] font-bold tracking-widest uppercase mb-3 text-xs md:text-sm flex items-center gap-2">
@@ -630,7 +647,6 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
           <motion.p variants={itemVariants} className="text-gray-600 mb-8 md:mb-10 text-base md:text-lg leading-relaxed">
             Every photo, every letter, every little moment we share is kept safe right here.
           </motion.p>
-          
           <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3 md:gap-4">
             <button onClick={() => navigate('/create-memory')} className="bg-[var(--color-primary)] text-white px-6 py-3 md:py-3.5 rounded-full font-bold hover:bg-[var(--color-primary-hover)] transition-all flex items-center gap-2 shadow-md hover:shadow-xl hover:-translate-y-1">
               <Plus size={20} /> Add Memory
@@ -686,7 +702,6 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
                     <button 
                       onClick={(e) => { e.stopPropagation(); deleteMemory(m.firestoreId || m.id); }} 
                       className="absolute top-4 right-4 bg-white/80 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
-                      title="Delete Memory"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -716,7 +731,7 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
 };
 
 // ==========================================
-// 4. MEMORY CREATION (With Interactive Map Picker)
+// MEMORY CREATION
 // ==========================================
 const CreateMemory = ({ onAddMemory, showAlert }) => {
   const navigate = useNavigate();
@@ -727,48 +742,34 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
   const [voicePreview, setVoicePreview] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
   const [mapCenter, setMapCenter] = useState([51.505, -0.09]); 
   const mediaRecorderRef = useRef(null);
 
   const LocationPickerMarker = () => {
-    useMapEvents({
-      click(e) {
-        setFormData({ ...formData, lat: e.latlng.lat, lng: e.latlng.lng });
-      },
-    });
-    return formData.lat && formData.lng ? (
-      <Marker position={[formData.lat, formData.lng]} icon={lovelyHeartMarker} />
-    ) : null;
+    useMapEvents({ click(e) { setFormData({ ...formData, lat: e.latlng.lat, lng: e.latlng.lng }); }});
+    return formData.lat && formData.lng ? <Marker position={[formData.lat, formData.lng]} icon={lovelyHeartMarker} /> : null;
   };
 
   const handleGetCurrentLocation = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude, longitude } = position.coords;
-        setMapCenter([latitude, longitude]);
-        setFormData({ ...formData, lat: latitude, lng: longitude });
-      }, () => {
-        showAlert("Location Error", "Could not get your current location. Please check your browser permissions.");
-      });
+        setMapCenter([position.coords.latitude, position.coords.longitude]);
+        setFormData({ ...formData, lat: position.coords.latitude, lng: position.coords.longitude });
+      }, () => showAlert("Location Error", "Could not get your current location."));
     }
   };
 
   const handleMultiImageUpload = async (e) => {
     const files = Array.from(e.target.files).slice(0, 4);
     if (!files.length) return;
-
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setImgPreviews(prev => [...prev, ...newPreviews].slice(0, 4));
 
     const compressedFiles = [];
     const options = { maxSizeMB: 0.4, maxWidthOrHeight: 1080, useWebWorker: true };
-    
     for (const file of files) {
-      try {
-        const compressed = await imageCompression(file, options);
-        compressedFiles.push(compressed);
-      } catch (err) { compressedFiles.push(file); }
+      try { compressedFiles.push(await imageCompression(file, options)); } 
+      catch (err) { compressedFiles.push(file); }
     }
     setImgFiles(prev => [...prev, ...compressedFiles].slice(0, 4));
   };
@@ -784,20 +785,17 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
       let options = {};
       if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
       else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
-      else if (MediaRecorder.isTypeSupported('audio/aac')) options = { mimeType: 'audio/aac' };
-      
       mediaRecorderRef.current = new MediaRecorder(stream, options);
       const audioChunks = [];
       mediaRecorderRef.current.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorderRef.current.onstop = () => { 
-        const actualMimeType = mediaRecorderRef.current.mimeType;
-        const audioBlob = new Blob(audioChunks, { type: actualMimeType }); 
+        const audioBlob = new Blob(audioChunks, { type: mediaRecorderRef.current.mimeType }); 
         setVoiceBlob(audioBlob);
         setVoicePreview(URL.createObjectURL(audioBlob)); 
       };
       mediaRecorderRef.current.start(); 
       setIsRecording(true);
-    } catch (err) { showAlert("Mic Access Denied", "Microphone access denied. Please check your browser permissions."); }
+    } catch (err) { showAlert("Mic Access Denied", "Microphone access denied."); }
   };
 
   const stopRecording = () => { mediaRecorderRef.current.stop(); setIsRecording(false); };
@@ -815,7 +813,6 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
     <div className="max-w-3xl mx-auto pb-10">
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800">Add a Memory ✨</h1>
       <form onSubmit={handleSubmit} className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-sm border border-white space-y-8">
-        
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider mb-2">Title</label>
@@ -835,7 +832,6 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
             </button>
           </div>
           <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 mb-4 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white" placeholder="Custom location name (e.g., The little cafe where we met)" />
-          
           <div className="w-full h-48 md:h-64 rounded-xl overflow-hidden border-2 border-[var(--color-primary)]/20 relative z-0">
             <MapContainer center={mapCenter} zoom={3} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
               <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png" />
@@ -866,7 +862,6 @@ const CreateMemory = ({ onAddMemory, showAlert }) => {
               )}
             </div>
           </div>
-
           <div>
             <label className="block text-sm font-bold text-[var(--color-primary)] uppercase tracking-wider mb-3">Voice Note</label>
             <div className="bg-white/50 p-6 rounded-2xl border border-gray-200 flex flex-col items-center justify-center text-center h-full min-h-[150px]">
@@ -924,7 +919,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
       source: 'memory' 
     }))
   ];
-
   const rotations = [-3, 2, -1, 4, -2, 3]; 
 
   const handleMultiUploadClick = (e) => {
@@ -938,23 +932,15 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
   const processUpload = async (customCaption) => {
     setIsCaptionModalOpen(false); 
     setIsUploading(true);
-
     const finalCaption = customCaption.trim() !== "" ? customCaption : "A beautiful moment";
-
     for (const file of pendingFiles) {
       try {
         const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
         const base64String = await fileToBase64(compressedFile);
-        
-        await onAddPhotos({ 
-          imgUrl: base64String, 
-          heading: finalCaption, 
-          timestamp: new Date().toISOString()
-        });
+        await onAddPhotos({ imgUrl: base64String, heading: finalCaption, timestamp: new Date().toISOString() });
       } catch (error) { console.error("Upload failed for a photo:", error); }
     }
-    
     setIsUploading(false);
     setPendingFiles([]); 
   };
@@ -965,7 +951,6 @@ const PolaroidGallery = ({ galleryPhotos, memories, onAddPhotos, deleteGalleryPh
   return (
     <div className="max-w-6xl mx-auto pb-10 relative">
       <CaptionModal isOpen={isCaptionModalOpen} fileCount={pendingFiles.length} onClose={() => { setIsCaptionModalOpen(false); setPendingFiles([]); }} onSubmit={processUpload} />
-
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-800">Our Gallery 📷</h1>
@@ -1056,13 +1041,10 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', description: '', location: '', borderStyle: 'border-white', layoutStyle: 'classic' });
 
-  // NEW: Completely lock the background body from scrolling when a memory is open!
+  // Completely lock the background body from scrolling when a memory is open!
   useEffect(() => {
-    if (currentIndex !== -1) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
+    if (currentIndex !== -1) { document.body.style.overflow = 'hidden'; } 
+    else { document.body.style.overflow = 'auto'; }
     return () => { document.body.style.overflow = 'auto'; };
   }, [currentIndex]);
 
@@ -1080,22 +1062,11 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
   };
 
   const closeMemory = () => { setCurrentIndex(-1); setIsEditing(false); };
-
-  const slideNext = (e) => { 
-    e.stopPropagation(); 
-    const nextIdx = (currentIndex + 1) % memories.length;
-    openMemory(nextIdx);
-  };
-  
-  const slidePrev = (e) => { 
-    e.stopPropagation(); 
-    const prevIdx = (currentIndex - 1 + memories.length) % memories.length;
-    openMemory(prevIdx);
-  };
+  const slideNext = (e) => { e.stopPropagation(); openMemory((currentIndex + 1) % memories.length); };
+  const slidePrev = (e) => { e.stopPropagation(); openMemory((currentIndex - 1 + memories.length) % memories.length); };
 
   const handleSaveEdit = () => {
-    const selectedMemory = memories[currentIndex];
-    editMemory(selectedMemory.firestoreId, editForm);
+    editMemory(memories[currentIndex].firestoreId, editForm);
     setIsEditing(false);
   };
 
@@ -1117,8 +1088,8 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
     { label: "Split Storybook", value: "split" },
     { label: "Vintage Journal", value: "journal" },
     { label: "Messy Scrapbook", value: "scrapbook" },
-    { label: "Modern Minimal", value: "minimal" }, // NEW
-    { label: "Dark Elegance", value: "dark" }     // NEW
+    { label: "Modern Minimal", value: "minimal" },
+    { label: "Dark Elegance", value: "dark" }
   ];
 
   const selectedMemory = currentIndex >= 0 ? memories[currentIndex] : null;
@@ -1164,17 +1135,14 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
       <AnimatePresence>
         {selectedMemory && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden" onClick={closeMemory}>
-            
             {!isEditing && memories.length > 1 && (
               <>
                 <button onClick={slidePrev} className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-2 md:p-4 z-50 transition-transform hover:scale-110"><ChevronDown size={48} className="rotate-90" /></button>
                 <button onClick={slideNext} className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-2 md:p-4 z-50 transition-transform hover:scale-110"><ChevronUp size={48} className="rotate-90" /></button>
               </>
             )}
-
             <button onClick={closeMemory} className="absolute top-6 right-6 bg-black/20 text-white hover:bg-black/50 p-3 rounded-full z-50 backdrop-blur-sm transition"><X size={32}/></button>
 
-            {/* FIXED: Modal is now a rigid box (h-[90vh] overflow-hidden). The INSIDES will scroll independently! */}
             <motion.div 
               key={currentIndex}
               initial={{ scale: 0.9, x: 100, opacity: 0 }} 
@@ -1227,7 +1195,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                     </div>
                   )}
 
-                  {/* LAYOUT 2: CINEMATIC GLASS (Fixed Background, Scrolling Text!) */}
+                  {/* LAYOUT 2: CINEMATIC GLASS */}
                   {selectedMemory.layoutStyle === 'cinematic' && (
                     <>
                       {selectedMemory.images && selectedMemory.images.length > 0 && (
@@ -1237,9 +1205,7 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
                         </div>
                       )}
                       <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar flex flex-col p-6 md:p-10">
-                         {/* Invisible spacer pushes text down over the image */}
                          <div className="min-h-[40vh] md:min-h-[50vh] shrink-0"></div>
-                         
                          <div className="bg-black/40 backdrop-blur-md border border-white/20 p-8 rounded-3xl text-white shadow-2xl shrink-0 mt-auto">
                             <p className="text-rose-300 font-bold tracking-widest uppercase text-xs mb-3">{selectedMemory.date} {selectedMemory.location && `• ${selectedMemory.location}`}</p>
                             <h2 className="text-4xl md:text-6xl font-serif font-bold leading-tight mb-6">{selectedMemory.title}</h2>
@@ -1431,16 +1397,8 @@ const Memories = ({ memories, deleteMemory, editMemory }) => {
 const Timeline = ({ memories }) => {
   const [expandedId, setExpandedId] = useState(null);
   const [likedMemories, setLikedMemories] = useState({});
-
-  const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
-  const toggleLike = (e, id) => {
-    e.stopPropagation();
-    setLikedMemories(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
+  const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+  const toggleLike = (e, id) => { e.stopPropagation(); setLikedMemories(prev => ({ ...prev, [id]: !prev[id] })); };
   const sortedMemories = [...memories].reverse();
 
   return (
@@ -1546,15 +1504,11 @@ const Timeline = ({ memories }) => {
   );
 };
 
-// Helper component to control map flying animations
 const MapController = ({ selectedMarker }) => {
   const map = useMap();
   useEffect(() => {
     if (selectedMarker && selectedMarker.lat && selectedMarker.lng) {
-      map.flyTo([selectedMarker.lat, selectedMarker.lng], 12, {
-        duration: 2.5, 
-        easeLinearity: 0.25
-      });
+      map.flyTo([selectedMarker.lat, selectedMarker.lng], 12, { duration: 2.5, easeLinearity: 0.25 });
     }
   }, [selectedMarker, map]);
   return null;
@@ -1564,7 +1518,6 @@ const LovelyMap = ({ memories, theme }) => {
   const [markers, setMarkers] = useState([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
 
-  // Dynamic Tile URLs based on your Aesthetic Theme
   const mapTiles = {
     lavender: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
     beach: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
@@ -1575,10 +1528,7 @@ const LovelyMap = ({ memories, theme }) => {
   useEffect(() => {
     const fetchCoordinates = async () => {
       const placesWithCoords = [];
-      const places = memories
-        .filter(m => m.location)
-        .sort((a, b) => new Date(a.id) - new Date(b.id)); 
-
+      const places = memories.filter(m => m.location).sort((a, b) => new Date(a.id) - new Date(b.id)); 
       for (const place of places) {
         if (place.lat && place.lng) {
           placesWithCoords.push({ ...place, lat: place.lat, lng: place.lng });
@@ -1589,15 +1539,9 @@ const LovelyMap = ({ memories, theme }) => {
           const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place.location)}&format=json&limit=1`);
           const data = await response.json();
           if (data && data.length > 0) {
-            placesWithCoords.push({ 
-              ...place, 
-              lat: parseFloat(data[0].lat), 
-              lng: parseFloat(data[0].lon) 
-            });
+            placesWithCoords.push({ ...place, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
           }
-        } catch (error) { 
-          console.error("Error finding coordinates for:", place.location); 
-        }
+        } catch (error) { console.error("Error finding coordinates for:", place.location); }
       }
       setMarkers(placesWithCoords);
     };
@@ -1620,7 +1564,6 @@ const LovelyMap = ({ memories, theme }) => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* INTERACTIVE STORY MODE SIDEBAR */}
         <div className="w-full lg:w-1/3 flex flex-col bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm rounded-[2rem] overflow-hidden max-h-[400px] lg:max-h-[650px]">
           <div className="p-6 border-b border-gray-100 bg-white/80">
             <h3 className="font-serif font-bold text-xl text-[var(--color-primary)] flex items-center gap-2">
@@ -1653,18 +1596,12 @@ const LovelyMap = ({ memories, theme }) => {
           </div>
         </div>
 
-        {/* THE MAP */}
         <div className="w-full lg:w-2/3 bg-white/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] shadow-sm border border-white/40">
           <div className="w-full h-[400px] md:h-[650px] rounded-2xl overflow-hidden shadow-inner border-4 border-white relative z-0">
             <MapContainer center={defaultCenter} zoom={4} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
               <TileLayer url={mapTiles[theme] || mapTiles.light} />
-              
               <MapController selectedMarker={selectedMarker} />
-
-              {journeyPath.length > 1 && (
-                <Polyline positions={journeyPath} pathOptions={{ color: 'var(--color-primary)', weight: 3, dashArray: '10, 10', opacity: 0.6 }} />
-              )}
-
+              {journeyPath.length > 1 && <Polyline positions={journeyPath} pathOptions={{ color: 'var(--color-primary)', weight: 3, dashArray: '10, 10', opacity: 0.6 }} />}
               {markers.map((marker, idx) => {
                 const coverImg = (marker.images && marker.images.length > 0) ? marker.images[0] : marker.img;
                 return (
@@ -1682,7 +1619,6 @@ const LovelyMap = ({ memories, theme }) => {
             </MapContainer>
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -1790,9 +1726,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                       : 'bg-[#FFFAF0] border-[8px] border-white outline outline-1 outline-gray-200 text-gray-800'
                   }`}
                 >
-                  {letter.layout !== 'image-background' && (
-                    <div className="absolute inset-2 border border-rose-200/50 rounded-sm pointer-events-none z-10"></div>
-                  )}
+                  {letter.layout !== 'image-background' && <div className="absolute inset-2 border border-rose-200/50 rounded-sm pointer-events-none z-10"></div>}
 
                   <button onClick={(e) => { e.stopPropagation(); deleteLetter(letter.firestoreId || letter.id); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-md z-50">
                     <Trash2 size={16} />
@@ -1832,9 +1766,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
       <AnimatePresence>
         {selectedLetter && (
           <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }} 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm overflow-y-auto" 
             onClick={() => setSelectedLetter(null)}
           >
@@ -1850,10 +1782,7 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
               }`} 
               onClick={e => e.stopPropagation()}
             >
-              {selectedLetter.layout !== 'image-background' && (
-                <div className="absolute inset-3 border-[1.5px] border-rose-200/60 rounded-sm pointer-events-none z-10"></div>
-              )}
-
+              {selectedLetter.layout !== 'image-background' && <div className="absolute inset-3 border-[1.5px] border-rose-200/60 rounded-sm pointer-events-none z-10"></div>}
               <button onClick={() => setSelectedLetter(null)} className="absolute top-4 right-4 bg-white/90 text-gray-800 p-2.5 rounded-full shadow-md hover:bg-gray-100 z-50 transition-transform hover:scale-110"><X size={20}/></button>
               
               {selectedLetter.layout === 'image-background' && selectedLetter.img && (
@@ -1868,15 +1797,12 @@ const Letters = ({ letters, deleteLetter, editLetter }) => {
                 {!isEditing ? (
                   <div className="flex flex-col text-center">
                     <button onClick={() => setIsEditing(true)} className="absolute -top-2 left-0 bg-white/50 backdrop-blur-md text-gray-800 px-4 py-1.5 rounded-full font-bold text-xs hover:bg-white transition shadow-sm border border-white/50">Edit</button>
-                    
                     <p className={`font-bold tracking-widest uppercase text-xs mb-3 ${selectedLetter.layout === 'image-background' ? 'text-rose-200' : 'text-[#8B1235]'}`}>
                       {selectedLetter.date} <span className="mx-1">•</span> {selectedLetter.time}
                     </p>
-                    
                     <h2 className={`text-4xl md:text-5xl font-serif font-bold mb-4 leading-tight ${selectedLetter.layout === 'image-background' ? 'text-white' : 'text-gray-900'}`}>
                       {selectedLetter.title}
                     </h2>
-                    
                     <div className={`text-xl mb-8 opacity-70 tracking-widest ${selectedLetter.layout === 'image-background' ? 'text-white' : 'text-rose-400'}`}>~ ♡ ~</div>
                     
                     {selectedLetter.layout === 'image-top' && selectedLetter.img && (
@@ -1926,15 +1852,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setRawImage(URL.createObjectURL(file)); 
-    }
-  };
-
-  const removeImage = () => setFormData({ ...formData, img: '' });
-
-  const onCropComplete = (croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+    if (file) { setRawImage(URL.createObjectURL(file)); }
   };
 
   const confirmCrop = async () => {
@@ -1948,7 +1866,6 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
       canvas.width = croppedAreaPixels.width;
       canvas.height = croppedAreaPixels.height;
       const ctx = canvas.getContext('2d');
-
       ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height);
 
       canvas.toBlob(async (blob) => {
@@ -2027,7 +1944,7 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
           ) : (
             <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-sm border-4 border-white group">
               <img src={formData.img} alt="Preview" className="w-full h-full object-cover" />
-              <button type="button" onClick={removeImage} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md transition-all"><Trash2 size={18} /></button>
+              <button type="button" onClick={() => setFormData({ ...formData, img: '' })} className="absolute top-3 right-3 bg-white/90 text-red-500 p-2.5 rounded-full hover:bg-red-50 shadow-md transition-all"><Trash2 size={18} /></button>
             </div>
           )}
         </div>
@@ -2046,33 +1963,18 @@ const CreateLetter = ({ onAddLetter, showAlert }) => {
         </button>
       </form>
 
-      {/* --- CROP MODAL --- */}
       <AnimatePresence>
         {rawImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
             <h3 className="text-white text-xl font-bold mb-2 font-serif text-center">Frame Your Photo ✂️</h3>
-            <p className="text-gray-400 text-xs mb-6 text-center">
-              {formData.layout === 'image-background' ? "Portrait mode selected for full backgrounds." : "Landscape mode selected for classic photos."}
-            </p>
-            
             <div className="relative w-full max-w-2xl h-[55vh] bg-black rounded-xl overflow-hidden shadow-2xl border border-white/20">
-              <Cropper
-                image={rawImage}
-                crop={crop}
-                zoom={zoom}
-                aspect={formData.layout === 'image-background' ? 9 / 16 : 4 / 3}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
+              <Cropper image={rawImage} crop={crop} zoom={zoom} aspect={formData.layout === 'image-background' ? 9 / 16 : 4 / 3} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
             </div>
-            
             <div className="mt-6 w-full max-w-md flex items-center gap-4 bg-white/10 p-3 rounded-full backdrop-blur-md">
                <span className="text-white text-sm pl-2"><ImageIcon size={16}/></span>
                <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="w-full accent-rose-400" />
                <span className="text-white text-sm pr-2"><ImageIcon size={24}/></span>
             </div>
-            
             <div className="mt-8 flex gap-4">
               <button type="button" onClick={() => setRawImage(null)} className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-full font-bold transition-colors shadow-lg">Cancel</button>
               <button type="button" onClick={confirmCrop} disabled={isSaving} className="px-6 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-full font-bold transition-colors shadow-lg flex items-center gap-2 border border-rose-400/30">
@@ -2103,19 +2005,13 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newGoal.trim()) return;
-    addGoal({ 
-      title: newGoal, 
-      completed: false, 
-      category: selectedCategory,
-      authorEmail: currentUser?.email || "Unknown" 
-    });
+    addGoal({ title: newGoal, completed: false, category: selectedCategory, authorEmail: currentUser?.email || "Unknown" });
     setNewGoal("");
   };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !completingGoalId) return;
-    
     try {
       const options = { maxSizeMB: 0.3, maxWidthOrHeight: 800, useWebWorker: true };
       const compressed = await imageCompression(file, options);
@@ -2125,17 +2021,12 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
       setCompletingGoalId(null);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000); 
-    } catch (err) {
-      alert("Failed to upload photo proof.");
-    }
+    } catch (err) { alert("Failed to upload photo proof."); }
   };
 
   const handleToggle = (id, isCompleted) => {
-    if (!isCompleted) {
-      setCompletingGoalId(id);
-    } else {
-      toggleGoal(id, false);
-    }
+    if (!isCompleted) setCompletingGoalId(id);
+    else toggleGoal(id, false);
   };
 
   const filteredList = filter === "All" ? bucketList : bucketList.filter(g => g.category === filter);
@@ -2209,11 +2100,6 @@ const BucketList = ({ bucketList, addGoal, toggleGoal, deleteGoal, currentUser }
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <button onClick={() => deleteGoal(goal.id)} className="text-gray-300 hover:text-red-500 bg-white p-2 rounded-full shadow-sm"><Trash2 size={16} /></button>
-                  {goal.authorEmail && (
-                    <div className="w-6 h-6 rounded-full bg-blue-50 text-[var(--color-primary)] flex items-center justify-center text-[10px] font-bold uppercase border border-blue-100" title={`Added by ${goal.authorEmail}`}>
-                      {goal.authorEmail.charAt(0)}
-                    </div>
-                  )}
                 </div>
               </div>
             </motion.div>
@@ -2236,7 +2122,6 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
       className="text-xl md:text-2xl font-serif font-bold text-[var(--color-primary)] bg-transparent text-center outline-none border-b-2 border-transparent focus:border-gray-200 mb-6 w-full transition-colors z-10"
       placeholder="Name this jar..."
     />
-    
     <div onClick={() => onDraw(jarPromises)} className={`w-48 h-64 rounded-b-[3rem] rounded-t-2xl relative cursor-pointer hover:scale-105 transition-transform flex flex-col justify-end overflow-hidden pb-4 border-[3px] border-white/50 bg-white/10 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.6),_0_15px_30px_rgba(0,0,0,0.1)]`}>
       <div className="absolute top-0 w-full h-5 bg-gray-300 border-b-4 border-gray-400 opacity-80 z-20 shadow-sm"></div>
       <div className="absolute top-0 left-[30%] w-3 h-full bg-gradient-to-b from-white/60 to-transparent rounded-full transform -skew-x-12 z-20 pointer-events-none"></div>
@@ -2244,7 +2129,6 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
       <div className="flex justify-center w-full h-[90%] px-4 relative z-10 overflow-hidden">
         <AnimatePresence>
           {jarPromises.map((p, i) => {
-            // Seed allows the notes to stack consistently instead of wildly dancing around
             const seed = p.id ? p.id.toString().charCodeAt(0) + i : i;
             const pseudoRandomX = Math.sin(seed) * 50; 
             const pseudoRandomY = -(i * 4) - Math.abs(Math.cos(seed) * 15); 
@@ -2257,8 +2141,7 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
                 key={p.id || i}
                 initial={{ y: -250, opacity: 0, x: 0, rotate: 0 }}
                 animate={{ 
-                  y: pseudoRandomY, 
-                  opacity: 0.95, 
+                  y: pseudoRandomY, opacity: 0.95, 
                   x: [0, pseudoRandomX * -0.6, pseudoRandomX * 1.4, pseudoRandomX * 0.3, pseudoRandomX],
                   rotate: [0, 45, -35, 20, pseudoRandomRot]
                 }}
@@ -2273,7 +2156,6 @@ const JarVisual = ({ name, setName, jarPromises, onDraw }) => (
         </AnimatePresence>
       </div>
     </div>
-    
     <p className="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest cursor-pointer group-hover:text-[var(--color-primary)] transition-colors bg-white/50 px-4 py-2 rounded-full shadow-sm" onClick={() => onDraw(jarPromises)}>
       Tap jar to open 
     </p>
@@ -2294,33 +2176,9 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
     localStorage.setItem('jar2Name', jar2Name);
   }, [jar1Name, jar2Name]);
 
-  const playMagicalDropSound = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioContext();
-      const playTone = (freq, delay) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine'; 
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-        gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + delay + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 1.2);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + 1.2);
-      };
-      playTone(1046.50, 0);   
-      playTone(1318.51, 0.1); 
-      playTone(1567.98, 0.2); 
-    } catch (err) { console.log("Audio blocked."); }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newPromise.trim()) return;
-    playMagicalDropSound();
     addPromise({ text: newPromise, target: targetJar });
     setNewPromise('');
   };
@@ -2330,17 +2188,14 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
 
   const drawRandomPromise = (jarPromises) => {
     const availablePromises = jarPromises.filter(p => !drawnIds.includes(p.id));
-
-    if (jarPromises.length === 0) {
-      return showAlert ? showAlert("Empty Jar", "This jar is empty! Add a sweet note first.") : alert("Empty Jar");
-    }
-
+    if (jarPromises.length === 0) return showAlert("Empty Jar", "This jar is empty! Add a sweet note first.");
+    
+    // UPGRADE: Perfect Randomness with Automatic Refill
     if (availablePromises.length === 0) {
       setDrawnIds([]); 
-      return showAlert ? showAlert("Jar Empty!", "You've read all the notes! The jar has been shaken up and refilled.") : alert("Refilled!");
+      return showAlert("Jar Empty!", "You've read all the notes! The jar has been shaken up and refilled.");
     }
 
-    // Perfectly random draw from remaining promises
     const randomIdx = Math.floor(Math.random() * availablePromises.length);
     const selected = availablePromises[randomIdx];
     
@@ -2351,7 +2206,6 @@ const PromiseJar = ({ promises, addPromise, deletePromise, showAlert }) => {
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-8 text-gray-800 text-center md:text-left">The Promise Jars 🫙</h1>
-      
       <div className="grid md:grid-cols-2 gap-8 mb-12">
         <JarVisual name={jar1Name} setName={setJar1Name} jarPromises={jar1Promises} onDraw={drawRandomPromise} />
         <JarVisual name={jar2Name} setName={setJar2Name} jarPromises={jar2Promises} onDraw={drawRandomPromise} />
@@ -2429,14 +2283,12 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
   useEffect(() => {
     const viewport = document.getElementById("board-viewport");
     if (!viewport) return;
-
     const handleWheel = (e) => {
       if (e.ctrlKey || e.metaKey) { 
         e.preventDefault();
         setZoom(z => Math.max(0.3, Math.min(3, z - e.deltaY * 0.01)));
       }
     };
-    
     viewport.addEventListener('wheel', handleWheel, { passive: false });
     return () => viewport.removeEventListener('wheel', handleWheel);
   }, []);
@@ -2455,7 +2307,7 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
     const file = e.target.files[0];
     if (!file) return;
     try {
-      // MASSIVE SPEED UPGRADE: Reduced maxSizeMB heavily for rapid uploading
+      // UPGRADE: Massively reduced maxSizeMB for rapid uploading on the mood board
       const options = { maxSizeMB: 0.1, maxWidthOrHeight: 600, useWebWorker: true };
       const compressed = await imageCompression(file, options);
       const base64 = await fileToBase64(compressed);
@@ -2569,18 +2421,18 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
             return (
               <motion.div
                 key={item.id} drag={isEditMode && !isEditing} dragMomentum={false}
-                // INSTANT DRAG FIX: Using the exact point coordinate to eliminate lag and misalignment
+                // UPGRADED DRAG FIX: Using the exact point coordinate to eliminate lag and misalignment
                 onDragEnd={(e, info) => updateBoardItem(item.id, { x: info.point.x / zoom, y: info.point.y / zoom })}
-                initial={{ x: item.x, y: item.y }}
+                // UPGRADED SCATTER FIX: Enforcing top: 0, left: 0 so absolute transform offsets work identically on PC and Phone
+                style={{ top: 0, left: 0, x: item.x, y: item.y, touchAction: "none" }}
                 onDoubleClick={(e) => { e.stopPropagation(); if(isEditMode) setEditingId(item.id); }}
                 className={`absolute group transition-shadow ${isEditing ? 'z-50 shadow-2xl scale-105' : 'shadow-sm hover:shadow-lg z-10'} ${isEditMode ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-auto'}`}
-                style={{ touchAction: "none" }}
               >
                 {isEditMode && (
                   <button onPointerDown={(e) => e.stopPropagation()} onClick={() => deleteBoardItem(item.id)} className={`absolute -top-4 -right-4 bg-white text-red-500 p-2 rounded-full shadow-lg transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} z-20`}><Trash2 size={16}/></button>
                 )}
                 
-                {/* PRO RESIZE FIX: Dedicated easy-drag handle instead of native CSS resize */}
+                {/* UPGRADED RESIZE FIX: Dedicated easy-drag handle instead of native CSS resize */}
                 {isEditing && (
                   <motion.div 
                     drag 
@@ -2649,33 +2501,6 @@ const MoodBoard = ({ boardItems, addBoardItem, updateBoardItem, deleteBoardItem 
 };
 
 // ==========================================
-// SILENT EMAIL NOTIFICATION HELPER
-// ==========================================
-const sendInstantNotification = (itemType, itemTitle) => {
-  const email1 = localStorage.getItem('notifyEmail1');
-  const email2 = localStorage.getItem('notifyEmail2');
-  const validEmails = [email1, email2].filter(Boolean);
-
-  if (validEmails.length === 0) return;
-
-  validEmails.forEach((targetEmail) => {
-    const templateParams = {
-      to_email: targetEmail,
-      subject: `New ${itemType} Added to Our Universe! ✨`,
-      message: `A new ${itemType} titled "${itemTitle}" was just added. Go check it out!`
-    };
-
-    emailjs.send(
-      'service_qwk8ies', 
-      'template_7vk7y9m', 
-      templateParams, 
-      'ICqdxeukLfDRZVg9K'
-    ).then(() => console.log(`Silent ping sent successfully to ${targetEmail}!`))
-     .catch((err) => console.error(`Silent email failed for ${targetEmail}:`, err));
-  });
-};
-
-// ==========================================
 // FULL ADVANCED SETTINGS PAGE 
 // ==========================================
 const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, showAlert }) => {
@@ -2726,7 +2551,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
             <h2 className="text-xl font-semibold text-gray-800">Your Shared Universe</h2>
           </div>
           <p className="text-sm text-gray-500 mb-6">Send this code to your partner. When they create an account, they can select "Join Universe" and paste this code to sync your memories securely.</p>
-          
           <div className="flex items-center bg-gray-50 border border-gray-200 p-4 rounded-xl gap-4">
             <code className="text-xl font-bold tracking-widest text-[var(--color-primary)] flex-1 text-center">{activeUniverse}</code>
             <button onClick={copyUniverseCode} className="bg-[var(--color-primary)] text-white p-3 rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"><Copy size={20} /></button>
@@ -2735,28 +2559,6 @@ const SettingsPage = ({ theme, setTheme, activeUniverse, quotes, deleteQuote, sh
 
         <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><Mail size={20} /></div>
-            <h2 className="text-xl font-semibold text-gray-800">Email Notifications</h2>
-          </div>
-          <p className="text-sm text-gray-500 mb-6">Get pinged instantly on your phone when a new memory or letter is added.</p>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Your Email</label>
-              <input type="email" value={email1} onChange={(e) => setEmail1(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" placeholder="you@example.com" />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Partner's Email</label>
-              <input type="email" value={email2} onChange={(e) => setEmail2(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-[var(--color-primary)] bg-white/50" placeholder="partner@example.com" />
-            </div>
-            <button onClick={handleSaveEmails} className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors w-full md:w-auto flex items-center justify-center gap-2 shadow-sm">
-              <Check size={18} /> Save Notification Emails
-            </button>
-          </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm border border-white/40">
-           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-gray-100 text-[var(--color-primary)] rounded-xl"><PenTool size={20} /></div>
             <h2 className="text-xl font-semibold text-gray-800">Whispers of the Universe</h2>
           </div>
@@ -2830,12 +2632,14 @@ function App() {
   const [bucketList, setBucketList] = useState([]);
   const [promises, setPromises] = useState([]);
   const [boardItems, setBoardItems] = useState([]);
-  const [loading, setLoading] = useState(false);
   
+  // NEW NOTIFICATIONS STATE
+  const [notifications, setNotifications] = useState([]);
+
+  const [loading, setLoading] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '' });
 
-  // --- NEW VISITOR TRACKING STATE ---
   const [visitors, setVisitors] = useState([]);
   const [isEditingName, setIsEditingName] = useState(false);
   const [localName, setLocalName] = useState(localStorage.getItem('universe_visitor') || 'Guest');
@@ -2854,13 +2658,7 @@ function App() {
     document.body.setAttribute('data-theme', theme);
     document.body.style.backgroundColor = 'var(--color-bg)';
     
-    const topBarColors = {
-      light: '#8B1235',
-      lavender: '#7E57C2',
-      beach: '#0C4A6E',
-      sunset: '#EA580C'
-    };
-
+    const topBarColors = { light: '#8B1235', lavender: '#7E57C2', beach: '#0C4A6E', sunset: '#EA580C' };
     let metaThemeColor = document.querySelector("meta[name='theme-color']");
     if (!metaThemeColor) {
       metaThemeColor = document.createElement("meta");
@@ -2870,38 +2668,61 @@ function App() {
     metaThemeColor.setAttribute("content", topBarColors[theme] || '#8B1235');
   }, [theme]);
 
+  // AUDIO DING FOR NEW NOTIFICATIONS
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (err) {}
+  };
+
   // --- UPGRADED: INSTANT VISIBILITY HEARTBEAT ---
   useEffect(() => {
     if (!isAuthenticated || !activeUniverse || !currentUser) return;
 
     const uniqueUserId = currentUser.uid;
 
-    const updatePresence = async () => {
+    const updatePresence = async (status) => {
       try {
         const visitorRef = doc(db, 'visitors', uniqueUserId);
         await setDoc(visitorRef, {
           userId: uniqueUserId,
           name: localStorage.getItem('universe_visitor') || 'Guest',
           universeId: activeUniverse,
+          status: status, // explicitly "online" or "offline"
           lastSeen: serverTimestamp() 
         }, { merge: true });
       } catch (error) { console.error("Presence error:", error); }
     };
 
-    updatePresence();
-    const heartbeat = setInterval(updatePresence, 60000); 
+    updatePresence('online');
+    const heartbeat = setInterval(() => updatePresence('online'), 60000); 
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') updatePresence();
+      if (document.visibilityState === 'visible') updatePresence('online');
+      else updatePresence('offline');
     };
+    const handleUnload = () => updatePresence('offline');
     
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleVisibility);
+    window.addEventListener('beforeunload', handleUnload);
 
     return () => {
       clearInterval(heartbeat);
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleVisibility);
+      window.removeEventListener('beforeunload', handleUnload);
     };
   }, [isAuthenticated, activeUniverse, localName, currentUser]);
 
@@ -2922,6 +2743,22 @@ function App() {
         stateSetter(data);
       }, (error) => console.error(`Live sync error for ${colName}:`, error));
     };
+
+    // SPECIAL LISTENER FOR NOTIFICATIONS
+    const qNotif = query(collection(db, 'notifications'), where("universeId", "==", activeUniverse));
+    const unsubNotifications = onSnapshot(qNotif, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          if (data.createdBy && data.createdBy !== currentUser?.uid) {
+            playNotificationSound();
+          }
+        }
+      });
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+      setNotifications(data);
+    });
 
     const unsubMemories = setupLiveListener('memories', setMemories);
     const unsubLetters = setupLiveListener('letters', setLetters, 'createdAt');
@@ -2950,8 +2787,9 @@ function App() {
       unsubPromises();
       unsubMoodboard();
       unsubVisitors();
+      unsubNotifications();
     };
-  }, [isAuthenticated, activeUniverse]);
+  }, [isAuthenticated, activeUniverse, currentUser]);
 
   const handleSaveName = async () => {
     if (localName.trim() && currentUser) {
@@ -2970,16 +2808,15 @@ function App() {
     }
   };
 
-  const formatTime = (timestamp, visitorId) => {
+  const formatTime = (timestamp, visitorId, status) => {
     if (currentUser && visitorId === currentUser.uid) return "Online";
-    if (!timestamp) return "Online"; 
+    if (status === 'online' && timestamp && (Date.now() - timestamp.toDate() < 120000)) return "Online";
+
+    if (!timestamp) return "Offline"; 
 
     const date = timestamp.toDate();
     const now = new Date();
-    const diffMs = now - date;
     
-    if (diffMs < 120000) return "Online";
-
     const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -2992,10 +2829,35 @@ function App() {
     return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
   };
 
+  const createNotification = async (type, title, message, link) => {
+    if (!currentUser || !activeUniverse) return;
+    try {
+      await addDoc(collection(db, "notifications"), {
+        universeId: activeUniverse,
+        type,
+        title,
+        message,
+        link,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.uid,
+        readBy: [currentUser.uid] // Creator has already read it
+      });
+    } catch(err) { console.error("Notif failed", err); }
+  };
+
+  const markNotificationAsRead = async (notif) => {
+    if (!notif.readBy?.includes(currentUser?.uid)) {
+      try {
+        await updateDoc(doc(db, "notifications", notif.id), {
+          readBy: [...(notif.readBy || []), currentUser.uid]
+        });
+      } catch(err){}
+    }
+  };
+
   const addMemory = async (newMemoryData) => {
     try {
       if (window.navigator && window.navigator.vibrate) navigator.vibrate([50, 100, 50]); 
-
       const imagesBase64 = [];
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
         for (const file of newMemoryData.imgFiles) {
@@ -3003,11 +2865,8 @@ function App() {
           imagesBase64.push(base64String);
         }
       }
-
       let voiceBase64 = '';
-      if (newMemoryData.voiceBlob) {
-        voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
-      }
+      if (newMemoryData.voiceBlob) voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
 
       const finalMemory = {
         title: newMemoryData.title,
@@ -3023,6 +2882,7 @@ function App() {
       };
 
       await addDoc(collection(db, "memories"), finalMemory);
+      createNotification('Memory', 'New Memory Added ✨', finalMemory.title, '/memories');
       return true;
     } catch (err) { 
       console.error("Upload Failed:", err);
@@ -3063,17 +2923,21 @@ function App() {
     try {
       const finalLetter = { ...newLetterData, createdAt: new Date().toISOString(), universeId: activeUniverse }; 
       await addDoc(collection(db, "letters"), finalLetter);
-      sendInstantNotification("Love Letter", finalLetter.title);
+      createNotification('Letter', 'New Love Letter 💌', finalLetter.title, '/letters');
       return true;
     } catch (err) { showAlert("Image Too Large", "Attached image is too large! Try a smaller picture."); return false; }
   };
 
   const addGalleryPhotos = async (newPhoto) => {
     await addDoc(collection(db, "gallery"), { ...newPhoto, universeId: activeUniverse });
+    createNotification('Gallery', 'New Photos Added 📷', 'Beautiful moments added to the gallery.', '/gallery');
   };
 
   const addGoal = async (goal) => {
-    try { await addDoc(collection(db, "bucketlist"), { ...goal, universeId: activeUniverse }); } catch (err) { console.error(err); }
+    try { 
+      await addDoc(collection(db, "bucketlist"), { ...goal, universeId: activeUniverse }); 
+      createNotification('Goal', 'New Bucket List Goal ✈️', goal.title, '/bucket-list');
+    } catch (err) { console.error(err); }
   };
   
   const toggleGoal = async (id, completed, proofImage = null) => {
@@ -3085,7 +2949,10 @@ function App() {
   };
   
   const addPromise = async (promise) => {
-    try { await addDoc(collection(db, "promises"), { ...promise, universeId: activeUniverse }); } catch (err) { console.error(err); }
+    try { 
+      await addDoc(collection(db, "promises"), { ...promise, universeId: activeUniverse }); 
+      createNotification('Promise', 'A note was dropped in the jar 🫙', 'Tap to open the jar!', '/promise-jar');
+    } catch (err) { console.error(err); }
   };
 
   const addBoardItem = async (item) => {
@@ -3123,9 +2990,11 @@ function App() {
   return (
     <BrowserRouter>
       <GlobalThemeStyles />
-      <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500 pb-20">
+      <div className="min-h-screen bg-[var(--color-bg)] text-gray-900 transition-colors duration-500 pb-20 relative">
         
-        {/* WE PASS ALL THE NEW VISITOR STATE TO DASHBOARD LAYOUT SO SIDEBAR CAN READ IT! */}
+        {/* THE NEW WHATSAPP NOTIFICATION BELL */}
+        <NotificationWidget notifications={notifications} currentUser={currentUser} markAsRead={markNotificationAsRead} />
+
         <DashboardLayout 
           theme={theme}
           onAccountClick={() => setIsAccountModalOpen(true)}
