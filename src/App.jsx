@@ -624,7 +624,7 @@ const Home = ({ memories, quotes, deleteMemory, theme }) => {
           <motion.h1 variants={itemVariants} className="text-4xl md:text-6xl font-serif text-gray-800 leading-tight mb-4">
             "I will be there for you <span className="text-[var(--color-primary)] italic font-light relative inline-block">
               always
-              <motion.span animate={{ opacity: [0.3, 1, 0.3], scaleX: [0.9, 1, 0.9] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" className="absolute -bottom-1 left-0 w-full h-[2px] md:h-[3px] bg-[var(--color-primary)] rounded-full origin-center" />
+              <motion.span animate={{ opacity: [0.3, 1, 0.3], scaleX: [0.9, 1, 0.9] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }} className="absolute -bottom-1 left-0 w-full h-[2px] md:h-[3px] bg-[var(--color-primary)] rounded-full origin-center" />
             </span>."
           </motion.h1>
           <motion.p variants={itemVariants} className="text-gray-600 mb-8 md:mb-10 text-base md:text-lg leading-relaxed">
