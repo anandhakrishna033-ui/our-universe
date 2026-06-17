@@ -2744,17 +2744,25 @@ function App() {
       }, (error) => console.error(`Live sync error for ${colName}:`, error));
     };
 
-    // SPECIAL LISTENER FOR NOTIFICATIONS
+    // SPECIAL LISTENER FOR NOTIFICATIONS (UPGRADED TO FIX SOUND BUG)
+    let isFirstNotifLoad = true; // <-- This acts as a shield for the first load
     const qNotif = query(collection(db, 'notifications'), where("universeId", "==", activeUniverse));
     const unsubNotifications = onSnapshot(qNotif, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const data = change.doc.data();
-          if (data.createdBy && data.createdBy !== currentUser?.uid) {
-            playNotificationSound();
+      
+      // Only check for sounds if this ISN'T the first time the app is loading
+      if (!isFirstNotifLoad) {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added") {
+            const data = change.doc.data();
+            if (data.createdBy && data.createdBy !== currentUser?.uid) {
+              playNotificationSound();
+            }
           }
-        }
-      });
+        });
+      } else {
+        isFirstNotifLoad = false; // Turn off the shield after the first load
+      }
+
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       data.sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
       setNotifications(data);
