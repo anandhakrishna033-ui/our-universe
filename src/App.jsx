@@ -398,18 +398,25 @@ const AuthGateway = ({ onUnlock }) => {
 };
 
 // ==========================================
-// NEW: WHATSAPP-STYLE NOTIFICATION WIDGET
+// NEW: WHATSAPP-STYLE NOTIFICATION WIDGET (AUTO-CLEARS)
 // ==========================================
 const NotificationWidget = ({ notifications, currentUser, markAsRead }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
-  const unreadCount = notifications.filter(n => !n.readBy?.includes(currentUser?.uid)).length;
+  // STRICT FILTER: Only keep notifications that haven't been read by this user
+  const unreadNotifications = notifications.filter(n => !n.readBy?.includes(currentUser?.uid));
+  const unreadCount = unreadNotifications.length;
 
   const handleNotifClick = (notif) => {
     markAsRead(notif);
     setIsOpen(false);
     navigate(notif.link);
+  };
+
+  const handleDismissAll = () => {
+    unreadNotifications.forEach(n => markAsRead(n));
+    setIsOpen(false);
   };
 
   return (
@@ -438,30 +445,31 @@ const NotificationWidget = ({ notifications, currentUser, markAsRead }) => {
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                 <Bell size={18} className="text-[var(--color-primary)]" /> Notifications
               </h3>
-              {unreadCount > 0 && <span className="text-xs font-bold text-[var(--color-primary)] bg-white px-2 py-1 rounded-full shadow-sm">{unreadCount} New</span>}
+              {unreadCount > 0 && (
+                <button onClick={handleDismissAll} className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded-full shadow-sm hover:text-red-500 transition-colors">
+                  Dismiss All
+                </button>
+              )}
             </div>
 
             <div className="max-h-80 overflow-y-auto custom-scrollbar">
-              {notifications.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 font-medium">No recent updates in your universe.</div>
+              {unreadCount === 0 ? (
+                <div className="p-8 text-center text-gray-400 font-medium">No new updates.</div>
               ) : (
-                notifications.map((notif) => {
-                  const isUnread = !notif.readBy?.includes(currentUser?.uid);
-                  return (
-                    <div 
-                      key={notif.id} 
-                      onClick={() => handleNotifClick(notif)}
-                      className={`p-4 border-b border-gray-50 cursor-pointer transition-colors flex gap-3 ${isUnread ? 'bg-rose-50/50 hover:bg-rose-50' : 'bg-white hover:bg-gray-50'}`}
-                    >
-                      <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${isUnread ? 'bg-[var(--color-primary)]' : 'bg-gray-200'}`}></div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)] mb-1">{notif.type}</p>
-                        <h4 className={`text-sm ${isUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{notif.title}</h4>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notif.message}</p>
-                      </div>
+                unreadNotifications.map((notif) => (
+                  <div 
+                    key={notif.id} 
+                    onClick={() => handleNotifClick(notif)}
+                    className="p-4 border-b border-rose-50/50 cursor-pointer transition-colors flex gap-3 bg-rose-50/30 hover:bg-rose-50"
+                  >
+                    <div className="w-2 h-2 mt-2 rounded-full shrink-0 bg-[var(--color-primary)]"></div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)] mb-1">{notif.type}</p>
+                      <h4 className="text-sm font-bold text-gray-900">{notif.title}</h4>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notif.message}</p>
                     </div>
-                  );
-                })
+                  </div>
+                ))
               )}
             </div>
           </motion.div>
@@ -470,7 +478,6 @@ const NotificationWidget = ({ notifications, currentUser, markAsRead }) => {
     </div>
   );
 };
-
 // ==========================================
 // ACCOUNT MODAL
 // ==========================================
@@ -2708,7 +2715,7 @@ function App() {
     };
 
     updatePresence('online');
-    const heartbeat = setInterval(() => updatePresence('online'), 60000); 
+    const heartbeat = setInterval(() => updatePresence('online'), 15000); 
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') updatePresence('online');
@@ -2818,7 +2825,7 @@ function App() {
 
   const formatTime = (timestamp, visitorId, status) => {
     if (currentUser && visitorId === currentUser.uid) return "Online";
-    if (status === 'online' && timestamp && (Date.now() - timestamp.toDate() < 120000)) return "Online";
+    if (status === 'online' && timestamp && (Date.now() - timestamp.toDate() <25000)) return "Online";
 
     if (!timestamp) return "Offline"; 
 
@@ -2837,29 +2844,19 @@ function App() {
     return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
   };
 
-  const createNotification = async (type, title, message, link) => {
+  const createNotification = async (type, title, message, link, itemId) => {
     if (!currentUser || !activeUniverse) return;
     try {
       await addDoc(collection(db, "notifications"), {
-        universeId: activeUniverse,
-        type,
-        title,
-        message,
-        link,
-        createdAt: serverTimestamp(),
-        createdBy: currentUser.uid,
-        readBy: [currentUser.uid] // Creator has already read it
+        universeId: activeUniverse, type, title, message, link, itemId, // <-- Added itemId
+        createdAt: serverTimestamp(), createdBy: currentUser.uid, readBy: [currentUser.uid]
       });
     } catch(err) { console.error("Notif failed", err); }
   };
 
   const markNotificationAsRead = async (notif) => {
     if (!notif.readBy?.includes(currentUser?.uid)) {
-      try {
-        await updateDoc(doc(db, "notifications", notif.id), {
-          readBy: [...(notif.readBy || []), currentUser.uid]
-        });
-      } catch(err){}
+      try { await updateDoc(doc(db, "notifications", notif.id), { readBy: [...(notif.readBy || []), currentUser.uid] }); } catch(err){}
     }
   };
 
@@ -2868,34 +2865,21 @@ function App() {
       if (window.navigator && window.navigator.vibrate) navigator.vibrate([50, 100, 50]); 
       const imagesBase64 = [];
       if (newMemoryData.imgFiles && newMemoryData.imgFiles.length > 0) {
-        for (const file of newMemoryData.imgFiles) {
-          const base64String = await fileToBase64(file);
-          imagesBase64.push(base64String);
-        }
+        for (const file of newMemoryData.imgFiles) { imagesBase64.push(await fileToBase64(file)); }
       }
       let voiceBase64 = '';
       if (newMemoryData.voiceBlob) voiceBase64 = await fileToBase64(newMemoryData.voiceBlob);
 
       const finalMemory = {
-        title: newMemoryData.title,
-        date: newMemoryData.date || '',
-        location: newMemoryData.location || '',
-        lat: newMemoryData.lat || null, 
-        lng: newMemoryData.lng || null, 
-        description: newMemoryData.description || '',
-        images: imagesBase64,
-        voiceNote: voiceBase64,
-        id: Date.now(),
-        universeId: activeUniverse 
+        title: newMemoryData.title, date: newMemoryData.date || '', location: newMemoryData.location || '',
+        lat: newMemoryData.lat || null, lng: newMemoryData.lng || null, description: newMemoryData.description || '',
+        images: imagesBase64, voiceNote: voiceBase64, id: Date.now(), universeId: activeUniverse 
       };
 
-      await addDoc(collection(db, "memories"), finalMemory);
-      createNotification('Memory', 'New Memory Added ✨', finalMemory.title, '/memories');
+      const docRef = await addDoc(collection(db, "memories"), finalMemory);
+      createNotification('Memory', 'New Memory Added ✨', finalMemory.title, '/memories', docRef.id);
       return true;
-    } catch (err) { 
-      console.error("Upload Failed:", err);
-      return false; 
-    }
+    } catch (err) { return false; }
   };
   
   const triggerDeleteMemory = (id) => setConfirmModal({ isOpen: true, id, type: 'memory', title: 'Delete Memory?', message: 'Are you sure you want to permanently delete this memory from your universe? This cannot be undone.' });
@@ -2905,13 +2889,8 @@ function App() {
   const triggerDeleteGoal = (id) => setConfirmModal({ isOpen: true, id, type: 'goal', title: 'Delete Goal?', message: 'Are you sure you want to remove this goal from your bucket list?' });
   const triggerDeletePromise = (id) => setConfirmModal({ isOpen: true, id, type: 'promise', title: 'Delete Note?', message: 'Are you sure you want to permanently remove this sweet note?' });
 
-  const editMemory = async (id, updatedFields) => {
-    try { await updateDoc(doc(db, "memories", id), updatedFields); } catch (err) { console.error(err); }
-  };
-
-  const editLetter = async (id, updatedFields) => {
-    try { await updateDoc(doc(db, "letters", id), updatedFields); } catch (err) { console.error(err); }
-  };
+  const editMemory = async (id, updatedFields) => { try { await updateDoc(doc(db, "memories", id), updatedFields); } catch (err) {} };
+  const editLetter = async (id, updatedFields) => { try { await updateDoc(doc(db, "letters", id), updatedFields); } catch (err) {} };
 
   const handleConfirmAction = async () => {
     const { type, id } = confirmModal;
@@ -2923,6 +2902,14 @@ function App() {
       else if (type === 'quote') await deleteDoc(doc(db, "quotes", id));
       else if (type === 'goal') await deleteDoc(doc(db, "bucketlist", id));
       else if (type === 'promise') await deleteDoc(doc(db, "promises", id));
+      
+      // INSTANT FIX: Delete the notification tied to this item!
+      const notifQuery = query(collection(db, "notifications"), where("itemId", "==", id));
+      const notifSnap = await getDocs(notifQuery);
+      notifSnap.forEach(async (nDoc) => {
+        await deleteDoc(doc(db, "notifications", nDoc.id));
+      });
+
       setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' }); 
     } catch (err) { console.error("Error deleting item: ", err); }
   };
@@ -2930,22 +2917,22 @@ function App() {
   const addLetter = async (newLetterData) => {
     try {
       const finalLetter = { ...newLetterData, createdAt: new Date().toISOString(), universeId: activeUniverse }; 
-      await addDoc(collection(db, "letters"), finalLetter);
-      createNotification('Letter', 'New Love Letter 💌', finalLetter.title, '/letters');
+      const docRef = await addDoc(collection(db, "letters"), finalLetter);
+      createNotification('Letter', 'New Love Letter 💌', finalLetter.title, '/letters', docRef.id);
       return true;
     } catch (err) { showAlert("Image Too Large", "Attached image is too large! Try a smaller picture."); return false; }
   };
 
   const addGalleryPhotos = async (newPhoto) => {
-    await addDoc(collection(db, "gallery"), { ...newPhoto, universeId: activeUniverse });
-    createNotification('Gallery', 'New Photos Added 📷', 'Beautiful moments added to the gallery.', '/gallery');
+    const docRef = await addDoc(collection(db, "gallery"), { ...newPhoto, universeId: activeUniverse });
+    createNotification('Gallery', 'New Photos Added 📷', 'Beautiful moments added to the gallery.', '/gallery', docRef.id);
   };
 
   const addGoal = async (goal) => {
     try { 
-      await addDoc(collection(db, "bucketlist"), { ...goal, universeId: activeUniverse }); 
-      createNotification('Goal', 'New Bucket List Goal ✈️', goal.title, '/bucket-list');
-    } catch (err) { console.error(err); }
+      const docRef = await addDoc(collection(db, "bucketlist"), { ...goal, universeId: activeUniverse }); 
+      createNotification('Goal', 'New Bucket List Goal ✈️', goal.title, '/bucket-list', docRef.id);
+    } catch (err) {}
   };
   
   const toggleGoal = async (id, completed, proofImage = null) => {
@@ -2953,27 +2940,19 @@ function App() {
       const updateData = { completed };
       if (proofImage) updateData.proofImage = proofImage;
       await updateDoc(doc(db, "bucketlist", id), updateData);
-    } catch (err) { console.error(err); }
+    } catch (err) {}
   };
   
   const addPromise = async (promise) => {
     try { 
-      await addDoc(collection(db, "promises"), { ...promise, universeId: activeUniverse }); 
-      createNotification('Promise', 'A note was dropped in the jar 🫙', 'Tap to open the jar!', '/promise-jar');
-    } catch (err) { console.error(err); }
+      const docRef = await addDoc(collection(db, "promises"), { ...promise, universeId: activeUniverse }); 
+      createNotification('Promise', 'A note was dropped in the jar 🫙', 'Tap to open the jar!', '/promise-jar', docRef.id);
+    } catch (err) {}
   };
 
-  const addBoardItem = async (item) => {
-    try { await addDoc(collection(db, "moodboard"), { ...item, universeId: activeUniverse }); } catch (err) { console.error(err); }
-  };
-  
-  const updateBoardItem = async (id, newProps) => {
-    try { await updateDoc(doc(db, "moodboard", id), newProps); } catch (err) { console.error(err); }
-  };
-  
-  const deleteBoardItem = async (id) => {
-    try { await deleteDoc(doc(db, "moodboard", id)); } catch (err) { console.error(err); }
-  };
+  const addBoardItem = async (item) => { try { await addDoc(collection(db, "moodboard"), { ...item, universeId: activeUniverse }); } catch (err) {} };
+  const updateBoardItem = async (id, newProps) => { try { await updateDoc(doc(db, "moodboard", id), newProps); } catch (err) {} };
+  const deleteBoardItem = async (id) => { try { await deleteDoc(doc(db, "moodboard", id)); } catch (err) {} };
 
   const handleUnlock = (user, uId) => {
     setCurrentUser(user);
@@ -2988,13 +2967,7 @@ function App() {
     </>
   );
 
-  if (loading) return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-      <GlobalThemeStyles />
-      <div className="animate-pulse text-[var(--color-primary)] text-xl font-serif">Syncing Universe {activeUniverse}... ✨</div>
-    </div>
-  );
-
+  
   return (
     <BrowserRouter>
       <GlobalThemeStyles />
